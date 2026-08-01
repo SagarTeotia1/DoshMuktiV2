@@ -1,0 +1,299 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Product ──────────────────────────────────────────────────────────────────
+
+model Product {
+  id          String           @id @default(cuid())
+  name        String
+  slug        String           @unique
+  description String           @db.Text
+  category    String
+  basePrice   Decimal          @db.Decimal(10, 2)
+  images      Json             @default("[]")   // [{thumb,card,full}]
+  status      ProductStatus    @default(DRAFT)
+  purpose     String[]         @default([])     // ["love","wealth",...]
+  featured    Boolean          @default(false)
+  badge       String?                           // "Bestseller"|"New"|"Limited Edition"
+  benefits         Json    @default("[]")   // [{title, description}]
+  howToWear        Json    @default("[]")   // ["step 1", "step 2", ...]
+  careInstructions String? @db.Text
+  socialProofText  String?                  // "Loved by 15 lakh+ customers"
+  variants    ProductVariant[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([status, category])
+  @@index([status, featured])
+  @@index([slug])
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model ProductVariant {
+  id                String          @id @default(cuid())
+  productId         String
+  product           Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku               String          @unique
+  attributes        Json            @default("{}")   // {size,color,material}
+  priceOverride     Decimal?        @db.Decimal(10, 2)
+  stockQuantity     Int             @default(0)
+  lowStockThreshold Int             @default(5)
+  weight            Int             @default(500)    // grams
+  isActive          Boolean         @default(true)
+  stockMovements    StockMovement[]
+  orderItems        OrderItem[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([productId])
+  @@index([sku])
+}
+
+model StockMovement {
+  id        String              @id @default(cuid())
+  variantId String
+  variant   ProductVariant      @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  change    Int
+  reason    StockMovementReason
+  orderId   String?
+  note      String?
+  createdAt DateTime            @default(now())
+  createdBy String
+
+  @@index([variantId, createdAt])
+  @@index([orderId])
+}
+
+enum StockMovementReason {
+  RESTOCK
+  SALE
+  MANUAL_ADJUSTMENT
+  RETURN
+  RESERVATION_RELEASED
+}
+
+// ─── Customer Identity ────────────────────────────────────────────────────────
+
+// Saved address keyed on SHA-256(phone) — never store raw phone in cache
+model CustomerAddress {
+  id        String   @id @default(cuid())
+  phoneHash String   // SHA-256 of normalized phone (+91XXXXXXXXXX)
+  name      String
+  line1     String
+  line2     String?
+  city      String
+  state     String
+  pincode   String
+  country   String   @default("IN")
+  isDefault Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([phoneHash])
+}
+
+// OTP state — cleaned up by cron after expiry
+model OtpVerification {
+  id        String   @id @default(cuid())
+  phone     String   // normalized: +91XXXXXXXXXX
+  requestId String   // MSG91 request ID returned on send
+  verified  Boolean  @default(false)
+  expiresAt DateTime // 10 min from creation
+  createdAt DateTime @default(now())
+
+  @@index([phone, verified])
+  @@index([expiresAt])
+}
+
+// ─── Order ───────────────────────────────────────────────────────────────────
+
+model OrderSequence {
+  date String @id  // YYYYMMDD
+  seq  Int    @default(0)
+}
+
+model Order {
+  id                   String           @id @default(cuid())
+  orderNumber          String           @unique    // DOSH-20240615-0042
+  customerName         String
+  customerPhone        String           // primary identifier
+  customerEmail        String?          // optional
+  customerDob          DateTime?        // optional — for birthday coupons
+  shippingAddress      Json             // {line1,line2?,city,state,pincode,country}
+  status               OrderStatus      @default(PENDING_PAYMENT)
+  subtotal             Decimal          @db.Decimal(10, 2)
+  shippingFee          Decimal          @db.Decimal(10, 2)
+  discountAmount       Decimal          @db.Decimal(10, 2) @default(0)
+  total                Decimal          @db.Decimal(10, 2)
+  couponId             String?
+  coupon               Coupon?          @relation(fields: [couponId], references: [id])
+  rewardPointsEarned   Int              @default(0)
+  rewardPointsRedeemed Int              @default(0)
+  reservedUntil        DateTime?
+  items                OrderItem[]
+  payment              Payment?
+  shipment             Shipment?
+  statusLog            OrderStatusLog[]
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([status, createdAt])
+  @@index([customerPhone])
+  @@index([orderNumber])
+  @@index([reservedUntil])
+  @@index([couponId])
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURN_REQUESTED
+  REFUNDED
+}
+
+model OrderItem {
+  id              String         @id @default(cuid())
+  orderId         String
+  order           Order          @relation(fields: [orderId], references: [id])
+  variantId       String
+  variant         ProductVariant @relation(fields: [variantId], references: [id])
+  quantity        Int
+  priceAtPurchase Decimal        @db.Decimal(10, 2)
+  variantSnapshot Json           // {sku,attributes,productName} — point-in-time
+
+  @@index([orderId])
+}
+
+model OrderStatusLog {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id])
+  from      OrderStatus
+  to        OrderStatus
+  note      String?
+  createdAt DateTime    @default(now())
+  createdBy String
+
+  @@index([orderId])
+}
+
+// ─── Payment ──────────────────────────────────────────────────────────────────
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String        @unique
+  order             Order         @relation(fields: [orderId], references: [id])
+  razorpayOrderId   String        @unique
+  razorpayPaymentId String?
+  razorpaySignature String?
+  status            PaymentStatus @default(PENDING)
+  amount            Decimal       @db.Decimal(10, 2)
+  currency          String        @default("INR")
+  verifiedAt        DateTime?
+  failureReason     String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+enum PaymentStatus {
+  PENDING
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+// ─── Shipment ─────────────────────────────────────────────────────────────────
+
+model Shipment {
+  id                String         @id @default(cuid())
+  orderId           String         @unique
+  order             Order          @relation(fields: [orderId], references: [id])
+  delhiveryWaybill  String?
+  status            ShipmentStatus @default(PENDING)
+  trackingEvents    Json           @default("[]")  // [{timestamp,status,location,description}]
+  estimatedDelivery DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([status])
+  @@index([delhiveryWaybill])
+}
+
+enum ShipmentStatus {
+  PENDING
+  BOOKED
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED
+  RETURNED
+}
+
+// ─── Coupons ──────────────────────────────────────────────────────────────────
+
+model Coupon {
+  id          String     @id @default(cuid())
+  code        String     @unique
+  type        CouponType
+  value       Decimal    @db.Decimal(10, 2)  // ₹ amount or % value
+  minOrder    Decimal?   @db.Decimal(10, 2)  // minimum order subtotal
+  maxUses     Int?                           // null = unlimited
+  usedCount   Int        @default(0)
+  maxDiscount Decimal?   @db.Decimal(10, 2)  // cap for PERCENT type
+  expiresAt   DateTime?
+  isActive    Boolean    @default(true)
+  orders      Order[]
+  createdAt   DateTime   @default(now())
+
+  @@index([code])
+  @@index([isActive, expiresAt])
+}
+
+enum CouponType {
+  FLAT
+  PERCENT
+  BIRTHDAY
+}
+
+// ─── Rewards ──────────────────────────────────────────────────────────────────
+
+// Append-only ledger — never UPDATE or DELETE
+model RewardPoint {
+  id        String            @id @default(cuid())
+  phoneHash String            // SHA-256(+91XXXXXXXXXX)
+  orderId   String?           // null for manual grants/deductions
+  change    Int               // positive = earned, negative = redeemed/expired
+  balance   Int               // running total after this entry (denormalized)
+  reason    RewardPointReason
+  expiresAt DateTime?         // earned points expire 12 months after earning
+  createdAt DateTime          @default(now())
+
+  @@index([phoneHash, createdAt])
+  @@index([orderId])
+  @@index([expiresAt])
+}
+
+enum RewardPointReason {
+  ORDER_EARNED      // +points on paid order
+  ORDER_REDEEMED    // -points used at checkout
+  BIRTHDAY_BONUS    // +points on birthday
+  MANUAL_GRANT      // admin grant
+  MANUAL_DEDUCT     // admin correction
+  EXPIRED           // -points on expiry
+}

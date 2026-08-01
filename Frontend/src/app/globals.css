@@ -1,0 +1,275 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Satoshi font (Fontshare) ──────────────────────────────────────────────── */
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap');
+
+/* ─── Brand CSS Variables ────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    /* ── "Temple Warmth" — bronze/copper on peach-cream, from the Doshhmukti wordmark ── */
+    --background:           39 78% 93%;    /* #FBF1DF */
+    --foreground:           29 56% 11%;    /* #2B1B0C */
+    --card:                 43 100% 99%;   /* #FFFDF8 */
+    --card-foreground:      29 56% 11%;    /* #2B1B0C */
+    --popover:              43 100% 99%;
+    --popover-foreground:   29 56% 11%;
+    --primary:              26 62% 26%;    /* #6B3D19 — bronze-deep */
+    --primary-foreground:   39 78% 93%;
+    --secondary:            31 56% 52%;    /* #C9863F — bronze-light */
+    --secondary-foreground: 29 56% 11%;
+    --muted:                39 74% 86%;    /* #F6E4C2 */
+    --muted-foreground:     34 30% 32%;    /* #6B5539 */
+    --accent:               26 61% 38%;    /* #9C5A26 — bronze */
+    --accent-foreground:    39 78% 93%;
+    --destructive:           0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border:               36 46% 72%;    /* #D9BF98 — warm bronze-tinted border */
+    --input:                36 46% 72%;
+    --ring:                 26 61% 38%;    /* #9C5A26 — focus rings */
+    --radius:               0.9rem;        /* soft, rounded corners */
+
+    --brand-amber: #9C5A26;
+    --brand-deep:  #2B1B0C;
+    --brand-paper: #FBF1DF;
+  }
+}
+
+/* ─── Base Reset ──────────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    font-family: 'Satoshi', sans-serif;
+    background-color: #FBF1DF;
+    background-image:
+      radial-gradient(circle at 12% 8%,  rgba(156, 90, 38, 0.09), transparent 35%),
+      radial-gradient(circle at 90% 85%, rgba(107, 61, 25, 0.07), transparent 35%);
+    color: #2B1B0C;
+    min-height: 100vh;
+    scroll-behavior: smooth;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-outfit), 'Outfit', sans-serif;
+  }
+}
+
+/* ─── App Shell Blobs ─────────────────────────────────────────────────────────── */
+.app-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.app-shell::before {
+  content: "";
+  position: fixed;
+  top: -120px;
+  right: -80px;
+  width: min(30vw, 360px);
+  height: min(30vw, 360px);
+  background: rgba(156, 90, 38, 0.20);
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app-shell::after {
+  content: "";
+  position: fixed;
+  bottom: -130px;
+  left: -90px;
+  width: min(30vw, 360px);
+  height: min(30vw, 360px);
+  background: rgba(107, 61, 25, 0.14);
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── Neo-Brutalist Card ─────────────────────────────────────────────────────── */
+.neo-card {
+  transition:
+    transform      0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow     0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 0.2s ease;
+}
+
+.neo-card:hover {
+  transform: translateY(-5px) translateX(-2px);
+  box-shadow: 0 18px 40px rgba(107, 61, 25, 0.20);
+}
+
+/* ─── Reveal on scroll ───────────────────────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ─── Gold shimmer on hover ──────────────────────────────────────────────────── */
+.gold-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.gold-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(201,134,63,0.20) 50%, transparent 60%);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.gold-shimmer:hover::after {
+  transform: translateX(100%);
+}
+
+/* ─── Product Image Zoom ──────────────────────────────────────────────────────── */
+.product-image-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.product-image-container img {
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.product-image-container:hover img {
+  transform: scale(1.06);
+}
+
+.img-zoom {
+  transition: transform 0.5s ease;
+}
+
+.img-zoom:hover {
+  transform: scale(1.05);
+}
+
+/* ─── Hide Scrollbar (horizontal scroll rows) ─────────────────────────────────── */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ─── Glass Line Divider ─────────────────────────────────────────────────────── */
+.glass-line {
+  position: relative;
+}
+
+.glass-line::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(43, 27, 12, 0.30), transparent);
+}
+
+/* ─── Custom Scrollbar ───────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FBF1DF;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #9C5A26;
+  border-radius: 999px;
+}
+
+/* ─── Text Selection ─────────────────────────────────────────────────────────── */
+::selection {
+  background-color: #C9863F;
+  color: #FFFDF8;
+}
+
+/* ─── Keyframes ──────────────────────────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(156, 90, 38, 0.35); }
+  50%       { box-shadow: 0 0 22px 12px rgba(156, 90, 38, 0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+
+/* Ken Burns slow zoom for hero slides */
+@keyframes kenBurns {
+  from { transform: scale(1); }
+  to   { transform: scale(1.05); }
+}
+
+@keyframes accordion-down {
+  from { height: 0; }
+  to   { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to   { height: 0; }
+}
+
+/* ─── Animation Utility Classes ─────────────────────────────────────────────── */
+@layer utilities {
+  .animate-fade-in-up  { animation: fadeInUp  0.7s ease-out both; }
+  .animate-fade-in     { animation: fadeIn    0.5s ease-out both; }
+  .animate-slide-left  { animation: slideInLeft  0.6s ease-out both; }
+  .animate-slide-right { animation: slideInRight 0.6s ease-out both; }
+  .animate-marquee     { animation: marquee   25s linear infinite; }
+  .animate-ken-burns   { animation: kenBurns  8s ease-out forwards; }
+  .animate-pulse-glow  { animation: pulse-glow 2s infinite; }
+  .animate-float       { animation: float     3s ease-in-out infinite; }
+
+  .delay-100 { animation-delay: 100ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-400 { animation-delay: 400ms; }
+  .delay-500 { animation-delay: 500ms; }
+  .delay-600 { animation-delay: 600ms; }
+}

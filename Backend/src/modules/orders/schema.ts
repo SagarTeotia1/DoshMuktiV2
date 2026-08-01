@@ -1,0 +1,18 @@
+import { z } from 'zod';
+
+export const idParamSchema = z.object({ id: z.string().min(1) });
+
+export const orderNumberParamSchema = z.object({
+  orderNumber: z.string().regex(/^DOSH-\d{8}-\d{4}$/),
+});
+
+export const listOrdersQuerySchema = z.object({
+  status: z.enum(['PENDING_PAYMENT', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'REFUNDED']).optional(),
+  page: z.coerce.number().int().min(1).max(999).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export const updateOrderStatusSchema = z.object({
+  status: z.enum(['PENDING_PAYMENT', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'REFUNDED']),
+  note: z.string().max(500).optional(),
+});
