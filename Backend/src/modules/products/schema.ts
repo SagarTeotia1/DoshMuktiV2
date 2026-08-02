@@ -3,6 +3,8 @@ import { PURPOSE_IDS, PRODUCT_SORTS } from '../../shared/constants/purposes';
 
 export const listProductsQuerySchema = z.object({
   purpose: z.enum(PURPOSE_IDS).optional(),
+  category: z.string().min(1).max(100).optional(),
+  q: z.string().min(1).max(200).optional(),
   sort: z.enum(PRODUCT_SORTS).default('newest'),
   page: z.coerce.number().int().min(1).max(999).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(12),
@@ -27,6 +29,7 @@ export const createProductSchema = z.object({
   description: z.string().min(1),
   category: z.string().min(1).max(100),
   basePrice: z.number().positive().multipleOf(0.01).max(999999),
+  compareAtPrice: z.number().positive().multipleOf(0.01).max(999999).nullable().optional(),
   images: z.array(z.object({ thumb: z.string(), card: z.string(), full: z.string() })).default([]),
   purpose: z.array(z.enum(PURPOSE_IDS)).default([]),
   badge: z.string().max(50).nullable().optional(),
@@ -35,6 +38,8 @@ export const createProductSchema = z.object({
   howToWear: z.array(z.string().min(1)).default([]),
   careInstructions: z.string().optional().nullable(),
   socialProofText: z.string().max(100).optional().nullable(),
+  tags: z.array(z.string().min(1).max(40)).max(6).default([]),
+  cashbackPercent: z.number().int().min(0).max(100).nullable().optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial().extend({

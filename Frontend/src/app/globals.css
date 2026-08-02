@@ -107,6 +107,46 @@
   box-shadow: 0 18px 40px rgba(107, 61, 25, 0.20);
 }
 
+/* ─── Neobrutalist accents (stickers, hard shadows) ────────────────────────────── */
+.brutal-border {
+  border: 2px solid #2B1B0C;
+}
+
+.brutal-shadow {
+  box-shadow: 4px 4px 0 0 #2B1B0C;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.brutal-shadow:hover {
+  box-shadow: 6px 6px 0 0 #2B1B0C;
+  transform: translate(-2px, -2px);
+}
+
+.brutal-shadow:active {
+  box-shadow: 2px 2px 0 0 #2B1B0C;
+  transform: translate(1px, 1px);
+}
+
+/* Light-on-dark counterpart — for buttons on the dark bronze/ink sections. */
+.brutal-shadow-light {
+  box-shadow: 4px 4px 0 0 #FBF1DF;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.brutal-shadow-light:hover {
+  box-shadow: 6px 6px 0 0 #FBF1DF;
+  transform: translate(-2px, -2px);
+}
+
+.brutal-shadow-light:active {
+  box-shadow: 2px 2px 0 0 #FBF1DF;
+  transform: translate(1px, 1px);
+}
+
+.sticker {
+  transform: rotate(-6deg);
+}
+
 /* ─── Reveal on scroll ───────────────────────────────────────────────────────── */
 .reveal {
   opacity: 0;
@@ -229,6 +269,11 @@
   100% { transform: translateX(-50%); }
 }
 
+@keyframes shimmerSweep {
+  0%   { transform: translateX(-100%); }
+  60%, 100% { transform: translateX(220%); }
+}
+
 @keyframes pulse-glow {
   0%, 100% { box-shadow: 0 0 0 0 rgba(156, 90, 38, 0.35); }
   50%       { box-shadow: 0 0 22px 12px rgba(156, 90, 38, 0); }
@@ -265,6 +310,7 @@
   .animate-ken-burns   { animation: kenBurns  8s ease-out forwards; }
   .animate-pulse-glow  { animation: pulse-glow 2s infinite; }
   .animate-float       { animation: float     3s ease-in-out infinite; }
+  .animate-shimmer-sweep { animation: shimmerSweep 3.5s ease-in-out infinite; }
 
   .delay-100 { animation-delay: 100ms; }
   .delay-200 { animation-delay: 200ms; }

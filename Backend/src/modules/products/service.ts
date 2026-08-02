@@ -6,18 +6,41 @@ import { cacheKeys, CACHE_TTL } from '../../shared/cache/keys';
 import type { ListProductsQuery } from './schema';
 
 type ProductWithVariants = Prisma.ProductGetPayload<{ include: { variants: { where: { isActive: true } } } }>;
+type ProductWithRating = ProductWithVariants & { rating: { average: number; count: number } };
+
+async function attachRatings<T extends { id: string }>(products: T[]): Promise<Array<T & { rating: { average: number; count: number } }>> {
+  if (products.length === 0) return [];
+  const grouped = await db.review.groupBy({
+    by: ['productId'],
+    where: { productId: { in: products.map((p) => p.id) }, status: 'APPROVED' },
+    _avg: { rating: true },
+    _count: true,
+  });
+  const byId = new Map(grouped.map((g) => [g.productId, { average: g._avg.rating ?? 0, count: g._count }]));
+  return products.map((p) => ({ ...p, rating: byId.get(p.id) ?? { average: 0, count: 0 } }));
+}
 
 export async function listProducts(query: ListProductsQuery) {
   const fingerprint = crypto.createHash('sha1').update(JSON.stringify(query)).digest('hex');
   const key = cacheKeys.productsListing(fingerprint);
 
-  const cached = await redis.get<{ products: ProductWithVariants[]; total: number; pages: number; page: number }>(key);
+  const cached = await redis.get<{ products: ProductWithRating[]; total: number; pages: number; page: number }>(key);
   if (cached) return cached;
 
-  const where = {
+  const where: Prisma.ProductWhereInput = {
     status: 'ACTIVE' as const,
     ...(query.purpose ? { purpose: { has: query.purpose } } : {}),
     ...(query.featured !== undefined ? { featured: query.featured } : {}),
+    ...(query.category ? { category: { equals: query.category, mode: 'insensitive' } } : {}),
+    ...(query.q
+      ? {
+          OR: [
+            { name: { contains: query.q, mode: 'insensitive' } },
+            { category: { contains: query.q, mode: 'insensitive' } },
+            { description: { contains: query.q, mode: 'insensitive' } },
+          ],
+        }
+      : {}),
   };
   const orderBy =
     query.sort === 'price_asc' ? { basePrice: 'asc' as const }
@@ -36,14 +59,15 @@ export async function listProducts(query: ListProductsQuery) {
     db.product.count({ where }),
   ]);
 
-  const result = { products, total, pages: Math.ceil(total / query.limit), page: query.page };
+  const rated = await attachRatings(products);
+  const result = { products: rated, total, pages: Math.ceil(total / query.limit), page: query.page };
   await redis.set(key, result, { ex: CACHE_TTL.PRODUCTS_LIST });
   return result;
 }
 
 export async function getProductBySlug(slug: string) {
   const key = cacheKeys.productSlug(slug);
-  const cached = await redis.get<ProductWithVariants>(key);
+  const cached = await redis.get<ProductWithRating>(key);
   if (cached) return cached;
 
   const product = await db.product.findFirst({
@@ -52,16 +76,35 @@ export async function getProductBySlug(slug: string) {
   });
   if (!product) return null;
 
-  await redis.set(key, product, { ex: CACHE_TTL.PRODUCT_DETAIL });
-  return product;
+  const [rated] = await attachRatings([product]);
+  await redis.set(key, rated, { ex: CACHE_TTL.PRODUCT_DETAIL });
+  return rated;
 }
 
 export async function getRelatedProducts(productId: string, purpose: string[], limit = 4) {
-  return db.product.findMany({
+  const products = await db.product.findMany({
     where: { status: 'ACTIVE', id: { not: productId }, purpose: { hasSome: purpose } },
     include: { variants: { where: { isActive: true } } },
     take: limit,
   });
+  return attachRatings(products);
+}
+
+export async function getDistinctCategories(): Promise<string[]> {
+  const key = cacheKeys.productCategories();
+  const cached = await redis.get<string[]>(key);
+  if (cached) return cached;
+
+  const rows = await db.product.findMany({
+    where: { status: 'ACTIVE' },
+    select: { category: true },
+    distinct: ['category'],
+    orderBy: { category: 'asc' },
+  });
+  const categories = rows.map((r) => r.category);
+
+  await redis.set(key, categories, { ex: CACHE_TTL.CATEGORIES });
+  return categories;
 }
 
 export async function getFeaturedProducts(limit = 4) {
@@ -76,8 +119,9 @@ export async function getFeaturedProducts(limit = 4) {
     take: limit,
   });
 
-  await redis.set(key, products, { ex: CACHE_TTL.FEATURED });
-  return products;
+  const rated = await attachRatings(products);
+  await redis.set(key, rated, { ex: CACHE_TTL.FEATURED });
+  return rated;
 }
 
 // Called by inventory/product admin services after any write — not exposed as a route

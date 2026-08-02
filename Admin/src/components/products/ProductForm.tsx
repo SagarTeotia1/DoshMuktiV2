@@ -18,8 +18,11 @@ const productFormSchema = z.object({
   description: z.string().min(1, 'Required'),
   category: z.string().min(1, 'Required'),
   basePrice: z.coerce.number().positive('Must be positive'),
+  compareAtPrice: z.coerce.number().min(0).default(0), // 0 = no strikethrough MRP, mapped to null on submit
   purpose: z.array(z.enum(PURPOSE_IDS)).default([]),
   badge: z.string().optional(),
+  tags: z.array(z.string().min(1).max(40)).max(6).default([]),
+  cashbackPercent: z.coerce.number().min(0).max(100).default(0), // 0 = no cashback, mapped to null on submit
   featured: z.boolean().default(false),
   status: z.enum(PRODUCT_STATUSES).optional(),
   images: z.array(imageSchema).default([]),
@@ -34,7 +37,11 @@ type FormShape = z.infer<typeof productFormSchema>;
 // howToWear is stored internally as {text}[] because react-hook-form's
 // useFieldArray requires array items to be objects — flattened to string[]
 // at the submit boundary so consumers/Backend only ever see string[].
-export type ProductFormValues = Omit<FormShape, 'howToWear'> & { howToWear: string[] };
+export type ProductFormValues = Omit<FormShape, 'howToWear' | 'cashbackPercent' | 'compareAtPrice'> & {
+  howToWear: string[];
+  cashbackPercent: number | null;
+  compareAtPrice: number | null;
+};
 
 const inputClass = 'w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none';
 
@@ -66,8 +73,11 @@ export function ProductForm({
       description: defaultValues?.description ?? '',
       category: defaultValues?.category ?? '',
       basePrice: defaultValues?.basePrice ?? 0,
+      compareAtPrice: defaultValues?.compareAtPrice ?? 0,
       purpose: (defaultValues?.purpose as (typeof PURPOSE_IDS)[number][]) ?? [],
       badge: defaultValues?.badge ?? '',
+      tags: defaultValues?.tags ?? [],
+      cashbackPercent: defaultValues?.cashbackPercent ?? 0,
       featured: defaultValues?.featured ?? false,
       status: defaultValues?.status,
       images: defaultValues?.images ?? [],
@@ -79,18 +89,38 @@ export function ProductForm({
   });
 
   const selectedPurposes = watch('purpose');
+  const selectedTags = watch('tags');
   const previewValues = watch();
+  const [tagInput, setTagInput] = useState('');
 
   function togglePurpose(id: (typeof PURPOSE_IDS)[number]) {
     const current = selectedPurposes ?? [];
     setValue('purpose', current.includes(id) ? current.filter((p) => p !== id) : [...current, id]);
   }
 
+  function addTag() {
+    const value = tagInput.trim();
+    if (!value) return;
+    const current = selectedTags ?? [];
+    if (current.length >= 6 || current.includes(value)) return;
+    setValue('tags', [...current, value]);
+    setTagInput('');
+  }
+
+  function removeTag(tag: string) {
+    setValue('tags', (selectedTags ?? []).filter((t) => t !== tag));
+  }
+
   const benefitsArray = useFieldArray({ control, name: 'benefits' });
   const howToWearArray = useFieldArray({ control, name: 'howToWear' });
 
   function submit(values: FormShape) {
-    onSubmit({ ...values, howToWear: values.howToWear.map((s) => s.text) });
+    onSubmit({
+      ...values,
+      howToWear: values.howToWear.map((s) => s.text),
+      cashbackPercent: values.cashbackPercent > 0 ? values.cashbackPercent : null,
+      compareAtPrice: values.compareAtPrice > 0 ? values.compareAtPrice : null,
+    });
   }
 
   return (
@@ -154,6 +184,14 @@ export function ProductForm({
         </div>
 
         <div>
+          <label className="text-xs font-semibold text-slate-600 mb-1 block">
+            Compare-at Price (₹) <span className="text-slate-400 font-normal">(optional — shown struck through, 0 = no discount shown)</span>
+          </label>
+          <input type="number" step="0.01" {...register('compareAtPrice')} className={`${inputClass} max-w-[180px]`} />
+          {errors.compareAtPrice && <p className="text-xs text-red-600 mt-1">{errors.compareAtPrice.message}</p>}
+        </div>
+
+        <div>
           <label className="text-xs font-semibold text-slate-600 mb-2 block">Purpose Tags</label>
           <div className="flex flex-wrap gap-2">
             {PURPOSE_IDS.map((id) => (
@@ -180,6 +218,56 @@ export function ProductForm({
             <input type="checkbox" {...register('featured')} className="w-4 h-4 accent-[#9C5A26]" />
             <span className="text-sm text-slate-700">Featured on homepage</span>
           </label>
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-slate-600 mb-2 block">
+            Storefront Tags <span className="text-slate-400 font-normal">(shown as pills on the product card, up to 6)</span>
+          </label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {(selectedTags ?? []).map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#9C5A26]/10 text-[#6B3D19] text-xs font-semibold"
+              >
+                {tag}
+                <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-600 transition-colors">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addTag();
+                }
+              }}
+              placeholder="e.g. 100% Cashback in Wallet"
+              className={inputClass}
+              disabled={(selectedTags ?? []).length >= 6}
+            />
+            <button
+              type="button"
+              onClick={addTag}
+              disabled={(selectedTags ?? []).length >= 6}
+              className="flex-shrink-0 px-4 rounded-lg border border-slate-300 text-sm font-semibold text-slate-600 hover:border-slate-400 disabled:opacity-40 transition-colors"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-slate-600 mb-1 block">
+            Wallet Cashback % <span className="text-slate-400 font-normal">(0 = no cashback; credited to customer wallet when order is marked paid)</span>
+          </label>
+          <input type="number" min={0} max={100} step={1} {...register('cashbackPercent')} className={`${inputClass} max-w-[140px]`} />
+          {errors.cashbackPercent && <p className="text-xs text-red-600 mt-1">{errors.cashbackPercent.message}</p>}
         </div>
 
         {defaultValues && (

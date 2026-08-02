@@ -18,6 +18,7 @@ export const productSchema = z.object({
   description: z.string(),
   category: z.string(),
   basePrice: z.number(),
+  compareAtPrice: z.number().nullable(),
   images: z.array(z.object({ thumb: z.string(), card: z.string(), full: z.string() })),
   purpose: z.array(z.string()),
   featured: z.boolean(),
@@ -26,6 +27,9 @@ export const productSchema = z.object({
   howToWear: z.array(z.string()).default([]),
   careInstructions: z.string().nullable(),
   socialProofText: z.string().nullable(),
+  tags: z.array(z.string()).default([]),
+  cashbackPercent: z.number().nullable(),
+  rating: z.object({ average: z.number(), count: z.number() }).default({ average: 0, count: 0 }),
   variants: z.array(productVariantSchema),
 });
 export type Product = z.infer<typeof productSchema>;
@@ -60,6 +64,7 @@ export interface CheckoutInput {
   customerEmail?: string;
   shippingAddress: { line1: string; line2?: string; city: string; state: string; pincode: string; country?: string };
   items: Array<{ variantId: string; quantity: number }>;
+  walletRedeem?: number;
 }
 
 export interface CheckoutResponse {
@@ -76,4 +81,41 @@ export interface OrderTrackingResponse {
   items: Array<{ variantSnapshot: { productName: string; sku: string }; quantity: number; priceAtPurchase: number }>;
   shipment: { delhiveryWaybill: string | null; status: string; trackingEvents: unknown[] } | null;
   createdAt: string;
+}
+
+export interface WalletBalanceResponse {
+  balance: number;
+}
+
+export interface Review {
+  id: string;
+  customerName: string;
+  rating: number;
+  title: string | null;
+  body: string;
+  createdAt: string;
+}
+
+export interface ProductReviewsResponse {
+  reviews: Review[];
+  averageRating: number;
+  totalReviews: number;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface ChatResponse {
+  reply: string;
+}
+
+export interface CreateReviewInput {
+  orderNumber: string;
+  customerPhone: string;
+  productId: string;
+  rating: number;
+  title?: string;
+  body: string;
 }

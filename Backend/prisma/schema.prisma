@@ -17,6 +17,7 @@ model Product {
   description String           @db.Text
   category    String
   basePrice   Decimal          @db.Decimal(10, 2)
+  compareAtPrice Decimal?      @db.Decimal(10, 2)  // strikethrough "MRP" — null = no discount shown
   images      Json             @default("[]")   // [{thumb,card,full}]
   status      ProductStatus    @default(DRAFT)
   purpose     String[]         @default([])     // ["love","wealth",...]
@@ -26,7 +27,10 @@ model Product {
   howToWear        Json    @default("[]")   // ["step 1", "step 2", ...]
   careInstructions String? @db.Text
   socialProofText  String?                  // "Loved by 15 lakh+ customers"
+  tags             String[]         @default([])  // ["100% Cashback in Wallet", "New", ...] — admin-managed display tags
+  cashbackPercent  Int?                            // % of paid price credited to wallet when order is marked PAID; null = no cashback
   variants    ProductVariant[]
+  reviews     Review[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
@@ -136,6 +140,7 @@ model Order {
   subtotal             Decimal          @db.Decimal(10, 2)
   shippingFee          Decimal          @db.Decimal(10, 2)
   discountAmount       Decimal          @db.Decimal(10, 2) @default(0)
+  walletRedeemed       Decimal          @db.Decimal(10, 2) @default(0)
   total                Decimal          @db.Decimal(10, 2)
   couponId             String?
   coupon               Coupon?          @relation(fields: [couponId], references: [id])
@@ -296,4 +301,58 @@ enum RewardPointReason {
   MANUAL_GRANT      // admin grant
   MANUAL_DEDUCT     // admin correction
   EXPIRED           // -points on expiry
+}
+
+// ─── Wallet ───────────────────────────────────────────────────────────────────
+
+// Append-only ledger — never UPDATE or DELETE. Rupee-denominated cashback wallet,
+// separate from the points-based RewardPoint above. Keyed on SHA-256(phone), same
+// identity model as CustomerAddress/RewardPoint — no customer accounts exist yet.
+model WalletTransaction {
+  id        String              @id @default(cuid())
+  phoneHash String              // SHA-256 of normalized phone (+91XXXXXXXXXX)
+  orderId   String?             // order that earned/spent this — null for manual grants
+  change    Decimal             @db.Decimal(10, 2)  // positive = credited, negative = redeemed/expired
+  balance   Decimal             @db.Decimal(10, 2)  // running total after this entry (denormalized)
+  reason    WalletTransactionReason
+  note      String?
+  createdAt DateTime            @default(now())
+
+  @@index([phoneHash, createdAt])
+  @@index([orderId])
+}
+
+enum WalletTransactionReason {
+  CASHBACK_EARNED   // +credited when an order's items with cashbackPercent are marked PAID
+  REDEEMED          // -spent against an order total at checkout
+  REDEMPTION_REVERSED // +order cancelled/refunded after redemption — reverses the spend
+  MANUAL_GRANT      // admin grant
+  MANUAL_DEDUCT     // admin correction
+}
+
+// ─── Reviews ────────────────────────────────────────────────────────────────
+
+model Review {
+  id            String       @id @default(cuid())
+  productId     String
+  product       Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderId       String       // verified-purchase link — review must come from a real order
+  customerName  String
+  customerPhone String       // used only to verify the order match, never displayed
+  rating        Int          // 1-5
+  title         String?
+  body          String       @db.Text
+  status        ReviewStatus @default(PENDING)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([orderId, productId])
+  @@index([productId, status])
+  @@index([status, createdAt])
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

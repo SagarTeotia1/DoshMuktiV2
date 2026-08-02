@@ -28,6 +28,7 @@ export const PURPOSES = [
   { id: 'success', label: 'Success & Career', description: 'Professional growth, confidence, achievement' },
   { id: 'protection', label: 'Protection & Safety', description: 'Ward off negativity, evil eye, harmful energies' },
   { id: 'clarity', label: 'Clarity & Peace', description: 'Mental stillness, meditation, inner peace' },
+  { id: 'gifting', label: 'Gifting', description: 'Thoughtful spiritual gifts for someone you care about' },
 ] as const;
 
 export type PurposeId = (typeof PURPOSES)[number]['id'];

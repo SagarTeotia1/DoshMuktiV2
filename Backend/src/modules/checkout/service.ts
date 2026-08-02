@@ -5,6 +5,7 @@ import { razorpay } from '../../shared/integrations/razorpay/client';
 import { redis } from '../../shared/cache/client';
 import { cacheKeys } from '../../shared/cache/keys';
 import { SHIPPING_FEE, FREE_SHIPPING_ABOVE, RESERVATION_MINUTES } from '../../shared/constants/purposes';
+import { redeemInCheckoutTx } from '../wallet/service';
 import type { CheckoutInput } from './schema';
 
 export class OutOfStockError extends Error {
@@ -72,7 +73,6 @@ export async function initiateCheckout(input: CheckoutInput) {
     return sum + Number(v.priceOverride ?? v.product.basePrice) * item.quantity;
   }, 0);
   const shippingFee = calculateShippingFee(subtotal);
-  const total = subtotal + shippingFee;
   const reservedUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
   const { order, payment } = await db.$transaction(
@@ -82,7 +82,7 @@ export async function initiateCheckout(input: CheckoutInput) {
 
       const orderNumber = await generateOrderNumber(tx);
 
-      const order = await tx.order.create({
+      let order = await tx.order.create({
         data: {
           orderNumber,
           customerName: input.customerName,
@@ -91,7 +91,7 @@ export async function initiateCheckout(input: CheckoutInput) {
           shippingAddress: input.shippingAddress,
           subtotal,
           shippingFee,
-          total,
+          total: subtotal + shippingFee,
           reservedUntil,
           items: {
             create: input.items.map((item) => {
@@ -107,8 +107,16 @@ export async function initiateCheckout(input: CheckoutInput) {
         },
       });
 
+      const redeemed = await redeemInCheckoutTx(tx, input.customerPhone, input.walletRedeem, subtotal + shippingFee, order.id);
+      if (redeemed > 0) {
+        order = await tx.order.update({
+          where: { id: order.id },
+          data: { walletRedeemed: redeemed, total: subtotal + shippingFee - redeemed },
+        });
+      }
+
       const payment = await tx.payment.create({
-        data: { orderId: order.id, razorpayOrderId: `pending_${order.id}`, amount: total, status: 'PENDING' },
+        data: { orderId: order.id, razorpayOrderId: `pending_${order.id}`, amount: order.total, status: 'PENDING' },
       });
 
       return { order, payment };
@@ -116,9 +124,11 @@ export async function initiateCheckout(input: CheckoutInput) {
     { isolationLevel: 'Serializable' }
   );
 
+  const finalTotal = Number(order.total);
+
   // Razorpay call OUTSIDE the transaction — never hold a DB connection open across a network call
   const rzpOrder = await razorpay.orders.create({
-    amount: Math.round(total * 100),
+    amount: Math.round(finalTotal * 100),
     currency: 'INR',
     receipt: order.orderNumber,
   });
@@ -129,7 +139,7 @@ export async function initiateCheckout(input: CheckoutInput) {
     orderId: order.id,
     orderNumber: order.orderNumber,
     rzpOrderId: rzpOrder.id,
-    amount: Math.round(total * 100),
+    amount: Math.round(finalTotal * 100),
     currency: 'INR',
   };
 }

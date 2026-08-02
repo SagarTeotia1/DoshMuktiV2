@@ -2,7 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Gem, Instagram, Youtube } from 'lucide-react';
+import Image from 'next/image';
+import { Instagram, Youtube } from 'lucide-react';
+import logo from '@/assets/Logo.png';
+import { MandalaMotif } from '@/components/motion/MandalaMotif';
 
 const COLS = [
   {
@@ -66,7 +69,7 @@ function NewsletterForm() {
           />
           <button
             type="submit"
-            className="bg-[#9C5A26] text-[#2B1B0C] px-4 sm:px-6 md:px-8 py-3 sm:py-4 font-body font-bold uppercase tracking-widest text-[10px] sm:text-xs hover:bg-[#C9863F] transition-colors flex-shrink-0"
+            className="brutal-shadow-light bg-[#9C5A26] text-[#2B1B0C] px-4 sm:px-6 md:px-8 py-3 sm:py-4 font-body font-bold uppercase tracking-widest text-[10px] sm:text-xs hover:bg-[#C9863F] transition-colors flex-shrink-0"
           >
             Subscribe
           </button>
@@ -88,6 +91,8 @@ export function Footer() {
           'radial-gradient(circle at 85% 20%, rgba(156,90,38,0.12), transparent 35%), radial-gradient(circle at 12% 75%, rgba(157,138,236,0.12), transparent 34%)',
       }}
     >
+      <MandalaMotif className="pointer-events-none absolute -bottom-24 -right-24 w-72 h-72 text-[#C9863F]/[0.05]" />
+
       {/* Newsletter */}
       <div className="border-b border-[#2A2A2A]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-10 sm:py-14 md:py-16">
@@ -110,11 +115,8 @@ export function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-10">
           {/* Brand column */}
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Gem className="w-5 h-5 text-[#9C5A26]" />
-              <span className="font-heading font-black tracking-tighter text-lg text-[#FBF1DF]">
-                Doshhmukti
-              </span>
+            <div className="flex items-center mb-4">
+              <Image src={logo} alt="Doshhmukti" className="h-10 w-auto" />
             </div>
             <p className="font-body text-xs text-[#8A7A63] leading-relaxed mb-5 max-w-[180px]">
               Authentic spiritual products curated with intention, for every seeker.

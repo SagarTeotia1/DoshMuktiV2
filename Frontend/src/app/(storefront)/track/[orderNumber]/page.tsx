@@ -6,7 +6,7 @@ import type { OrderTrackingResponse } from '@/types/api.types';
 
 async function getOrder(orderNumber: string): Promise<OrderTrackingResponse | null> {
   try {
-    return await api.get<OrderTrackingResponse>(`/api/orders/${orderNumber}`);
+    return await api.get<OrderTrackingResponse>(`/api/orders/${orderNumber}`, undefined, 0);
   } catch {
     return null;
   }

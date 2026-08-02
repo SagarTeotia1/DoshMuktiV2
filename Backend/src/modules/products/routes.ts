@@ -4,6 +4,7 @@ import {
   listProductsHandler,
   getProductHandler,
   getFeaturedHandler,
+  getCategoriesHandler,
   listAdminProductsHandler,
   getAdminProductHandler,
   createProductHandler,
@@ -15,6 +16,7 @@ import {
 export async function productsRoutes(app: FastifyInstance) {
   app.get('/products', listProductsHandler);
   app.get('/products/featured', getFeaturedHandler);
+  app.get('/products/categories', getCategoriesHandler);
   app.get('/products/:slug', getProductHandler);
 
   app.get('/admin/products', { preHandler: verifyAdmin }, listAdminProductsHandler);

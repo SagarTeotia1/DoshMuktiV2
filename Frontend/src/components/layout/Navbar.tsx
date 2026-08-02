@@ -2,21 +2,26 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { Gem, Search, ShoppingCart, Menu, X, Phone } from 'lucide-react';
+import Image from 'next/image';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { Search, ShoppingCart, Menu, X } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
+import logo from '@/assets/Logo.png';
 
 const NAV_LINKS = [
   { href: '/', label: 'Home' },
   { href: '/shop', label: 'Shop' },
-  { href: '/shop?purpose=love', label: 'Love' },
-  { href: '/shop?purpose=wealth', label: 'Wealth' },
-  { href: '/shop?purpose=protection', label: 'Protection' },
+  { href: '/about', label: 'About' },
+  { href: '/contact', label: 'Contact' },
 ];
+
+/** Filter keys that determine "is this nav item the active view" — sort/page are cosmetic, ignored. */
+const FILTER_KEYS = ['purpose', 'category', 'q', 'featured'];
 
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,7 +38,13 @@ export function Navbar() {
 
   function isActive(href: string) {
     if (href === '/') return pathname === '/';
-    return pathname.startsWith(href.split('?')[0]!);
+    const [path, query] = href.split('?');
+    if (pathname !== path) return false;
+
+    if (!query) return FILTER_KEYS.every((k) => !searchParams.get(k));
+
+    const linkParams = new URLSearchParams(query);
+    return [...linkParams.entries()].every(([k, v]) => searchParams.get(k) === v);
   }
 
   function handleSearch(e: React.FormEvent) {
@@ -51,20 +62,24 @@ export function Navbar() {
       }`}
     >
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-12 flex items-center justify-between h-14 sm:h-16">
-        <Link href="/" className="flex items-center gap-1.5 sm:gap-2 group flex-shrink-0">
-          <Gem className="w-5 h-5 sm:w-6 sm:h-6 text-[#9C5A26] group-hover:rotate-12 transition-transform duration-300" />
-          <span className="font-heading text-lg sm:text-xl md:text-2xl font-black tracking-tighter text-[#2B1B0C]">Doshhmukti</span>
+        <Link href="/" className="flex items-center group flex-shrink-0">
+          <Image
+            src={logo}
+            alt="Doshhmukti"
+            priority
+            className="h-10 sm:h-12 md:h-14 w-auto group-hover:scale-105 transition-transform duration-300"
+          />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden md:flex items-center gap-0.5 lg:gap-1">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className={`px-4 lg:px-5 py-2 rounded-full font-body text-xs font-bold uppercase tracking-[0.12em] lg:tracking-[0.15em] border transition-all duration-200 ${
+              className={`flex items-center gap-1.5 whitespace-nowrap px-2.5 lg:px-5 py-2 rounded-full font-body text-[10px] lg:text-xs font-bold uppercase tracking-[0.06em] lg:tracking-[0.15em] border transition-all duration-200 ${
                 isActive(link.href)
-                  ? 'bg-[#9C5A26] text-[#2B1B0C] border-[#2B1B0C] shadow-neo-md'
-                  : 'border-transparent hover:border-[#2B1B0C] hover:shadow-neo-md hover:-translate-y-0.5'
+                  ? 'bg-[#9C5A26] text-[#FBF1DF] border-[#2B1B0C] shadow-[2px_2px_0_0_#2B1B0C]'
+                  : 'border-transparent hover:border-[#2B1B0C] hover:shadow-[2px_2px_0_0_#2B1B0C] hover:-translate-y-0.5'
               }`}
             >
               {link.label}
@@ -73,16 +88,6 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-1 sm:gap-2">
-          <a
-            href="https://wa.me/919999999999"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden sm:flex p-1.5 sm:p-2 rounded-full hover:bg-[#F6E4C2] transition-colors items-center justify-center"
-            title="WhatsApp us"
-          >
-            <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-[#2B1B0C]" />
-          </a>
-
           <button
             onClick={() => {
               setSearchOpen((v) => !v);
@@ -145,23 +150,13 @@ export function Navbar() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
-                className={`px-4 py-3 font-body text-sm font-bold uppercase tracking-[0.12em] border-b border-[#2B1B0C]/10 transition-all duration-200 ${
-                  isActive(link.href) ? 'bg-[#9C5A26] text-[#2B1B0C] border-b-[#2B1B0C]' : 'hover:bg-[#F6E4C2]'
+                className={`flex items-center gap-1.5 px-4 py-3 font-body text-sm font-bold uppercase tracking-[0.12em] border-b border-[#2B1B0C]/10 transition-all duration-200 ${
+                  isActive(link.href) ? 'bg-[#9C5A26] text-[#FBF1DF] border-b-[#2B1B0C]' : 'hover:bg-[#F6E4C2]'
                 }`}
               >
                 {link.label}
               </Link>
             ))}
-            <a
-              href="https://wa.me/919999999999"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-3 font-body text-sm font-bold uppercase tracking-[0.12em] text-[#9C5A26] hover:bg-[#F6E4C2] transition-colors flex items-center gap-2"
-              onClick={() => setMenuOpen(false)}
-            >
-              <Phone className="w-3.5 h-3.5" />
-              WhatsApp Us
-            </a>
           </nav>
         </div>
       )}

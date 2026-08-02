@@ -16,6 +16,7 @@ export interface Product {
   description: string;
   category: string;
   basePrice: number;
+  compareAtPrice: number | null;
   images: Array<{ thumb: string; card: string; full: string }>;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
   purpose: string[];
@@ -25,6 +26,8 @@ export interface Product {
   howToWear: string[];
   careInstructions: string | null;
   socialProofText: string | null;
+  tags: string[];
+  cashbackPercent: number | null;
   variants: ProductVariant[];
   createdAt: string;
   updatedAt: string;
@@ -87,4 +90,24 @@ export interface InventoryProduct {
   id: string;
   name: string;
   variants: ProductVariant[];
+}
+
+export interface Review {
+  id: string;
+  productId: string;
+  orderId: string;
+  customerName: string;
+  rating: number;
+  title: string | null;
+  body: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+  product: { name: string; slug: string };
+}
+
+export interface PaginatedReviews {
+  reviews: Review[];
+  total: number;
+  pages: number;
+  page: number;
 }

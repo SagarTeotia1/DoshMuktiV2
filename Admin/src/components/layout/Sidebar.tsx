@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, Boxes, ShoppingBag, Gem } from 'lucide-react';
+import { LayoutDashboard, Package, Boxes, ShoppingBag, Gem, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV = [
@@ -10,6 +10,7 @@ const NAV = [
   { href: '/products', label: 'Products', icon: Package },
   { href: '/inventory', label: 'Inventory', icon: Boxes },
   { href: '/orders', label: 'Orders', icon: ShoppingBag },
+  { href: '/reviews', label: 'Reviews', icon: Star },
 ];
 
 export function Sidebar() {

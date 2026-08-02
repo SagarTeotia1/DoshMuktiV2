@@ -18,6 +18,9 @@ import { orderRoutes } from './modules/orders/routes';
 import { inventoryRoutes } from './modules/inventory/routes';
 import { uploadRoutes } from './modules/upload/routes';
 import { dashboardRoutes } from './modules/dashboard/routes';
+import { walletRoutes } from './modules/wallet/routes';
+import { reviewsRoutes } from './modules/reviews/routes';
+import { chatRoutes } from './modules/chat/routes';
 import { jobRoutes } from './jobs/routes';
 
 export async function buildApp() {
@@ -61,6 +64,9 @@ export async function buildApp() {
   await app.register(inventoryRoutes, { prefix: '/api' });
   await app.register(uploadRoutes, { prefix: '/api' });
   await app.register(dashboardRoutes, { prefix: '/api' });
+  await app.register(walletRoutes, { prefix: '/api' });
+  await app.register(reviewsRoutes, { prefix: '/api' });
+  await app.register(chatRoutes, { prefix: '/api' });
   await app.register(jobRoutes, { prefix: '/api' });
 
   return app;

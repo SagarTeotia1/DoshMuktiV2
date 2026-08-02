@@ -1,19 +1,20 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
+import { toast } from 'sonner';
+import { Tag, ShoppingBag, Eye } from 'lucide-react';
+import { useCart } from '@/hooks/use-cart';
 import { formatCurrency } from '@/lib/formatters';
 import type { Product } from '@/types/api.types';
 
-const PURPOSE_LABELS: Record<string, string> = {
-  love: 'Love',
-  wealth: 'Wealth',
-  health: 'Health',
-  success: 'Success',
-  protection: 'Protection',
-  clarity: 'Clarity',
-};
+const MotionLink = motion.create(Link);
 
 export function ProductCard({ product }: { product: Product }) {
+  const { addItem, isAdding } = useCart();
   const image = product.images[0]?.card ?? null;
+  const hoverImage = product.images[1]?.card ?? null;
   const activeVariants = product.variants.filter((v) => v.isActive);
   const price =
     activeVariants.length > 0
@@ -21,65 +22,112 @@ export function ProductCard({ product }: { product: Product }) {
       : product.basePrice;
   const inStock = activeVariants.some((v) => v.stockQuantity > 0);
 
+  const mrp = product.compareAtPrice && product.compareAtPrice > price ? product.compareAtPrice : null;
+  const discountPct = mrp ? Math.round(((mrp - price) / mrp) * 100) : null;
+
+  function quickAdd(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const variant = activeVariants.find((v) => v.stockQuantity > 0);
+    if (!variant) return;
+    addItem({ variantId: variant.id, quantity: 1 });
+    toast.success('Added to cart');
+  }
+
   return (
-    <Link
+    <MotionLink
       href={`/products/${product.slug}`}
-      className="group block neo-card gold-shimmer bg-white border border-[#2B1B0C] rounded-2xl overflow-hidden flex flex-col"
+      className="group block rounded-lg flex flex-col border-2 border-[#2B1B0C] p-2 sm:p-2.5 transition-shadow duration-200 hover:shadow-[5px_5px_0_0_#2B1B0C]"
+      whileHover={{ y: -4, x: -2 }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
-      <div className="aspect-[4/5] border-b border-[#2B1B0C] bg-[#F6E4C2] relative overflow-hidden product-image-container">
+      <div className="aspect-[4/5] bg-[#F6E4C2] rounded-md relative overflow-hidden product-image-container">
         {image ? (
-          <Image
-            src={image}
-            alt={product.name}
-            fill
-            className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          />
+          <>
+            <Image
+              src={image}
+              alt={product.name}
+              fill
+              className={`object-cover transition-opacity duration-500 ${hoverImage ? 'group-hover:opacity-0' : 'group-hover:scale-[1.04] transition-transform duration-700'}`}
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            />
+            {hoverImage && (
+              <Image
+                src={hoverImage}
+                alt={product.name}
+                fill
+                className="object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              />
+            )}
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <span className="text-[#8A7A63] text-[10px] font-bold uppercase tracking-widest">No Image</span>
           </div>
         )}
 
-        {product.badge && (
-          <span className="absolute top-2.5 left-2.5 bg-[#9C5A26] text-[#2B1B0C] border border-[#2B1B0C] px-2 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider z-10 rounded-full">
-            {product.badge}
-          </span>
-        )}
+        {/* Corner badges */}
+        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-start justify-between gap-1.5 z-10">
+          {discountPct ? (
+            <span className="sticker brutal-border flex items-center gap-1 bg-[#B23A2E] text-white pl-1.5 pr-2 py-1 text-[9px] sm:text-[10px] font-bold font-body rounded-md shadow-[3px_3px_0_0_#2B1B0C]">
+              <Tag className="w-2.5 h-2.5" />
+              {discountPct}% off
+            </span>
+          ) : (
+            <span />
+          )}
+
+          {product.badge && (
+            <span className="brutal-border rotate-3 bg-[#9C5A26] text-[#FBF1DF] px-2 py-1 text-[9px] sm:text-[10px] font-bold font-body uppercase tracking-wider rounded-md shadow-[3px_3px_0_0_#2B1B0C] text-right leading-tight">
+              {product.badge}
+            </span>
+          )}
+        </div>
 
         {!inStock && (
-          <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-10">
+          <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-20">
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#2B1B0C] border border-[#2B1B0C] bg-white px-2.5 py-1 rounded-full">
               Sold Out
             </span>
           </div>
         )}
 
-        <div className="absolute inset-0 bg-[#2B1B0C]/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10">
-          <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white border border-white/40 px-4 py-2 rounded-full hover:bg-white hover:text-[#2B1B0C] transition-colors duration-200">
-            View Product
+        {/* Bottom action bar — slides up on hover (desktop) / always partly visible on touch */}
+        <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center gap-2 p-2.5 translate-y-full group-hover:translate-y-0 sm:transition-transform sm:duration-300 bg-gradient-to-t from-[#2B1B0C]/50 to-transparent">
+          <span
+            aria-label="View product"
+            className="w-9 h-9 rounded-full bg-white flex items-center justify-center shadow-neo-sm hover:bg-[#F6E4C2] transition-colors"
+          >
+            <Eye className="w-4 h-4 text-[#2B1B0C]" strokeWidth={1.75} />
           </span>
+          {inStock && (
+            <motion.button
+              onClick={quickAdd}
+              disabled={isAdding}
+              aria-label="Quick add to cart"
+              whileTap={{ scale: 0.85, rotate: -8 }}
+              className="w-9 h-9 rounded-full bg-[#9C5A26] flex items-center justify-center shadow-neo-sm hover:bg-[#2B1B0C] transition-colors disabled:opacity-50"
+            >
+              <ShoppingBag className="w-4 h-4 text-white" />
+            </motion.button>
+          )}
         </div>
       </div>
 
-      <div className="p-3 sm:p-4 flex flex-col gap-1.5 flex-1">
-        <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.15em] text-[#9C5A26] font-body">{product.category}</span>
-        <h3 className="text-xs sm:text-sm font-semibold text-[#2B1B0C] group-hover:text-[#6B3D19] transition-colors line-clamp-2 font-heading leading-snug">
+      <div className="pt-2.5 sm:pt-3 flex flex-col gap-1.5 flex-1">
+        <h3 className="text-xs sm:text-sm font-bold text-[#2B1B0C] group-hover:text-[#6B3D19] transition-colors line-clamp-2 font-heading leading-snug tracking-tight min-h-[2.4em]">
           {product.name}
         </h3>
 
-        {product.purpose.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-0.5">
-            {product.purpose.slice(0, 2).map((p) => (
-              <span key={p} className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 border border-[#2B1B0C]/15 text-[#6B5539] font-body rounded-full">
-                {PURPOSE_LABELS[p] ?? p}
-              </span>
-            ))}
-          </div>
-        )}
-
-        <p className="text-sm sm:text-base font-bold text-[#2B1B0C] font-heading mt-auto pt-1">{formatCurrency(price)}</p>
+        <div className="flex items-baseline gap-2 mt-auto pt-1">
+          <p className="text-base sm:text-lg font-bold text-[#2B1B0C] font-heading tracking-tight tabular-nums">
+            {formatCurrency(price)}
+          </p>
+          {mrp && <p className="text-xs text-[#8A7A63] line-through font-body tabular-nums">{formatCurrency(mrp)}</p>}
+        </div>
       </div>
-    </Link>
+    </MotionLink>
   );
 }

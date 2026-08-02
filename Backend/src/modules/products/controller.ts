@@ -14,6 +14,7 @@ import {
   getProductBySlug,
   getRelatedProducts,
   getFeaturedProducts,
+  getDistinctCategories,
   listProductsForAdmin,
   getProductByIdForAdmin,
   createProduct,
@@ -43,7 +44,11 @@ export async function getProductHandler(req: FastifyRequest, reply: FastifyReply
 }
 
 export async function getFeaturedHandler(req: FastifyRequest, reply: FastifyReply) {
-  return reply.send(await getFeaturedProducts(4));
+  return reply.send(await getFeaturedProducts(12));
+}
+
+export async function getCategoriesHandler(req: FastifyRequest, reply: FastifyReply) {
+  return reply.send(await getDistinctCategories());
 }
 
 // ─── Admin ──────────────────────────────────────────────────────────────

@@ -43,6 +43,9 @@ const envSchema = z.object({
   MSG91_AUTH_KEY: z.string().default(''),
   MSG91_TEMPLATE_ID: z.string().default(''),
 
+  GROQ_API_KEY: z.string().default(''),
+  GROQ_MODEL: z.string().default('llama-3.3-70b-versatile'),
+
   CRON_SECRET: z.string().min(32),
 });
 

@@ -1,4 +1,4 @@
-export const PURPOSE_IDS = ['love', 'wealth', 'health', 'success', 'protection', 'clarity'] as const;
+export const PURPOSE_IDS = ['love', 'wealth', 'health', 'success', 'protection', 'clarity', 'gifting'] as const;
 
 export const ORDER_STATUSES = [
   'PENDING_PAYMENT',

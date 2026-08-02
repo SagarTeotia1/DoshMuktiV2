@@ -1,4 +1,6 @@
 import { Gem, Truck, ShieldCheck, RotateCcw } from 'lucide-react';
+import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
+import { BlobMotif } from '@/components/motion/BlobMotif';
 
 const ITEMS = [
   { icon: Gem, label: 'Authentic & Energized', sub: 'Sourced directly from verified artisans' },
@@ -9,32 +11,30 @@ const ITEMS = [
 
 export function TrustBar() {
   return (
-    <section className="bg-[#F6E4C2] border-y border-[#2B1B0C] relative">
-      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#9C5A26] to-transparent opacity-60" />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
-        <div className="grid grid-cols-2 md:grid-cols-4">
-          {ITEMS.map((item, idx) => {
+    <section className="relative overflow-hidden bg-[#FFFDF8] border-y-2 border-[#2B1B0C] py-6 sm:py-8">
+      <BlobMotif
+        variant="b"
+        className="pointer-events-none absolute -bottom-28 -left-24 w-72 h-72 text-[#9C5A26]/[0.07] -rotate-12"
+      />
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+        <StaggerGroup className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+          {ITEMS.map((item) => {
             const Icon = item.icon;
             return (
-              <div
-                key={item.label}
-                className={`flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4 py-6 sm:py-7 px-3 sm:px-5 md:px-6 text-center sm:text-left ${
-                  idx < ITEMS.length - 1 ? 'border-r border-[#2B1B0C]/15' : ''
-                } ${idx === 2 ? 'border-r-0 md:border-r border-[#2B1B0C]/15' : ''}`}
-              >
-                <div className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-lg border border-[#2B1B0C] flex items-center justify-center bg-white transition-colors duration-200">
-                  <Icon className="w-4 h-4 text-[#9C5A26]" />
+              <StaggerItem key={item.label} className="group flex flex-col items-center text-center gap-3">
+                <div className="brutal-border flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-white flex items-center justify-center transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110 shadow-[3px_3px_0_0_#2B1B0C] group-hover:shadow-[5px_5px_0_0_#2B1B0C]">
+                  <Icon className="w-[18px] h-[18px] sm:w-5 sm:h-5 text-[#9C5A26]" strokeWidth={1.75} />
                 </div>
                 <div>
-                  <p className="font-heading font-bold text-[11px] sm:text-xs uppercase tracking-wide text-[#2B1B0C] leading-tight mb-0.5">
+                  <p className="font-heading font-bold text-[11px] sm:text-xs uppercase tracking-wide text-[#2B1B0C] leading-tight mb-1">
                     {item.label}
                   </p>
                   <p className="font-body text-[10px] sm:text-[11px] text-[#8A7A63] leading-snug">{item.sub}</p>
                 </div>
-              </div>
+              </StaggerItem>
             );
           })}
-        </div>
+        </StaggerGroup>
       </div>
     </section>
   );
