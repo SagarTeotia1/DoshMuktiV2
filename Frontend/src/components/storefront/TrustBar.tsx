@@ -22,11 +22,11 @@ export function TrustBar() {
             const Icon = item.icon;
             return (
               <StaggerItem key={item.label} className="group flex flex-col items-center text-center gap-3">
-                <div className="brutal-border flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-white flex items-center justify-center transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110 shadow-[3px_3px_0_0_#2B1B0C] group-hover:shadow-[5px_5px_0_0_#2B1B0C]">
+                <div className="border border-[#2B1B0C] flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-white flex items-center justify-center transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110 shadow-neo-md group-hover:shadow-neo-lg">
                   <Icon className="w-[18px] h-[18px] sm:w-5 sm:h-5 text-[#9C5A26]" strokeWidth={1.75} />
                 </div>
                 <div>
-                  <p className="font-heading font-bold text-[11px] sm:text-xs uppercase tracking-wide text-[#2B1B0C] leading-tight mb-1">
+                  <p className="font-heading font-black text-[11px] sm:text-sm md:text-base uppercase tracking-tight text-[#2B1B0C] leading-tight mb-1">
                     {item.label}
                   </p>
                   <p className="font-body text-[10px] sm:text-[11px] text-[#8A7A63] leading-snug">{item.sub}</p>

@@ -36,18 +36,18 @@ export function TestimonialsSection({ reviews }: { reviews: RecentReview[] }) {
     <section className="pt-6 sm:pt-8 pb-10 sm:pb-14 md:pb-20">
       {/* Reel-style strip */}
       <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 mb-6 sm:mb-8">
-        <h2 className="font-heading text-2xl sm:text-3xl font-black tracking-tight text-[#2B1B0C] text-center">
+        <h2 className="font-display font-bold tracking-tight leading-tight text-2xl sm:text-3xl text-[#2B1B0C] text-center">
           What Our Customers Say
         </h2>
       </Reveal>
 
-      <StaggerGroup className="flex flex-wrap justify-center gap-4 px-4 sm:px-6 lg:px-12 mb-12 sm:mb-16">
+      <StaggerGroup className="flex flex-nowrap sm:flex-wrap justify-start sm:justify-center gap-4 overflow-x-auto hide-scrollbar snap-x snap-mandatory px-4 sm:px-6 lg:px-12 mb-12 sm:mb-16 [scroll-padding-left:1rem] sm:[scroll-padding-left:1.5rem] lg:[scroll-padding-left:3rem]">
         {reviews.slice(0, 4).map((review) => {
           const img = productImage(review);
           return (
             <StaggerItem
               key={review.id}
-              className="group relative flex-shrink-0 snap-start w-[160px] sm:w-[190px] aspect-[9/16] rounded-2xl overflow-hidden border border-[#2B1B0C]/15 bg-[#2B1B0C]"
+              className="group relative flex-shrink-0 snap-start w-[42vw] sm:w-[190px] aspect-[9/16] rounded-2xl overflow-hidden border border-[#2B1B0C]/15 bg-[#2B1B0C] [scroll-margin-left:1rem] sm:[scroll-margin-left:1.5rem] lg:[scroll-margin-left:3rem]"
             >
               {img ? (
                 <Image
@@ -72,7 +72,7 @@ export function TestimonialsSection({ reviews }: { reviews: RecentReview[] }) {
                 <span className="font-body text-[10px] font-bold text-white/90 truncate">{review.customerName}</span>
               </div>
 
-              <p className="absolute bottom-9 left-2.5 right-2.5 font-heading font-bold text-[13px] text-white leading-snug line-clamp-3">
+              <p className="absolute bottom-9 left-2.5 right-2.5 font-heading font-bold text-sm text-white leading-snug line-clamp-3">
                 &ldquo;{review.title || review.body}&rdquo;
               </p>
 
@@ -87,11 +87,11 @@ export function TestimonialsSection({ reviews }: { reviews: RecentReview[] }) {
 
       {/* Big quote carousel */}
       <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
-        <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter text-[#2B1B0C] text-center mb-6 sm:mb-10">
+        <h2 className="font-display font-bold tracking-tight leading-[1.05] text-3xl sm:text-4xl md:text-5xl text-[#2B1B0C] text-center mb-6 sm:mb-10">
           Testimonials
         </h2>
 
-        <div className="relative bg-[#F6E4C2]/40 border border-[#2B1B0C]/10 rounded-2xl p-6 sm:p-10 md:p-14">
+        <div className="relative bg-[#F6E4C2]/40 border border-[#2B1B0C] rounded-2xl p-6 sm:p-10 md:p-14 shadow-neo-lg">
           <div className="grid md:grid-cols-[1fr_auto] gap-8 md:gap-14 items-center">
             <div>
               <Quote className="w-8 h-8 sm:w-10 sm:h-10 text-[#9C5A26]/40 fill-[#9C5A26]/10 mb-4" />
@@ -121,14 +121,14 @@ export function TestimonialsSection({ reviews }: { reviews: RecentReview[] }) {
             <>
               <button
                 onClick={() => setActive((a) => (a - 1 + reviews.length) % reviews.length)}
-                className="absolute left-2 sm:-left-5 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border border-[#2B1B0C]/15 flex items-center justify-center hover:border-[#9C5A26] transition-colors shadow-neo-sm"
+                className="hidden sm:flex absolute -left-5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-brand-paper border border-[#2B1B0C] items-center justify-center hover:border-[#9C5A26] transition-colors shadow-neo-md"
                 aria-label="Previous testimonial"
               >
                 <ChevronLeft className="w-4 h-4 text-[#2B1B0C]" />
               </button>
               <button
                 onClick={() => setActive((a) => (a + 1) % reviews.length)}
-                className="absolute right-2 sm:-right-5 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border border-[#2B1B0C]/15 flex items-center justify-center hover:border-[#9C5A26] transition-colors shadow-neo-sm"
+                className="hidden sm:flex absolute -right-5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-brand-paper border border-[#2B1B0C] items-center justify-center hover:border-[#9C5A26] transition-colors shadow-neo-md"
                 aria-label="Next testimonial"
               >
                 <ChevronRight className="w-4 h-4 text-[#2B1B0C]" />
@@ -136,6 +136,25 @@ export function TestimonialsSection({ reviews }: { reviews: RecentReview[] }) {
             </>
           )}
         </div>
+
+        {reviews.length > 1 && (
+          <div className="flex sm:hidden justify-center items-center gap-3 mt-4">
+            <button
+              onClick={() => setActive((a) => (a - 1 + reviews.length) % reviews.length)}
+              className="w-9 h-9 rounded-full bg-brand-paper border border-[#2B1B0C] flex items-center justify-center hover:border-[#9C5A26] transition-colors shadow-neo-md"
+              aria-label="Previous testimonial"
+            >
+              <ChevronLeft className="w-4 h-4 text-[#2B1B0C]" />
+            </button>
+            <button
+              onClick={() => setActive((a) => (a + 1) % reviews.length)}
+              className="w-9 h-9 rounded-full bg-brand-paper border border-[#2B1B0C] flex items-center justify-center hover:border-[#9C5A26] transition-colors shadow-neo-md"
+              aria-label="Next testimonial"
+            >
+              <ChevronRight className="w-4 h-4 text-[#2B1B0C]" />
+            </button>
+          </div>
+        )}
       </Reveal>
     </section>
   );

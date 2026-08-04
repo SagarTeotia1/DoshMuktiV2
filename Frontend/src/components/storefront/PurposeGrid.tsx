@@ -32,7 +32,7 @@ export function PurposeGrid() {
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
         <div className="relative text-center mb-3 sm:mb-4">
-          <h2 className="font-heading text-2xl sm:text-3xl font-black tracking-tight text-[#2B1B0C]">
+          <h2 className="font-display font-bold tracking-tight leading-tight text-2xl sm:text-3xl text-[#2B1B0C]">
             What Do You Seek?
           </h2>
           <span className="sticker brutal-border absolute -top-2 right-2 sm:right-8 hidden sm:inline-flex items-center gap-1 bg-[#F6E4C2] text-[#2B1B0C] px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide shadow-[3px_3px_0_0_#2B1B0C]">
@@ -41,13 +41,17 @@ export function PurposeGrid() {
           </span>
         </div>
 
-        <StaggerGroup className="flex justify-start sm:justify-center flex-nowrap sm:flex-wrap gap-6 sm:gap-9 md:gap-11 overflow-x-auto hide-scrollbar snap-x snap-mandatory px-1 py-1">
+        <StaggerGroup className="grid grid-cols-3 justify-center sm:flex sm:justify-center sm:flex-wrap gap-y-4 gap-x-2 sm:gap-9 md:gap-11 sm:overflow-x-auto hide-scrollbar sm:snap-x sm:snap-mandatory px-1 py-1 place-items-center">
           {PURPOSES.map((purpose) => {
             const Icon = ICONS[purpose.id as keyof typeof ICONS];
             const [light, base] = GRADIENTS[purpose.id] ?? ['#C9863F', '#9C5A26'];
+            const isGifting = purpose.id === 'gifting';
 
             return (
-              <StaggerItem key={purpose.id} className="flex-shrink-0 snap-start">
+              <StaggerItem
+                key={purpose.id}
+                className={`snap-start ${isGifting ? 'hidden sm:block sm:flex-shrink-0' : 'flex-shrink-0'}`}
+              >
                 <Link href={`/shop?purpose=${purpose.id}`} className="group flex flex-col items-center gap-2 w-20 sm:w-24">
                   <span className="p-[3px] rounded-full border border-[#2B1B0C]/15 group-hover:border-[#9C5A26] transition-all duration-300 group-hover:-translate-y-1">
                     <span
@@ -57,7 +61,7 @@ export function PurposeGrid() {
                       <Icon className="w-7 h-7 sm:w-8 sm:h-8 text-white/95" strokeWidth={1.5} />
                     </span>
                   </span>
-                  <span className="font-heading font-bold text-xs sm:text-sm uppercase tracking-wide text-[#2B1B0C]/85 group-hover:text-[#9C5A26] transition-colors duration-300 text-center leading-tight">
+                  <span className="font-heading font-black text-[11px] sm:text-sm uppercase tracking-tight text-[#2B1B0C]/85 group-hover:text-[#9C5A26] transition-colors duration-300 text-center leading-tight">
                     {purpose.label.split(' & ')[0]}
                   </span>
                 </Link>

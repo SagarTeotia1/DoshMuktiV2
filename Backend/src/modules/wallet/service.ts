@@ -50,16 +50,22 @@ export async function redeemInCheckoutTx(
 }
 
 /** Called from the payment-captured webhook — credits cashback for items whose
- * product has cashbackPercent set. Not part of the checkout transaction. */
+ * product has cashbackPercent set, plus any active CASHBACK-type Offer linked to
+ * that product (the two sum together, they're independent mechanisms).
+ * Not part of the checkout transaction. */
 export async function creditCashbackForOrder(orderId: string): Promise<void> {
   const order = await db.order.findUnique({
     where: { id: orderId },
-    include: { items: { include: { variant: { include: { product: true } } } } },
+    include: { items: { include: { variant: { include: { product: { include: { offers: true } } } } } } },
   });
   if (!order) return;
 
   const cashback = order.items.reduce((sum, item) => {
-    const pct = item.variant.product.cashbackPercent;
+    const productPct = item.variant.product.cashbackPercent ?? 0;
+    const offerPct = item.variant.product.offers
+      .filter((o) => o.isActive && o.type === 'CASHBACK')
+      .reduce((s, o) => s + (o.cashbackPercent ?? 0), 0);
+    const pct = productPct + offerPct;
     if (!pct) return sum;
     return sum + (Number(item.priceAtPurchase) * item.quantity * pct) / 100;
   }, 0);

@@ -4,7 +4,11 @@ import { env } from '../../../config/env';
 // this client is the MSG91 wiring referenced by its `requestId` field.
 
 export async function sendOtp(phone: string): Promise<{ requestId: string }> {
-  if (!env.MSG91_AUTH_KEY) return { requestId: `dummy_${phone}` }; // graceful degrade in dev
+  if (!env.MSG91_AUTH_KEY) {
+    // graceful degrade in dev — no SMS provider wired, print the fixed dev OTP instead
+    console.log(`[dev OTP] ${phone} -> 000000`);
+    return { requestId: `dummy_${phone}` };
+  }
 
   const res = await fetch('https://control.msg91.com/api/v5/otp', {
     method: 'POST',

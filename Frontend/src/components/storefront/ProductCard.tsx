@@ -37,12 +37,12 @@ export function ProductCard({ product }: { product: Product }) {
   return (
     <MotionLink
       href={`/products/${product.slug}`}
-      className="group block rounded-lg flex flex-col border-2 border-[#2B1B0C] p-2 sm:p-2.5 transition-shadow duration-200 hover:shadow-[5px_5px_0_0_#2B1B0C]"
-      whileHover={{ y: -4, x: -2 }}
+      className="neo-card group block h-full rounded-2xl flex flex-col bg-[#FCEFE0] shadow-neo-sm pt-3 pl-3 pr-4 pb-4 sm:pt-4 sm:pl-4 sm:pr-5 sm:pb-5"
+      whileHover={{ y: -5, x: -2 }}
       whileTap={{ scale: 0.97 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
-      <div className="aspect-[4/5] bg-[#F6E4C2] rounded-md relative overflow-hidden product-image-container">
+      <div className="aspect-[4/5] bg-[#F6E4C2] rounded-xl relative overflow-hidden product-image-container border border-[#2B1B0C] shadow-[4px_4px_0_0_#2B1B0C]">
         {image ? (
           <>
             <Image
@@ -68,23 +68,15 @@ export function ProductCard({ product }: { product: Product }) {
           </div>
         )}
 
-        {/* Corner badges */}
-        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-start justify-between gap-1.5 z-10">
-          {discountPct ? (
-            <span className="sticker brutal-border flex items-center gap-1 bg-[#B23A2E] text-white pl-1.5 pr-2 py-1 text-[9px] sm:text-[10px] font-bold font-body rounded-md shadow-[3px_3px_0_0_#2B1B0C]">
-              <Tag className="w-2.5 h-2.5" />
+        {/* Discount corner badge */}
+        {discountPct ? (
+          <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 z-10">
+            <span className="sticker brutal-border flex items-center gap-1 bg-[#B23A2E] text-white pl-1.5 pr-2 py-0.5 sm:py-1 text-[8px] sm:text-[10px] font-bold font-body rounded-md shadow-[2px_2px_0_0_#2B1B0C] sm:shadow-[3px_3px_0_0_#2B1B0C] whitespace-nowrap">
+              <Tag className="w-2 h-2 sm:w-2.5 sm:h-2.5" />
               {discountPct}% off
             </span>
-          ) : (
-            <span />
-          )}
-
-          {product.badge && (
-            <span className="brutal-border rotate-3 bg-[#9C5A26] text-[#FBF1DF] px-2 py-1 text-[9px] sm:text-[10px] font-bold font-body uppercase tracking-wider rounded-md shadow-[3px_3px_0_0_#2B1B0C] text-right leading-tight">
-              {product.badge}
-            </span>
-          )}
-        </div>
+          </div>
+        ) : null}
 
         {!inStock && (
           <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-20">
@@ -94,8 +86,19 @@ export function ProductCard({ product }: { product: Product }) {
           </div>
         )}
 
-        {/* Bottom action bar — slides up on hover (desktop) / always partly visible on touch */}
-        <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center gap-2 p-2.5 translate-y-full group-hover:translate-y-0 sm:transition-transform sm:duration-300 bg-gradient-to-t from-[#2B1B0C]/50 to-transparent">
+        {/* Bestseller/badge — an ink-stamp seal on the photo itself, like a real product stamp.
+            Lives on the image, never touches the name/price text below. */}
+        {product.badge && (
+          <span className="absolute bottom-2 right-2 z-10 -rotate-[8deg] px-2 py-1.5 rounded border-2 border-[#B23A2E]/80 bg-[#FBF1DF]/90 backdrop-blur-[1px] flex items-center justify-center shadow-[2px_3px_6px_rgba(43,27,12,0.35)]">
+            <span className="absolute inset-[3px] rounded-sm border border-dashed border-[#B23A2E]/60" />
+            <span className="relative text-[8px] sm:text-[9px] font-black font-body uppercase tracking-wide text-[#B23A2E]/90 text-center leading-[1.15] px-1">
+              {product.badge}
+            </span>
+          </span>
+        )}
+
+        {/* Bottom action bar — desktop hover reveal only, hidden on touch so tap goes straight to the product page */}
+        <div className="hidden sm:flex absolute inset-x-0 bottom-0 z-20 justify-center gap-2 p-2.5 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-gradient-to-t from-[#2B1B0C]/50 to-transparent">
           <span
             aria-label="View product"
             className="w-9 h-9 rounded-full bg-white flex items-center justify-center shadow-neo-sm hover:bg-[#F6E4C2] transition-colors"

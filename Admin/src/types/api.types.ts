@@ -1,3 +1,17 @@
+export interface Offer {
+  id: string;
+  title: string;
+  type: 'DISPLAY' | 'FREE_ITEM' | 'CASHBACK' | 'DISCOUNT';
+  isActive: boolean;
+  cashbackPercent: number | null;
+  discountType: 'FLAT' | 'PERCENT' | null;
+  discountValue: number | null;
+  maxDiscount: number | null;
+  freeProductId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ProductVariant {
   id: string;
   sku: string;
@@ -28,6 +42,11 @@ export interface Product {
   socialProofText: string | null;
   tags: string[];
   cashbackPercent: number | null;
+  descriptionImages: Array<{ thumb: string; card: string; full: string }>;
+  howToUseVideoUrl: string | null;
+  sidhiPrice: number | null;
+  selfEnergizeInstructions: string | null;
+  offers: Offer[];
   variants: ProductVariant[];
   createdAt: string;
   updatedAt: string;

@@ -54,7 +54,7 @@ function calculateShippingFee(subtotal: number): number {
   return subtotal >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE;
 }
 
-export async function initiateCheckout(input: CheckoutInput) {
+export async function initiateCheckout(input: CheckoutInput, userId: string) {
   const cached = await redis.get<string>(cacheKeys.pincode(input.shippingAddress.pincode));
   if (cached === 'false') throw new NotServiceableError(input.shippingAddress.pincode);
 
@@ -68,6 +68,45 @@ export async function initiateCheckout(input: CheckoutInput) {
     throw new OutOfStockError(missing);
   }
 
+  const productIds = [...new Set(variants.map((v) => v.productId))];
+  const offers = await db.offer.findMany({
+    where: { isActive: true, type: { in: ['DISCOUNT', 'FREE_ITEM'] }, products: { some: { id: { in: productIds } } } },
+    include: {
+      products: { select: { id: true } },
+      freeProduct: { include: { variants: { where: { isActive: true }, orderBy: { stockQuantity: 'desc' } } } },
+    },
+  });
+
+  // Discount — automatic, no coupon code. First matching DISCOUNT offer per item, no stacking.
+  let totalDiscount = 0;
+  for (const item of input.items) {
+    const v = variants.find((x) => x.id === item.variantId)!;
+    const itemSubtotal = Number(v.priceOverride ?? v.product.basePrice) * item.quantity;
+    const offer = offers.find((o) => o.type === 'DISCOUNT' && o.products.some((p) => p.id === v.productId));
+    if (!offer) continue;
+    const discount =
+      offer.discountType === 'PERCENT'
+        ? Math.min((itemSubtotal * Number(offer.discountValue)) / 100, offer.maxDiscount ? Number(offer.maxDiscount) : Infinity)
+        : Math.min(Number(offer.discountValue), itemSubtotal);
+    totalDiscount += discount;
+  }
+
+  // Free items — one free unit per matching FREE_ITEM offer per order, reserved through the
+  // exact same atomic stock path as paid items (out of stock blocks checkout, same as any item).
+  const freeItemOffers = offers.filter(
+    (o) => o.type === 'FREE_ITEM' && o.freeProduct && o.products.some((p) => productIds.includes(p.id))
+  );
+  const freeVariantByOffer = new Map<string, Prisma.ProductVariantGetPayload<object>>();
+  const freeItems: Array<{ variantId: string; quantity: number }> = [];
+  for (const offer of freeItemOffers) {
+    const freeVariant = offer.freeProduct!.variants[0];
+    if (!freeVariant) continue;
+    freeVariantByOffer.set(freeVariant.id, freeVariant);
+    freeItems.push({ variantId: freeVariant.id, quantity: 1 });
+  }
+
+  const allReservationItems = [...input.items, ...freeItems];
+
   const subtotal = input.items.reduce((sum, item) => {
     const v = variants.find((v) => v.id === item.variantId)!;
     return sum + Number(v.priceOverride ?? v.product.basePrice) * item.quantity;
@@ -77,41 +116,55 @@ export async function initiateCheckout(input: CheckoutInput) {
 
   const { order, payment } = await db.$transaction(
     async (tx) => {
-      const reservation = await reserveStock(tx, input.items);
+      const reservation = await reserveStock(tx, allReservationItems);
       if (!reservation.success) throw new OutOfStockError(reservation.failedVariantId!);
 
       const orderNumber = await generateOrderNumber(tx);
+      const orderTotal = subtotal + shippingFee - totalDiscount;
 
       let order = await tx.order.create({
         data: {
           orderNumber,
+          userId,
           customerName: input.customerName,
           customerPhone: input.customerPhone,
           customerEmail: input.customerEmail,
           shippingAddress: input.shippingAddress,
           subtotal,
           shippingFee,
-          total: subtotal + shippingFee,
+          discountAmount: totalDiscount,
+          total: orderTotal,
           reservedUntil,
           items: {
-            create: input.items.map((item) => {
-              const v = variants.find((v) => v.id === item.variantId)!;
-              return {
-                variantId: item.variantId,
-                quantity: item.quantity,
-                priceAtPurchase: v.priceOverride ?? v.product.basePrice,
-                variantSnapshot: { sku: v.sku, attributes: v.attributes, productName: v.product.name },
-              };
-            }),
+            create: [
+              ...input.items.map((item) => {
+                const v = variants.find((v) => v.id === item.variantId)!;
+                return {
+                  variantId: item.variantId,
+                  quantity: item.quantity,
+                  priceAtPurchase: v.priceOverride ?? v.product.basePrice,
+                  variantSnapshot: { sku: v.sku, attributes: v.attributes, productName: v.product.name },
+                };
+              }),
+              ...freeItems.map((item) => {
+                const fv = freeVariantByOffer.get(item.variantId)!;
+                return {
+                  variantId: item.variantId,
+                  quantity: item.quantity,
+                  priceAtPurchase: 0,
+                  variantSnapshot: { sku: fv.sku, attributes: fv.attributes, isFreeGift: true },
+                };
+              }),
+            ],
           },
         },
       });
 
-      const redeemed = await redeemInCheckoutTx(tx, input.customerPhone, input.walletRedeem, subtotal + shippingFee, order.id);
+      const redeemed = await redeemInCheckoutTx(tx, input.customerPhone, input.walletRedeem, orderTotal, order.id);
       if (redeemed > 0) {
         order = await tx.order.update({
           where: { id: order.id },
-          data: { walletRedeemed: redeemed, total: subtotal + shippingFee - redeemed },
+          data: { walletRedeemed: redeemed, total: orderTotal - redeemed },
         });
       }
 

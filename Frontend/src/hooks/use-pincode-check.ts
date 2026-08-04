@@ -36,7 +36,6 @@ export function usePincodeCheck(pincode: string) {
 
   return {
     isChecking: state === 'checking',
-    isServiceable: state === 'serviceable',
     serviceable: state === 'serviceable' ? true : state === 'not-serviceable' ? false : null,
   };
 }

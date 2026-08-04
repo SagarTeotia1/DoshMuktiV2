@@ -16,7 +16,14 @@ export default function EditProductPage() {
 
   function handleSubmit(values: ProductFormValues) {
     updateProduct.mutate(
-      { ...values, badge: values.badge || null, careInstructions: values.careInstructions || null, socialProofText: values.socialProofText || null },
+      {
+        ...values,
+        badge: values.badge || null,
+        careInstructions: values.careInstructions || null,
+        socialProofText: values.socialProofText || null,
+        howToUseVideoUrl: values.howToUseVideoUrl || null,
+        selfEnergizeInstructions: values.selfEnergizeInstructions || null,
+      },
       {
         onSuccess: () => toast.success('Product updated'),
         onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to update product'),

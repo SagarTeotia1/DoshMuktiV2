@@ -1,15 +1,16 @@
 'use client';
 
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 interface AccordionSection {
   title: string;
-  content: string;
+  content: ReactNode;
 }
 
-export function Accordion({ sections }: { sections: AccordionSection[] }) {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+export function Accordion({ sections, defaultOpenIndex = null }: { sections: AccordionSection[]; defaultOpenIndex?: number | null }) {
+  const [openIndex, setOpenIndex] = useState<number | null>(defaultOpenIndex);
 
   return (
     <div className="flex flex-col">
@@ -31,7 +32,7 @@ export function Accordion({ sections }: { sections: AccordionSection[] }) {
               />
             </button>
             {isOpen && (
-              <p className="font-body text-sm text-[#6B5539] leading-relaxed pb-3">{section.content}</p>
+              <div className="font-body text-sm text-[#6B5539] leading-relaxed pb-3">{section.content}</div>
             )}
           </div>
         );

@@ -13,7 +13,14 @@ export default function NewProductPage() {
 
   function handleSubmit(values: ProductFormValues) {
     createProduct.mutate(
-      { ...values, badge: values.badge || null, careInstructions: values.careInstructions || null, socialProofText: values.socialProofText || null },
+      {
+        ...values,
+        badge: values.badge || null,
+        careInstructions: values.careInstructions || null,
+        socialProofText: values.socialProofText || null,
+        howToUseVideoUrl: values.howToUseVideoUrl || null,
+        selfEnergizeInstructions: values.selfEnergizeInstructions || null,
+      },
       {
         onSuccess: (product) => {
           toast.success('Product created');

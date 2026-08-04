@@ -8,7 +8,7 @@ function RailHeader({ eyebrow, title, centered }: { eyebrow?: string; title: str
   if (centered) {
     return (
       <div className="text-center mb-3 sm:mb-4">
-        <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl tracking-tight text-[#2B1B0C] leading-[1.05]">
+        <h2 className="font-display font-bold text-3xl sm:text-4xl md:text-5xl tracking-tight text-[#2B1B0C] leading-[1.05]">
           <span className="font-black">{title.split(' ')[0]}</span>{' '}
           <span className="font-light italic text-[#9C5A26]">{title.split(' ').slice(1).join(' ')}</span>
         </h2>
@@ -18,7 +18,7 @@ function RailHeader({ eyebrow, title, centered }: { eyebrow?: string; title: str
 
   return (
     <div className="mb-8 sm:mb-12">
-      <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl tracking-tight text-[#2B1B0C] leading-[1.05]">
+      <h2 className="font-display font-bold text-3xl sm:text-4xl md:text-5xl tracking-tight text-[#2B1B0C] leading-[1.05]">
         {eyebrow && <span className="font-black">{eyebrow}</span>}
         {eyebrow && <span className="font-light italic text-[#9C5A26]"> — </span>}
         <span className={eyebrow ? 'font-light italic text-[#9C5A26]' : 'font-black uppercase tracking-tighter'}>
@@ -69,9 +69,9 @@ export function ProductRail({
           <RailHeader eyebrow={eyebrow} title={title} centered={centered} />
         </Reveal>
       </div>
-      <StaggerGroup className="flex gap-5 sm:gap-6 overflow-x-auto hide-scrollbar snap-x snap-mandatory py-2 px-4 sm:px-5">
+      <StaggerGroup className="flex gap-4 sm:gap-6 overflow-x-auto hide-scrollbar snap-x snap-mandatory py-2 px-4 sm:px-6 lg:px-12 [scroll-padding-left:1rem] sm:[scroll-padding-left:1.5rem] lg:[scroll-padding-left:3rem]">
         {products.map((product) => (
-          <StaggerItem key={product.id} className="flex-shrink-0 snap-start w-[45vw] sm:w-[220px] md:w-[240px]">
+          <StaggerItem key={product.id} className="flex-shrink-0 snap-start w-[42vw] xs:w-[38vw] sm:w-[220px] md:w-[240px]">
             <ProductCard product={product} />
           </StaggerItem>
         ))}

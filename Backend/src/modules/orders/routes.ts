@@ -1,8 +1,17 @@
 import type { FastifyInstance } from 'fastify';
-import { verifyAdmin } from '../../shared/middleware/auth.middleware';
-import { trackOrderHandler, listOrdersHandler, getOrderByIdHandler, updateOrderStatusHandler } from './controller';
+import { verifyAdmin, verifyCustomer } from '../../shared/middleware/auth.middleware';
+import {
+  trackOrderHandler,
+  listOrdersByPhoneHandler,
+  listMyOrdersHandler,
+  listOrdersHandler,
+  getOrderByIdHandler,
+  updateOrderStatusHandler,
+} from './controller';
 
 export async function orderRoutes(app: FastifyInstance) {
+  app.get('/orders/mine', { preHandler: verifyCustomer }, listMyOrdersHandler); // logged-in customer's own orders
+  app.get('/orders', listOrdersByPhoneHandler); // public — list by phone (legacy/support lookup)
   app.get('/orders/:orderNumber', trackOrderHandler); // public — track by orderNumber
   app.get('/admin/orders', { preHandler: verifyAdmin }, listOrdersHandler);
   app.get('/admin/orders/:id', { preHandler: verifyAdmin }, getOrderByIdHandler);

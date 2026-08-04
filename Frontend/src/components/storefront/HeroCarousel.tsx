@@ -84,8 +84,8 @@ export function HeroCarousel() {
       ))}
 
       {/* Atmospheric overlays */}
-      <div className="absolute inset-0 z-20 bg-gradient-to-r from-black/92 via-black/65 to-black/25" />
-      <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/75 via-transparent to-black/35" />
+      <div className="absolute inset-0 z-20 bg-gradient-to-r from-[#2B1B0C]/92 via-[#2B1B0C]/65 to-[#2B1B0C]/25" />
+      <div className="absolute inset-0 z-20 bg-gradient-to-t from-[#2B1B0C]/75 via-transparent to-[#2B1B0C]/35" />
 
       {/* Grain texture */}
       <div
@@ -123,20 +123,20 @@ export function HeroCarousel() {
             {/* Eyebrow */}
             <div className="flex items-center gap-2.5 mb-2.5 sm:mb-4 animate-fade-in">
               <div className="h-px w-6 sm:w-10 bg-[#9C5A26]" />
-              <span className="font-body text-[9px] sm:text-xs font-bold uppercase tracking-[0.2em] sm:tracking-[0.25em] text-[#9C5A26]">
+              <span className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#9C5A26]">
                 {slide.eyebrow}
               </span>
             </div>
 
             {/* Badge */}
             <div className="mb-2 sm:mb-3">
-              <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#9C5A26] text-[#2B1B0C] text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">
+              <span className="sticker inline-block px-2.5 py-0.5 rounded-full bg-[#9C5A26] text-[#2B1B0C] text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border border-[#2B1B0C]/70 shadow-[2px_2px_0_0_rgba(43,27,12,0.7)]">
                 {slide.badge}
               </span>
             </div>
 
             {/* Title */}
-            <h1 className="font-heading text-[2.1rem] sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter uppercase text-white leading-[0.92] mb-3 sm:mb-5 animate-fade-in-up">
+            <h1 className="font-display text-5xl md:text-7xl font-black italic tracking-tight uppercase text-white leading-[0.95] mb-3 sm:mb-5 animate-fade-in-up">
               {slide.title.map((line, i) => (
                 <span key={i} className="block">
                   {i === 1 ? <span className="text-[#9C5A26]">{line}</span> : line}
@@ -153,13 +153,13 @@ export function HeroCarousel() {
             <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 animate-fade-in delay-300">
               <Link
                 href={slide.href}
-                className="inline-block rounded-full bg-[#9C5A26] text-[#FBF1DF] border border-[#9C5A26] px-5 sm:px-8 py-2.5 sm:py-3.5 font-body font-bold uppercase tracking-widest text-[10px] sm:text-xs active:scale-95 hover:bg-white hover:border-white hover:text-[#2B1B0C] hover:shadow-neo-lg hover:-translate-y-0.5 transition-all duration-200"
+                className="inline-block rounded-lg bg-[#9C5A26] text-[#FBF1DF] border border-[#9C5A26] px-5 sm:px-8 py-2.5 sm:py-3.5 font-body font-bold uppercase tracking-widest text-xs active:scale-95 hover:bg-brand-paper hover:border-brand-paper hover:text-[#2B1B0C] hover:shadow-neo-lg hover:-translate-y-0.5 transition-all duration-200"
               >
                 {slide.cta}
               </Link>
               <Link
                 href="/shop"
-                className="text-white/55 hover:text-white/90 font-body text-[9px] sm:text-xs uppercase tracking-[0.2em] transition-colors duration-200 flex items-center gap-1.5"
+                className="text-white/55 hover:text-white/90 font-body text-[10px] sm:text-xs uppercase tracking-[0.2em] transition-colors duration-200 flex items-center gap-1.5"
               >
                 All <span className="text-[#9C5A26]">→</span>
               </Link>

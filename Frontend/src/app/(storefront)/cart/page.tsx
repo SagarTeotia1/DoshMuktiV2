@@ -21,10 +21,10 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 sm:py-28 text-center flex flex-col items-center">
-        <div className="w-16 h-16 rounded-full border border-[#2B1B0C] bg-white flex items-center justify-center mb-5">
+        <div className="w-16 h-16 rounded-full border border-[#2B1B0C] bg-brand-paper flex items-center justify-center mb-5">
           <ShoppingBag className="w-6 h-6 text-[#9C5A26]" />
         </div>
-        <h1 className="font-heading text-2xl sm:text-3xl font-black uppercase tracking-tighter text-[#2B1B0C] mb-2">Your Cart is Empty</h1>
+        <h1 className="font-heading font-black tracking-tight leading-[1.1] text-2xl sm:text-3xl text-[#2B1B0C] mb-2">Your Cart is Empty</h1>
         <p className="font-body text-sm text-[#8A7A63] mb-7 max-w-xs">
           Nothing here yet. Explore products curated by intention and start your ritual.
         </p>
@@ -41,10 +41,10 @@ export default function CartPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <div className="mb-8">
-        <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-[#9C5A26] mb-2">
+        <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#9C5A26] mb-2">
           {items.reduce((n, i) => n + i.quantity, 0)} Items
         </p>
-        <h1 className="font-heading text-3xl sm:text-4xl font-black tracking-tighter uppercase text-[#2B1B0C]">Your Cart</h1>
+        <h1 className="font-heading font-black tracking-tight leading-[1.1] text-2xl sm:text-3xl text-[#2B1B0C]">Your Cart</h1>
       </div>
 
       {remainingForFreeShipping > 0 && (
@@ -55,7 +55,7 @@ export default function CartPage() {
 
       <div className="flex flex-col gap-3 mb-8">
         {items.map((item) => (
-          <div key={item.variantId} className="flex items-center gap-3 sm:gap-4 bg-white border border-[#2B1B0C] rounded-2xl p-3 sm:p-4">
+          <div key={item.variantId} className="flex items-center gap-3 sm:gap-4 bg-brand-paper border border-[#2B1B0C] rounded-2xl p-3 sm:p-4">
             <div className="flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-[#F6E4C2] border border-[#2B1B0C]/20 flex items-center justify-center">
               <span className="font-heading font-black text-lg text-[#9C5A26]">{item.productName.charAt(0)}</span>
             </div>
@@ -89,7 +89,7 @@ export default function CartPage() {
             <button
               onClick={() => removeItem(item.variantId)}
               disabled={isRemoving}
-              className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[#8A7A63] hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+              className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[#8A7A63] hover:text-brand-alert hover:bg-brand-alert/10 transition-colors disabled:opacity-50"
               aria-label="Remove item"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -98,7 +98,7 @@ export default function CartPage() {
         ))}
       </div>
 
-      <div className="bg-white border border-[#2B1B0C] rounded-2xl p-5 sm:p-6 flex flex-col gap-2">
+      <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6 flex flex-col gap-2">
         <div className="flex justify-between font-body text-sm text-[#6B5539]">
           <span>Subtotal</span>
           <span>{formatCurrency(subtotal)}</span>

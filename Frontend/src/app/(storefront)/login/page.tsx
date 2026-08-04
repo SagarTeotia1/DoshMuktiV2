@@ -1,0 +1,182 @@
+'use client';
+
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
+import { ShieldCheck } from 'lucide-react';
+import { useAuth, isProfileRequired } from '@/hooks/use-auth';
+
+const inputClass =
+  'bg-[#FBF1DF] border border-[#2B1B0C]/25 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:border-[#9C5A26] focus:outline-none font-body placeholder:text-[#8A7A63] transition-colors w-full';
+
+function normalizePhone(raw: string): string {
+  let digits = raw.replace(/\D/g, '');
+  if (digits.length > 10 && digits.startsWith('91')) digits = digits.slice(2);
+  return digits.slice(0, 10);
+}
+
+type Step = 'phone' | 'otp' | 'profile';
+
+function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/';
+  const { sendOtp, verifyOtp } = useAuth();
+
+  const [step, setStep] = useState<Step>('phone');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [name, setName] = useState('');
+  const [dob, setDob] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handlePhoneSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!/^\d{10}$/.test(phone)) return toast.error('Enter a valid 10-digit mobile number');
+
+    setSubmitting(true);
+    try {
+      await sendOtp(phone);
+      setStep('otp');
+      toast.success('OTP sent');
+    } catch {
+      toast.error('Could not send OTP — try again');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleOtpSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!/^\d{4,6}$/.test(otp)) return toast.error('Enter the OTP');
+
+    setSubmitting(true);
+    try {
+      await verifyOtp(phone, otp);
+      router.push(redirectTo);
+    } catch (err) {
+      if (isProfileRequired(err)) {
+        setStep('profile');
+      } else {
+        toast.error('Invalid or expired OTP');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleProfileSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return toast.error('Enter your name');
+
+    setSubmitting(true);
+    try {
+      await verifyOtp(phone, otp, name.trim(), dob || undefined);
+      router.push(redirectTo);
+    } catch {
+      toast.error('Something went wrong — try again');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="max-w-md mx-auto px-4 sm:px-6 py-12 sm:py-20">
+      <div className="flex items-center gap-2 mb-2">
+        <ShieldCheck className="w-5 h-5 text-[#9C5A26]" />
+        <p className="font-body text-[10px] font-bold uppercase tracking-[0.2em] text-[#9C5A26]">Secure Login</p>
+      </div>
+      <h1 className="font-heading font-black tracking-tight leading-tight text-2xl sm:text-3xl text-[#2B1B0C] mb-6">
+        {step === 'phone' && 'Log in with your phone'}
+        {step === 'otp' && 'Enter the OTP'}
+        {step === 'profile' && 'A few details'}
+      </h1>
+
+      {step === 'phone' && (
+        <form onSubmit={handlePhoneSubmit} className="flex flex-col gap-3">
+          <input
+            type="tel"
+            inputMode="numeric"
+            autoFocus
+            value={phone}
+            onChange={(e) => setPhone(normalizePhone(e.target.value))}
+            placeholder="10-digit mobile number"
+            className={inputClass}
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="brutal-border bg-[#2B1B0C] text-white rounded-lg px-6 py-3.5 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200 disabled:opacity-50"
+          >
+            {submitting ? 'Sending...' : 'Send OTP'}
+          </button>
+        </form>
+      )}
+
+      {step === 'otp' && (
+        <form onSubmit={handleOtpSubmit} className="flex flex-col gap-3">
+          <p className="font-body text-xs text-[#8A7A63] -mt-2 mb-1">Sent to +91 {phone}</p>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoFocus
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            placeholder="Enter OTP"
+            className={inputClass}
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="brutal-border bg-[#2B1B0C] text-white rounded-lg px-6 py-3.5 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200 disabled:opacity-50"
+          >
+            {submitting ? 'Verifying...' : 'Verify & Continue'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setStep('phone')}
+            className="font-body text-xs text-[#8A7A63] hover:text-[#2B1B0C] transition-colors self-center"
+          >
+            Change phone number
+          </button>
+        </form>
+      )}
+
+      {step === 'profile' && (
+        <form onSubmit={handleProfileSubmit} className="flex flex-col gap-3">
+          <p className="font-body text-xs text-[#8A7A63] -mt-2 mb-1">New here — tell us your name</p>
+          <input
+            type="text"
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Full Name"
+            className={inputClass}
+          />
+          <input
+            type="date"
+            value={dob}
+            onChange={(e) => setDob(e.target.value)}
+            placeholder="Date of Birth (optional)"
+            className={inputClass}
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="brutal-border bg-[#2B1B0C] text-white rounded-lg px-6 py-3.5 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200 disabled:opacity-50"
+          >
+            {submitting ? 'Creating account...' : 'Continue'}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}

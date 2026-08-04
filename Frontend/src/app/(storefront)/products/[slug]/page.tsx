@@ -1,11 +1,14 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Gem, Truck, ShieldCheck, RotateCcw, Sparkles, Wallet, Star } from 'lucide-react';
-import { ProductCard } from '@/components/storefront/ProductCard';
+import { Gem, Truck, ShieldCheck, RotateCcw, Sparkles, Wallet, Star, Gift } from 'lucide-react';
 import { Accordion } from '@/components/storefront/Accordion';
 import { AddToCart } from './add-to-cart';
+import { SidhiTabs } from './sidhi-tabs';
+import { DescriptionPhotos } from './description-photos';
+import { HowToUseVideo } from './how-to-use-video';
 import { ProductGallery } from './product-gallery';
 import { ReviewsSection } from './reviews-section';
+import { RelatedProductsRail } from './related-products-rail';
 import { api } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
 import type { Product } from '@/types/api.types';
@@ -32,6 +35,41 @@ const TRUST_ITEMS = [
   { icon: RotateCcw, label: '7-Day Returns' },
 ];
 
+const POLICY_SECTIONS = [
+  {
+    title: 'Delivery & Shipping',
+    content: 'Orders are dispatched within 24-48 hours and typically arrive within 5-7 business days across India.',
+  },
+  {
+    title: 'Returns & Replacement',
+    content: 'Damaged or incorrect items can be reported within 48 hours of delivery for a free replacement.',
+  },
+  {
+    title: 'Cashback Policy',
+    content: 'Cashback, where applicable, is credited to your account within 7 days of order delivery.',
+  },
+  {
+    title: 'Need Help?',
+    content: 'Chat with us Mon to Sat, 10 AM to 5 PM, via the support widget or WhatsApp.',
+  },
+];
+
+function TrustStrip() {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {TRUST_ITEMS.map((item) => {
+        const Icon = item.icon;
+        return (
+          <div key={item.label} className="flex items-center gap-2">
+            <Icon className="w-3.5 h-3.5 text-[#9C5A26] flex-shrink-0" />
+            <span className="font-body text-[11px] font-semibold text-[#6B5539]">{item.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 async function getProduct(slug: string): Promise<ProductDetailResponse | null> {
   try {
     return await api.get<ProductDetailResponse>(`/api/products/${slug}`);
@@ -46,7 +84,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   if (!data) notFound();
 
   const { product, related } = data;
-  const activeVariants = product.variants.filter((v) => v.isActive);
+  const activeVariants = product.variants.filter((v) => v.isActive && v.attributes.type !== 'service');
   const price =
     activeVariants.length > 0
       ? Math.min(...activeVariants.map((v) => v.priceOverride ?? product.basePrice))
@@ -54,6 +92,50 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const inStock = activeVariants.some((v) => v.stockQuantity > 0);
   const mrp = product.compareAtPrice && product.compareAtPrice > price ? product.compareAtPrice : null;
   const discountPct = mrp ? Math.round(((mrp - price) / mrp) * 100) : null;
+
+  // Cashback is already shown once via cashbackPercent's own badge — a CASHBACK-type Offer
+  // saying the same thing in a second badge would just contradict it if the numbers differ.
+  const displayOffers = product.offers.filter((o) => o.type !== 'CASHBACK');
+
+  type DetailSection = { title: string; content: React.ReactNode };
+  const rawDetailSections: Array<DetailSection | false | '' | null> = [
+    product.benefits.length > 0 && {
+      title: 'Benefits',
+      content: (
+        <div className="grid sm:grid-cols-2 gap-4">
+          {product.benefits.map((b, i) => (
+            <div key={i} className="flex gap-3">
+              <div className="flex-shrink-0 w-7 h-7 rounded-full border border-[#2B1B0C] bg-white flex items-center justify-center mt-0.5">
+                <span className="font-heading font-black text-[10px] text-[#9C5A26]">{String(i + 1).padStart(2, '0')}</span>
+              </div>
+              <div>
+                <p className="font-heading font-bold text-xs text-[#2B1B0C] mb-0.5">{b.title}</p>
+                <p className="font-body text-xs text-[#8A7A63] leading-relaxed">{b.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    product.howToWear.length > 0 && {
+      title: 'How to Wear & Recharge',
+      content: (
+        <ol className="flex flex-col gap-2.5">
+          {product.howToWear.map((step, i) => (
+            <li key={i} className="flex gap-3 font-body text-xs text-[#6B5539] leading-relaxed">
+              <span className="font-heading font-black text-[#9C5A26] flex-shrink-0">{i + 1}.</span>
+              {step}
+            </li>
+          ))}
+        </ol>
+      ),
+    },
+    product.careInstructions && {
+      title: 'Care Instructions',
+      content: <p className="font-body text-xs text-[#8A7A63] leading-relaxed whitespace-pre-line">{product.careInstructions}</p>,
+    },
+  ];
+  const detailSections = rawDetailSections.filter((s): s is DetailSection => !!s);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
@@ -67,14 +149,19 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       </nav>
 
       <div className="grid lg:grid-cols-2 gap-8 lg:gap-14">
-        <ProductGallery images={product.images} name={product.name} badge={product.badge} inStock={inStock} />
+        <div className="flex flex-col gap-6">
+          <ProductGallery images={product.images} name={product.name} badge={product.badge} inStock={inStock} />
+
+          {/* Policy accordion — desktop only, sits directly under the gallery.
+              Mobile keeps its own copy further down, in the details column. */}
+          <div className="hidden lg:block border-t border-[#2B1B0C]/10 pt-2">
+            <Accordion sections={POLICY_SECTIONS} />
+          </div>
+        </div>
 
         {/* Details */}
         <div className="flex flex-col">
-          <span className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#9C5A26] mb-2">
-            {product.category}
-          </span>
-          <h1 className="font-heading text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-[#2B1B0C] leading-[1.05] mb-2">
+          <h1 className="font-heading font-black tracking-tight leading-[1.1] text-2xl sm:text-3xl text-[#2B1B0C] mb-3">
             {product.name}
           </h1>
 
@@ -94,161 +181,129 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             </div>
           )}
 
-          {product.purpose.length > 0 && (
+          {/* Purpose + storefront tags — one merged row, not two separate look-alike groups */}
+          {(product.purpose.length > 0 || product.tags.length > 0) && (
             <div className="flex flex-wrap gap-1.5 mb-4">
               {product.purpose.map((p) => (
                 <Link
                   key={p}
                   href={`/shop?purpose=${p}`}
-                  className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 border border-[#2B1B0C]/20 text-[#6B5539] font-body rounded-full hover:border-[#9C5A26] hover:text-[#9C5A26] transition-colors"
+                  className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 border border-[#2B1B0C]/20 text-[#6B5539] font-body rounded-full hover:border-[#9C5A26] hover:text-[#9C5A26] transition-colors"
                 >
                   {PURPOSE_LABELS[p] ?? p}
                 </Link>
               ))}
-            </div>
-          )}
-
-          <div className="flex items-center gap-2.5 mb-1">
-            <p className="font-heading text-2xl sm:text-3xl font-bold text-[#2B1B0C]">{formatCurrency(price)}</p>
-            {mrp && (
-              <>
-                <p className="font-body text-sm sm:text-base text-[#8A7A63] line-through">{formatCurrency(mrp)}</p>
-                <span className="font-body text-xs font-bold text-[#B23A2E]">{discountPct}% off</span>
-              </>
-            )}
-          </div>
-
-          {!!product.cashbackPercent && (
-            <p className="font-body text-xs font-bold text-[#9C5A26] mb-2 flex items-center gap-1.5">
-              <Wallet className="w-3.5 h-3.5" />
-              {product.cashbackPercent}% Cashback in Wallet on this order
-            </p>
-          )}
-
-          {product.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-3">
               {product.tags.map((tag) => (
-                <span key={tag} className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-[#9C5A26]/10 text-[#6B3D19] font-body rounded-full">
+                <span key={tag} className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-[#9C5A26]/10 text-[#6B3D19] font-body rounded-full">
                   {tag}
                 </span>
               ))}
             </div>
           )}
 
-          {product.socialProofText ? (
-            <p className="font-body text-xs text-[#9C5A26] font-semibold mb-5 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" />
-              {product.socialProofText}
-            </p>
-          ) : (
-            <div className="mb-5" />
-          )}
+          {/* Price — the single largest figure on the page, outranks the headline */}
+          <div className="flex items-baseline gap-2.5 mb-3">
+            <p className="font-heading text-3xl sm:text-4xl font-black text-[#2B1B0C] tabular-nums">{formatCurrency(price)}</p>
+            {mrp && (
+              <>
+                <p className="font-body text-base text-[#8A7A63] line-through">{formatCurrency(mrp)}</p>
+                <span className="font-body text-sm font-bold text-[#B23A2E]">{discountPct}% off</span>
+              </>
+            )}
+          </div>
 
-          <p className="font-body text-sm text-[#6B5539] leading-relaxed whitespace-pre-line mb-6">
-            {product.description}
-          </p>
+          {/* Offer badges — up to 2 side by side. Cashback % (if set) takes the first slot. */}
+          {(() => {
+            const cashbackBadge = !!product.cashbackPercent ? (
+              <div key="cashback" className="brutal-border flex items-center gap-2 bg-[#2B1B0C] text-[#FBF1DF] rounded-lg px-3 py-2 shadow-[2px_2px_0_0_#9C5A26]">
+                <Wallet className="w-4 h-4 text-[#C9863F] flex-shrink-0" />
+                <div className="leading-tight">
+                  <p className="font-heading font-black text-[11px] uppercase tracking-wide">{product.cashbackPercent}% Cashback</p>
+                  <p className="font-body text-[10px] text-[#C9863F]">on first order</p>
+                </div>
+              </div>
+            ) : null;
+            const offerBadgesNeeded = cashbackBadge ? 1 : 2;
+            const shownOffers = displayOffers.slice(0, offerBadgesNeeded);
+            const remainingOffers = displayOffers.slice(offerBadgesNeeded);
+            const badges = [
+              cashbackBadge,
+              ...shownOffers.map((offer) => (
+                <div key={offer.id} className="brutal-border flex items-center gap-2 bg-[#2B1B0C] text-[#FBF1DF] rounded-lg px-3 py-2 shadow-[2px_2px_0_0_#9C5A26]">
+                  <Gift className="w-4 h-4 text-[#C9863F] flex-shrink-0" />
+                  <p className="font-heading font-black text-[11px] uppercase tracking-wide leading-tight">{offer.title}</p>
+                </div>
+              )),
+            ].filter(Boolean);
 
+            return (
+              <>
+                {badges.length > 0 && <div className="grid grid-cols-2 gap-2 mb-5">{badges}</div>}
+                {remainingOffers.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-5">
+                    {remainingOffers.map((offer) => (
+                      <span
+                        key={offer.id}
+                        className="brutal-border text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-[#F6E4C2] text-[#6B3D19] font-body rounded-full shadow-[2px_2px_0_0_#2B1B0C]"
+                      >
+                        {offer.title}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
+            );
+          })()}
+
+          {/* Sidhi / Energize */}
+          <SidhiTabs product={product} />
+
+          {/* The one decisive action */}
           <div className="border-t border-[#2B1B0C]/10 pt-6 mb-6">
             <AddToCart product={product} />
           </div>
 
-          {product.benefits.length > 0 && (
-            <div className="border-t border-[#2B1B0C]/10 pt-6 mb-6">
-              <h2 className="font-heading font-bold text-sm uppercase tracking-wide text-[#2B1B0C] mb-4">Benefits</h2>
-              <div className="grid sm:grid-cols-2 gap-4">
-                {product.benefits.map((b, i) => (
-                  <div key={i} className="flex gap-3">
-                    <div className="flex-shrink-0 w-7 h-7 rounded-full border border-[#2B1B0C] bg-white flex items-center justify-center mt-0.5">
-                      <span className="font-heading font-black text-[10px] text-[#9C5A26]">{String(i + 1).padStart(2, '0')}</span>
-                    </div>
-                    <div>
-                      <p className="font-heading font-bold text-xs text-[#2B1B0C] mb-0.5">{b.title}</p>
-                      <p className="font-body text-xs text-[#8A7A63] leading-relaxed">{b.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {product.howToWear.length > 0 && (
-            <div className="border-t border-[#2B1B0C]/10 pt-6 mb-6">
-              <h2 className="font-heading font-bold text-sm uppercase tracking-wide text-[#2B1B0C] mb-4">How to Wear</h2>
-              <ol className="flex flex-col gap-2.5">
-                {product.howToWear.map((step, i) => (
-                  <li key={i} className="flex gap-3 font-body text-xs text-[#6B5539] leading-relaxed">
-                    <span className="font-heading font-black text-[#9C5A26] flex-shrink-0">{i + 1}.</span>
-                    {step}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
-
-          {product.careInstructions && (
-            <div className="border-t border-[#2B1B0C]/10 pt-6 mb-6">
-              <h2 className="font-heading font-bold text-sm uppercase tracking-wide text-[#2B1B0C] mb-3">Care Instructions</h2>
-              <p className="font-body text-xs text-[#8A7A63] leading-relaxed whitespace-pre-line">{product.careInstructions}</p>
-            </div>
-          )}
-
-          {/* Trust strip */}
-          <div className="border-t border-[#2B1B0C]/10 pt-6 mb-6 grid grid-cols-2 gap-3">
-            {TRUST_ITEMS.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.label} className="flex items-center gap-2">
-                  <Icon className="w-3.5 h-3.5 text-[#9C5A26] flex-shrink-0" />
-                  <span className="font-body text-[10px] sm:text-[11px] font-semibold text-[#6B5539]">{item.label}</span>
-                </div>
-              );
-            })}
+          {/* Trust signals sit right after the CTA — reassurance belongs next to the decision, not in another column */}
+          <div className="mb-6">
+            <TrustStrip />
           </div>
 
-          <div className="border-t border-[#2B1B0C]/10 pt-2">
-            <Accordion
-              sections={[
-                {
-                  title: 'Delivery & Shipping',
-                  content: 'Orders are dispatched within 24-48 hours and typically arrive within 5-7 business days across India.',
-                },
-                {
-                  title: 'Returns & Replacement',
-                  content: 'Damaged or incorrect items can be reported within 48 hours of delivery for a free replacement.',
-                },
-                {
-                  title: 'Cashback Policy',
-                  content: 'Cashback, where applicable, is credited to your account within 7 days of order delivery.',
-                },
-                {
-                  title: 'Need Help?',
-                  content: 'Chat with us Mon to Sat, 10 AM to 5 PM, via the support widget or WhatsApp.',
-                },
-              ]}
-            />
+          {product.socialProofText && (
+            <p className="font-body text-xs text-[#9C5A26] font-semibold mb-5 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              {product.socialProofText}
+            </p>
+          )}
+
+          {/* Description — the only "read more" section left open by default */}
+          <div className="border-t border-[#2B1B0C]/10 pt-6 mb-2">
+            <p className="font-body text-sm text-[#6B5539] leading-relaxed whitespace-pre-line mb-4">
+              {product.description}
+            </p>
+            <DescriptionPhotos images={product.descriptionImages} />
+          </div>
+
+          {/* How to Use — always open, not tucked into the accordion */}
+          <HowToUseVideo url={product.howToUseVideoUrl} />
+
+          {/* Everything else worth reading, but only if you go looking for it */}
+          {detailSections.length > 0 && (
+            <div className="border-t border-[#2B1B0C]/10 pt-2 mb-2 sm:mb-6">
+              <Accordion sections={detailSections} />
+            </div>
+          )}
+
+          {/* Policy accordion — mobile only, desktop copy sits under the gallery instead.
+              No extra border-t here: the accordion above already closes with its own border-b. */}
+          <div className="lg:hidden">
+            <Accordion sections={POLICY_SECTIONS} />
           </div>
         </div>
       </div>
 
       <ReviewsSection productId={product.id} productSlug={product.slug} />
 
-      {related.length > 0 && (
-        <section className="mt-16 sm:mt-24">
-          <div className="mb-6 sm:mb-8">
-            <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-[#9C5A26] mb-2">
-              You May Also Like
-            </p>
-            <h2 className="font-heading text-2xl sm:text-3xl font-black tracking-tighter uppercase text-[#2B1B0C]">
-              Complete The Ritual
-            </h2>
-          </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            {related.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        </section>
-      )}
+      {related.length > 0 && <RelatedProductsRail products={related} />}
     </div>
   );
 }

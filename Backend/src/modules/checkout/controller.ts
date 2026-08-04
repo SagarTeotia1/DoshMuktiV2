@@ -9,7 +9,8 @@ export async function checkoutHandler(req: FastifyRequest, reply: FastifyReply) 
   }
 
   try {
-    const result = await initiateCheckout(parsed.data);
+    const userId = (req.user as { sub: string }).sub;
+    const result = await initiateCheckout(parsed.data, userId);
     return reply.code(201).send(result);
   } catch (err) {
     if (err instanceof OutOfStockError) {

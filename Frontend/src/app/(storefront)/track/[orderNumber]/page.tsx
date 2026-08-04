@@ -19,7 +19,7 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ ord
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-      <h1 className="font-heading text-2xl sm:text-3xl font-black tracking-tighter uppercase text-[#2B1B0C] mb-1">Order {order.orderNumber}</h1>
+      <h1 className="font-heading font-black tracking-tight leading-tight text-2xl sm:text-3xl text-[#2B1B0C] mb-1">Order {order.orderNumber}</h1>
       <p className="font-body text-xs text-[#8A7A63] mb-6">Placed on {formatDate(order.createdAt)}</p>
 
       <div className="bg-white border border-[#2B1B0C] rounded-2xl p-6 mb-6">

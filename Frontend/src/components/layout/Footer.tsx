@@ -69,7 +69,7 @@ function NewsletterForm() {
           />
           <button
             type="submit"
-            className="brutal-shadow-light bg-[#9C5A26] text-[#2B1B0C] px-4 sm:px-6 md:px-8 py-3 sm:py-4 font-body font-bold uppercase tracking-widest text-[10px] sm:text-xs hover:bg-[#C9863F] transition-colors flex-shrink-0"
+            className="shadow-neo-gold-md bg-[#9C5A26] text-[#2B1B0C] px-4 sm:px-6 md:px-8 py-3 sm:py-4 font-body font-bold uppercase tracking-widest text-[10px] sm:text-xs hover:bg-[#C9863F] transition-colors flex-shrink-0"
           >
             Subscribe
           </button>
@@ -88,7 +88,7 @@ export function Footer() {
       className="bg-[#2B1B0C] text-[#FBF1DF] relative"
       style={{
         backgroundImage:
-          'radial-gradient(circle at 85% 20%, rgba(156,90,38,0.12), transparent 35%), radial-gradient(circle at 12% 75%, rgba(157,138,236,0.12), transparent 34%)',
+          'radial-gradient(circle at 85% 20%, rgba(156,90,38,0.12), transparent 35%), radial-gradient(circle at 12% 75%, rgba(156,90,38,0.18), transparent 30%)',
       }}
     >
       <MandalaMotif className="pointer-events-none absolute -bottom-24 -right-24 w-72 h-72 text-[#C9863F]/[0.05]" />

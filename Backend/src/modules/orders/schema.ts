@@ -6,6 +6,10 @@ export const orderNumberParamSchema = z.object({
   orderNumber: z.string().regex(/^DOSH-\d{8}-\d{4}$/),
 });
 
+export const phoneQuerySchema = z.object({
+  phone: z.string().regex(/^\d{10}$/),
+});
+
 export const listOrdersQuerySchema = z.object({
   status: z.enum(['PENDING_PAYMENT', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'REFUNDED']).optional(),
   page: z.coerce.number().int().min(1).max(999).default(1),

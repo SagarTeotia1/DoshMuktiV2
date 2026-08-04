@@ -41,6 +41,7 @@ export function useCart() {
   });
 
   const addItem = useCallback((item: { variantId: string; quantity: number }) => addMutation.mutate(item), [addMutation]);
+  const addItemAsync = useCallback((item: { variantId: string; quantity: number }) => addMutation.mutateAsync(item), [addMutation]);
   const updateQuantity = useCallback((variantId: string, quantity: number) => updateMutation.mutate({ variantId, quantity }), [updateMutation]);
   const removeItem = useCallback((variantId: string) => removeMutation.mutate(variantId), [removeMutation]);
 
@@ -48,6 +49,7 @@ export function useCart() {
     cart,
     isLoading,
     addItem,
+    addItemAsync,
     updateQuantity,
     removeItem,
     isAdding: addMutation.isPending,

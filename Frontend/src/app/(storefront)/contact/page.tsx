@@ -51,7 +51,7 @@ export default function ContactPage() {
         <MandalaMotif className="pointer-events-none absolute -bottom-24 -left-24 w-72 h-72 text-[#C9863F]/[0.06]" />
 
         <Reveal className="relative max-w-2xl mx-auto px-6 text-center">
-          <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.3em] text-[#9C5A26] mb-3">
+          <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#9C5A26] mb-3">
             Get In Touch
           </p>
           <h1 className="font-heading text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-[#FBF1DF] leading-[1.05] mb-4">
@@ -83,7 +83,7 @@ export default function ContactPage() {
                       <h3 className="font-heading font-bold text-sm text-[#2B1B0C]">{c.label}</h3>
                       <p className="font-body text-xs text-[#8A7A63] truncate">{c.detail}</p>
                     </div>
-                    <span className="flex-shrink-0 font-body text-[10px] font-bold uppercase tracking-widest text-[#9C5A26] group-hover:text-[#2B1B0C] transition-colors duration-300">
+                    <span className="flex-shrink-0 font-body text-xs font-bold uppercase tracking-widest text-[#9C5A26] group-hover:text-[#2B1B0C] transition-colors duration-300">
                       {c.cta} →
                     </span>
                   </Link>

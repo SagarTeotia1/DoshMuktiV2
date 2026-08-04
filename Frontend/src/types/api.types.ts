@@ -29,6 +29,11 @@ export const productSchema = z.object({
   socialProofText: z.string().nullable(),
   tags: z.array(z.string()).default([]),
   cashbackPercent: z.number().nullable(),
+  descriptionImages: z.array(z.object({ thumb: z.string(), card: z.string(), full: z.string() })).default([]),
+  howToUseVideoUrl: z.string().nullable(),
+  sidhiPrice: z.number().nullable(),
+  selfEnergizeInstructions: z.string().nullable(),
+  offers: z.array(z.object({ id: z.string(), title: z.string(), type: z.string() })).default([]),
   rating: z.object({ average: z.number(), count: z.number() }).default({ average: 0, count: 0 }),
   variants: z.array(productVariantSchema),
 });
@@ -78,8 +83,10 @@ export interface CheckoutResponse {
 export interface OrderTrackingResponse {
   orderNumber: string;
   status: string;
+  total: number;
   items: Array<{ variantSnapshot: { productName: string; sku: string }; quantity: number; priceAtPurchase: number }>;
   shipment: { delhiveryWaybill: string | null; status: string; trackingEvents: unknown[] } | null;
+  shippingAddress: { line1: string; line2?: string; city: string; state: string; pincode: string; country?: string };
   createdAt: string;
 }
 

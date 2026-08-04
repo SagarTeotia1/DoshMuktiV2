@@ -4,6 +4,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().default(4000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   FRONTEND_ORIGIN: z.string().url(),
+  ADMIN_ORIGIN: z.string().url(),
 
   DATABASE_URL: z.string().min(1),
   DIRECT_URL: z.string().min(1),

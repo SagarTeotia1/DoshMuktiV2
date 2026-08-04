@@ -7,8 +7,12 @@ import { z } from 'zod';
 import { Plus, X, Eye, EyeOff } from 'lucide-react';
 import { PURPOSE_IDS, PRODUCT_STATUSES } from '@/lib/constants';
 import type { Product } from '@/types/api.types';
+import { useOffers } from '@/hooks/use-offers';
+import { useCategories } from '@/hooks/use-categories';
 import { StagedImageUploader } from './StagedImageUploader';
 import { ProductPreview } from './ProductPreview';
+
+const NEW_CATEGORY = '__new__';
 
 const imageSchema = z.object({ thumb: z.string(), card: z.string(), full: z.string() });
 
@@ -30,6 +34,11 @@ const productFormSchema = z.object({
   howToWear: z.array(z.object({ text: z.string().min(1, 'Required') })).default([]),
   careInstructions: z.string().optional(),
   socialProofText: z.string().optional(),
+  descriptionImages: z.array(imageSchema).default([]),
+  howToUseVideoUrl: z.string().optional(),
+  sidhiPrice: z.coerce.number().min(0).default(0), // 0 = feature hidden, mapped to null on submit
+  selfEnergizeInstructions: z.string().optional(),
+  offerIds: z.array(z.string()).default([]),
 });
 
 type FormShape = z.infer<typeof productFormSchema>;
@@ -37,10 +46,11 @@ type FormShape = z.infer<typeof productFormSchema>;
 // howToWear is stored internally as {text}[] because react-hook-form's
 // useFieldArray requires array items to be objects — flattened to string[]
 // at the submit boundary so consumers/Backend only ever see string[].
-export type ProductFormValues = Omit<FormShape, 'howToWear' | 'cashbackPercent' | 'compareAtPrice'> & {
+export type ProductFormValues = Omit<FormShape, 'howToWear' | 'cashbackPercent' | 'compareAtPrice' | 'sidhiPrice'> & {
   howToWear: string[];
   cashbackPercent: number | null;
   compareAtPrice: number | null;
+  sidhiPrice: number | null;
 };
 
 const inputClass = 'w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none';
@@ -85,13 +95,24 @@ export function ProductForm({
       howToWear: defaultValues?.howToWear?.map((text) => ({ text })) ?? [],
       careInstructions: defaultValues?.careInstructions ?? '',
       socialProofText: defaultValues?.socialProofText ?? '',
+      descriptionImages: defaultValues?.descriptionImages ?? [],
+      howToUseVideoUrl: defaultValues?.howToUseVideoUrl ?? '',
+      sidhiPrice: defaultValues?.sidhiPrice ?? 0,
+      selfEnergizeInstructions: defaultValues?.selfEnergizeInstructions ?? '',
+      offerIds: defaultValues?.offers?.map((o) => o.id) ?? [],
     },
   });
 
+  const { data: offers } = useOffers();
+  const { data: categories } = useCategories();
+
   const selectedPurposes = watch('purpose');
   const selectedTags = watch('tags');
+  const selectedOfferIds = watch('offerIds');
+  const selectedCategory = watch('category');
   const previewValues = watch();
   const [tagInput, setTagInput] = useState('');
+  const [addingCategory, setAddingCategory] = useState(false);
 
   function togglePurpose(id: (typeof PURPOSE_IDS)[number]) {
     const current = selectedPurposes ?? [];
@@ -111,6 +132,11 @@ export function ProductForm({
     setValue('tags', (selectedTags ?? []).filter((t) => t !== tag));
   }
 
+  function toggleOffer(id: string) {
+    const current = selectedOfferIds ?? [];
+    setValue('offerIds', current.includes(id) ? current.filter((o) => o !== id) : [...current, id]);
+  }
+
   const benefitsArray = useFieldArray({ control, name: 'benefits' });
   const howToWearArray = useFieldArray({ control, name: 'howToWear' });
 
@@ -120,6 +146,7 @@ export function ProductForm({
       howToWear: values.howToWear.map((s) => s.text),
       cashbackPercent: values.cashbackPercent > 0 ? values.cashbackPercent : null,
       compareAtPrice: values.compareAtPrice > 0 ? values.compareAtPrice : null,
+      sidhiPrice: values.sidhiPrice > 0 ? values.sidhiPrice : null,
     });
   }
 
@@ -173,7 +200,44 @@ export function ProductForm({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-semibold text-slate-600 mb-1 block">Category</label>
-            <input {...register('category')} className={inputClass} />
+            {addingCategory ? (
+              <div className="flex gap-2">
+                <input {...register('category')} placeholder="New category name" className={inputClass} autoFocus />
+                {(categories?.length ?? 0) > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddingCategory(false);
+                      setValue('category', categories![0]!);
+                    }}
+                    className="flex-shrink-0 px-3 rounded-lg border border-slate-300 text-xs font-semibold text-slate-600 hover:border-slate-400 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            ) : (
+              <select
+                value={selectedCategory}
+                onChange={(e) => {
+                  if (e.target.value === NEW_CATEGORY) {
+                    setAddingCategory(true);
+                    setValue('category', '');
+                  } else {
+                    setValue('category', e.target.value);
+                  }
+                }}
+                className={inputClass}
+              >
+                {!selectedCategory && <option value="">Select category...</option>}
+                {categories?.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+                <option value={NEW_CATEGORY}>+ Add new category</option>
+              </select>
+            )}
             {errors.category && <p className="text-xs text-red-600 mt-1">{errors.category.message}</p>}
           </div>
           <div>
@@ -339,15 +403,73 @@ export function ProductForm({
           <textarea {...register('careInstructions')} rows={3} className={inputClass} />
         </div>
 
+        <div className="border-t border-slate-200 pt-4">
+          <label className="text-xs font-semibold text-slate-600 mb-1 block">How to Use Video URL (optional)</label>
+          <input {...register('howToUseVideoUrl')} placeholder="https://youtube.com/watch?v=..." className={inputClass} />
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-slate-600 mb-1 block">
+            Sidhi / Energizing Service Price (₹) <span className="text-slate-400 font-normal">(0 = hidden — creates a purchasable add-on when set)</span>
+          </label>
+          <input type="number" min={0} step={1} {...register('sidhiPrice')} className={`${inputClass} max-w-[140px]`} />
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-slate-600 mb-1 block">Self-Energize Instructions (optional)</label>
+          <textarea {...register('selfEnergizeInstructions')} rows={4} placeholder="Steps for the customer to energize this item themselves" className={inputClass} />
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-slate-600 mb-2 block">
+            Offers <span className="text-slate-400 font-normal">(enable which universal offers show on this product — manage the list on the Offers page)</span>
+          </label>
+          {!offers || offers.length === 0 ? (
+            <p className="text-xs text-slate-400">No offers created yet — add one on the Offers page first.</p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {offers.map((offer) => {
+                const linked = (selectedOfferIds ?? []).includes(offer.id);
+                if (!offer.isActive && !linked) return null;
+                return (
+                  <label
+                    key={offer.id}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
+                      linked ? 'border-[#9C5A26] bg-[#9C5A26]/5' : 'border-slate-200 hover:border-slate-300'
+                    } ${!offer.isActive ? 'opacity-60' : ''}`}
+                  >
+                    <input type="checkbox" checked={linked} onChange={() => toggleOffer(offer.id)} className="w-4 h-4 accent-[#9C5A26]" />
+                    <span className="text-sm text-slate-700">{offer.title}</span>
+                    {!offer.isActive && <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">(disabled)</span>}
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {!defaultValues && (
-          <div>
-            <label className="text-xs font-semibold text-slate-600 mb-2 block">Images</label>
-            <Controller
-              control={control}
-              name="images"
-              render={({ field }) => <StagedImageUploader images={field.value ?? []} onChange={field.onChange} />}
-            />
-          </div>
+          <>
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-2 block">Images</label>
+              <Controller
+                control={control}
+                name="images"
+                render={({ field }) => <StagedImageUploader images={field.value ?? []} onChange={field.onChange} />}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-2 block">
+                Description Photos <span className="text-slate-400 font-normal">(shown alongside the description on the product page)</span>
+              </label>
+              <Controller
+                control={control}
+                name="descriptionImages"
+                render={({ field }) => <StagedImageUploader images={field.value ?? []} onChange={field.onChange} />}
+              />
+            </div>
+          </>
         )}
 
         <button

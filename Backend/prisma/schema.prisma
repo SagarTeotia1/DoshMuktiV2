@@ -11,32 +11,75 @@ datasource db {
 // ─── Product ──────────────────────────────────────────────────────────────────
 
 model Product {
-  id          String           @id @default(cuid())
-  name        String
-  slug        String           @unique
-  description String           @db.Text
-  category    String
-  basePrice   Decimal          @db.Decimal(10, 2)
-  compareAtPrice Decimal?      @db.Decimal(10, 2)  // strikethrough "MRP" — null = no discount shown
-  images      Json             @default("[]")   // [{thumb,card,full}]
-  status      ProductStatus    @default(DRAFT)
-  purpose     String[]         @default([])     // ["love","wealth",...]
-  featured    Boolean          @default(false)
-  badge       String?                           // "Bestseller"|"New"|"Limited Edition"
-  benefits         Json    @default("[]")   // [{title, description}]
-  howToWear        Json    @default("[]")   // ["step 1", "step 2", ...]
-  careInstructions String? @db.Text
-  socialProofText  String?                  // "Loved by 15 lakh+ customers"
-  tags             String[]         @default([])  // ["100% Cashback in Wallet", "New", ...] — admin-managed display tags
-  cashbackPercent  Int?                            // % of paid price credited to wallet when order is marked PAID; null = no cashback
-  variants    ProductVariant[]
-  reviews     Review[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id                       String           @id @default(cuid())
+  name                     String
+  slug                     String           @unique
+  description              String           @db.Text
+  category                 String
+  basePrice                Decimal          @db.Decimal(10, 2)
+  compareAtPrice           Decimal?         @db.Decimal(10, 2) // strikethrough "MRP" — null = no discount shown
+  images                   Json             @default("[]") // [{thumb,card,full}]
+  status                   ProductStatus    @default(DRAFT)
+  purpose                  String[]         @default([]) // ["love","wealth",...]
+  featured                 Boolean          @default(false)
+  badge                    String? // "Bestseller"|"New"|"Limited Edition"
+  benefits                 Json             @default("[]") // [{title, description}]
+  howToWear                Json             @default("[]") // ["step 1", "step 2", ...]
+  careInstructions         String?          @db.Text
+  socialProofText          String? // "Loved by 15 lakh+ customers"
+  tags                     String[]         @default([]) // ["100% Cashback in Wallet", "New", ...] — admin-managed display tags
+  cashbackPercent          Int? // % of paid price credited to wallet when order is marked PAID; null = no cashback
+  descriptionImages        Json             @default("[]") // [{thumb,card,full}] — contextual photos shown alongside the description, same shape as `images`
+  howToUseVideoUrl         String? // YouTube/Vimeo/mp4 URL, shown in the "How to Use" section
+  sidhiPrice               Int? // ₹ price for the Sidhi/Energizing service add-on; null = feature hidden. Syncs to a "-SIDHI" ProductVariant — see products/service.ts
+  selfEnergizeInstructions String?          @db.Text // DIY energizing steps, shown as the "Energize It Yourself" tab
+  offers                   Offer[]          @relation("OfferProducts") // universal, admin-managed offers enabled on this product — see Offer model
+  freeItemOffers           Offer[]          @relation("OfferFreeProduct") // offers that ship this product for free — see Offer.freeProductId
+  variants                 ProductVariant[]
+  reviews                  Review[]
+  createdAt                DateTime         @default(now())
+  updatedAt                DateTime         @updatedAt
 
   @@index([status, category])
   @@index([status, featured])
   @@index([slug])
+}
+
+enum OfferType {
+  DISPLAY // pure marketing tag, no backend effect
+  FREE_ITEM // auto-ships Offer.freeProduct at ₹0 with the order
+  CASHBACK // credits wallet — sums with Product.cashbackPercent, doesn't replace it
+  DISCOUNT // reduces order total automatically, no coupon code needed
+}
+
+enum OfferDiscountType {
+  FLAT
+  PERCENT
+}
+
+// Universal, reusable offers (e.g. "100% Cashback on First Order") — created once,
+// enabled per-product via the Product.offers relation. Never delete, only isActive:false.
+model Offer {
+  id       String    @id @default(cuid())
+  title    String
+  type     OfferType @default(DISPLAY)
+  isActive Boolean   @default(true)
+  products Product[] @relation("OfferProducts")
+
+  cashbackPercent Int? // CASHBACK — % credited to wallet, summed with Product.cashbackPercent
+
+  discountType  OfferDiscountType? // DISCOUNT
+  discountValue Decimal?           @db.Decimal(10, 2)
+  maxDiscount   Decimal?           @db.Decimal(10, 2) // cap for PERCENT, mirrors Coupon.maxDiscount
+
+  freeProductId String? // FREE_ITEM — which product ships free
+  freeProduct   Product? @relation("OfferFreeProduct", fields: [freeProductId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([type])
 }
 
 enum ProductStatus {
@@ -50,11 +93,11 @@ model ProductVariant {
   productId         String
   product           Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   sku               String          @unique
-  attributes        Json            @default("{}")   // {size,color,material}
+  attributes        Json            @default("{}") // {size,color,material}
   priceOverride     Decimal?        @db.Decimal(10, 2)
   stockQuantity     Int             @default(0)
   lowStockThreshold Int             @default(5)
-  weight            Int             @default(500)    // grams
+  weight            Int             @default(500) // grams
   isActive          Boolean         @default(true)
   stockMovements    StockMovement[]
   orderItems        OrderItem[]
@@ -93,7 +136,7 @@ enum StockMovementReason {
 // Saved address keyed on SHA-256(phone) — never store raw phone in cache
 model CustomerAddress {
   id        String   @id @default(cuid())
-  phoneHash String   // SHA-256 of normalized phone (+91XXXXXXXXXX)
+  phoneHash String // SHA-256 of normalized phone (+91XXXXXXXXXX)
   name      String
   line1     String
   line2     String?
@@ -108,11 +151,25 @@ model CustomerAddress {
   @@index([phoneHash])
 }
 
+// Logged-in customer — created on first successful OTP verification.
+// Identity is the phone number; login is OTP-only, no password ever stored.
+model User {
+  id        String    @id @default(cuid())
+  phone     String    @unique // normalized +91XXXXXXXXXX
+  name      String
+  dob       DateTime?
+  orders    Order[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([phone])
+}
+
 // OTP state — cleaned up by cron after expiry
 model OtpVerification {
   id        String   @id @default(cuid())
-  phone     String   // normalized: +91XXXXXXXXXX
-  requestId String   // MSG91 request ID returned on send
+  phone     String // normalized: +91XXXXXXXXXX
+  requestId String // MSG91 request ID returned on send
   verified  Boolean  @default(false)
   expiresAt DateTime // 10 min from creation
   createdAt DateTime @default(now())
@@ -124,23 +181,25 @@ model OtpVerification {
 // ─── Order ───────────────────────────────────────────────────────────────────
 
 model OrderSequence {
-  date String @id  // YYYYMMDD
+  date String @id // YYYYMMDD
   seq  Int    @default(0)
 }
 
 model Order {
   id                   String           @id @default(cuid())
-  orderNumber          String           @unique    // DOSH-20240615-0042
+  orderNumber          String           @unique // DOSH-20240615-0042
+  userId               String? // logged-in customer this order belongs to — nullable for orders placed before accounts existed
+  user                 User?            @relation(fields: [userId], references: [id])
   customerName         String
-  customerPhone        String           // primary identifier
-  customerEmail        String?          // optional
-  customerDob          DateTime?        // optional — for birthday coupons
-  shippingAddress      Json             // {line1,line2?,city,state,pincode,country}
+  customerPhone        String // primary identifier
+  customerEmail        String? // optional
+  customerDob          DateTime? // optional — for birthday coupons
+  shippingAddress      Json // {line1,line2?,city,state,pincode,country}
   status               OrderStatus      @default(PENDING_PAYMENT)
   subtotal             Decimal          @db.Decimal(10, 2)
   shippingFee          Decimal          @db.Decimal(10, 2)
-  discountAmount       Decimal          @db.Decimal(10, 2) @default(0)
-  walletRedeemed       Decimal          @db.Decimal(10, 2) @default(0)
+  discountAmount       Decimal          @default(0) @db.Decimal(10, 2)
+  walletRedeemed       Decimal          @default(0) @db.Decimal(10, 2)
   total                Decimal          @db.Decimal(10, 2)
   couponId             String?
   coupon               Coupon?          @relation(fields: [couponId], references: [id])
@@ -159,6 +218,7 @@ model Order {
   @@index([orderNumber])
   @@index([reservedUntil])
   @@index([couponId])
+  @@index([userId])
 }
 
 enum OrderStatus {
@@ -180,7 +240,7 @@ model OrderItem {
   variant         ProductVariant @relation(fields: [variantId], references: [id])
   quantity        Int
   priceAtPurchase Decimal        @db.Decimal(10, 2)
-  variantSnapshot Json           // {sku,attributes,productName} — point-in-time
+  variantSnapshot Json // {sku,attributes,productName} — point-in-time
 
   @@index([orderId])
 }
@@ -231,7 +291,7 @@ model Shipment {
   order             Order          @relation(fields: [orderId], references: [id])
   delhiveryWaybill  String?
   status            ShipmentStatus @default(PENDING)
-  trackingEvents    Json           @default("[]")  // [{timestamp,status,location,description}]
+  trackingEvents    Json           @default("[]") // [{timestamp,status,location,description}]
   estimatedDelivery DateTime?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
@@ -256,11 +316,11 @@ model Coupon {
   id          String     @id @default(cuid())
   code        String     @unique
   type        CouponType
-  value       Decimal    @db.Decimal(10, 2)  // ₹ amount or % value
-  minOrder    Decimal?   @db.Decimal(10, 2)  // minimum order subtotal
-  maxUses     Int?                           // null = unlimited
+  value       Decimal    @db.Decimal(10, 2) // ₹ amount or % value
+  minOrder    Decimal?   @db.Decimal(10, 2) // minimum order subtotal
+  maxUses     Int? // null = unlimited
   usedCount   Int        @default(0)
-  maxDiscount Decimal?   @db.Decimal(10, 2)  // cap for PERCENT type
+  maxDiscount Decimal?   @db.Decimal(10, 2) // cap for PERCENT type
   expiresAt   DateTime?
   isActive    Boolean    @default(true)
   orders      Order[]
@@ -281,12 +341,12 @@ enum CouponType {
 // Append-only ledger — never UPDATE or DELETE
 model RewardPoint {
   id        String            @id @default(cuid())
-  phoneHash String            // SHA-256(+91XXXXXXXXXX)
-  orderId   String?           // null for manual grants/deductions
-  change    Int               // positive = earned, negative = redeemed/expired
-  balance   Int               // running total after this entry (denormalized)
+  phoneHash String // SHA-256(+91XXXXXXXXXX)
+  orderId   String? // null for manual grants/deductions
+  change    Int // positive = earned, negative = redeemed/expired
+  balance   Int // running total after this entry (denormalized)
   reason    RewardPointReason
-  expiresAt DateTime?         // earned points expire 12 months after earning
+  expiresAt DateTime? // earned points expire 12 months after earning
   createdAt DateTime          @default(now())
 
   @@index([phoneHash, createdAt])
@@ -295,12 +355,12 @@ model RewardPoint {
 }
 
 enum RewardPointReason {
-  ORDER_EARNED      // +points on paid order
-  ORDER_REDEEMED    // -points used at checkout
-  BIRTHDAY_BONUS    // +points on birthday
-  MANUAL_GRANT      // admin grant
-  MANUAL_DEDUCT     // admin correction
-  EXPIRED           // -points on expiry
+  ORDER_EARNED // +points on paid order
+  ORDER_REDEEMED // -points used at checkout
+  BIRTHDAY_BONUS // +points on birthday
+  MANUAL_GRANT // admin grant
+  MANUAL_DEDUCT // admin correction
+  EXPIRED // -points on expiry
 }
 
 // ─── Wallet ───────────────────────────────────────────────────────────────────
@@ -309,25 +369,25 @@ enum RewardPointReason {
 // separate from the points-based RewardPoint above. Keyed on SHA-256(phone), same
 // identity model as CustomerAddress/RewardPoint — no customer accounts exist yet.
 model WalletTransaction {
-  id        String              @id @default(cuid())
-  phoneHash String              // SHA-256 of normalized phone (+91XXXXXXXXXX)
-  orderId   String?             // order that earned/spent this — null for manual grants
-  change    Decimal             @db.Decimal(10, 2)  // positive = credited, negative = redeemed/expired
-  balance   Decimal             @db.Decimal(10, 2)  // running total after this entry (denormalized)
+  id        String                  @id @default(cuid())
+  phoneHash String // SHA-256 of normalized phone (+91XXXXXXXXXX)
+  orderId   String? // order that earned/spent this — null for manual grants
+  change    Decimal                 @db.Decimal(10, 2) // positive = credited, negative = redeemed/expired
+  balance   Decimal                 @db.Decimal(10, 2) // running total after this entry (denormalized)
   reason    WalletTransactionReason
   note      String?
-  createdAt DateTime            @default(now())
+  createdAt DateTime                @default(now())
 
   @@index([phoneHash, createdAt])
   @@index([orderId])
 }
 
 enum WalletTransactionReason {
-  CASHBACK_EARNED   // +credited when an order's items with cashbackPercent are marked PAID
-  REDEEMED          // -spent against an order total at checkout
+  CASHBACK_EARNED // +credited when an order's items with cashbackPercent are marked PAID
+  REDEEMED // -spent against an order total at checkout
   REDEMPTION_REVERSED // +order cancelled/refunded after redemption — reverses the spend
-  MANUAL_GRANT      // admin grant
-  MANUAL_DEDUCT     // admin correction
+  MANUAL_GRANT // admin grant
+  MANUAL_DEDUCT // admin correction
 }
 
 // ─── Reviews ────────────────────────────────────────────────────────────────
@@ -336,10 +396,10 @@ model Review {
   id            String       @id @default(cuid())
   productId     String
   product       Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
-  orderId       String       // verified-purchase link — review must come from a real order
+  orderId       String // verified-purchase link — review must come from a real order
   customerName  String
-  customerPhone String       // used only to verify the order match, never displayed
-  rating        Int          // 1-5
+  customerPhone String // used only to verify the order match, never displayed
+  rating        Int // 1-5
   title         String?
   body          String       @db.Text
   status        ReviewStatus @default(PENDING)

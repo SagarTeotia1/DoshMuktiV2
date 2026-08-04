@@ -1,55 +1,92 @@
 'use client';
 
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { PURPOSES, PRODUCT_SORTS } from '@/lib/constants';
+import { Heart, TrendingUp, Leaf, Trophy, Shield, Sparkles, Gift, SlidersHorizontal } from 'lucide-react';
+import { PURPOSES } from '@/lib/constants';
 
-function FilterRow({
-  label,
-  active,
-  options,
-  onSelect,
-}: {
+const ICONS = {
+  love: Heart,
+  wealth: TrendingUp,
+  health: Leaf,
+  success: Trophy,
+  protection: Shield,
+  clarity: Sparkles,
+  gifting: Gift,
+} as const;
+
+const GRADIENTS: Record<string, [string, string]> = {
+  love: ['#C97B63', '#8C4A36'],
+  wealth: ['#D4A64A', '#9C5A26'],
+  health: ['#8FA876', '#5C7245'],
+  success: ['#D4B24C', '#96731E'],
+  protection: ['#8570A6', '#5A4A78'],
+  clarity: ['#7FA3A0', '#4E6E6B'],
+  gifting: ['#C98F82', '#8C5648'],
+};
+
+interface CategoryThumb {
+  id: string;
   label: string;
-  active: string | null;
-  options: { id: string; label: string }[];
-  onSelect: (id: string | null) => void;
-}) {
+  image: string | null;
+}
+
+function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-      <span className="flex-shrink-0 font-body text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-[#8A7A63] sm:w-24">
-        {label}
-      </span>
-      <div className="flex flex-wrap gap-1.5 sm:gap-2">
-        <button
-          onClick={() => onSelect(null)}
-          className={`px-3 py-1.5 rounded-full border text-[10px] sm:text-xs font-bold uppercase tracking-wider font-body transition-all duration-200 flex-shrink-0 ${
-            !active ? 'bg-[#9C5A26] text-[#2B1B0C] border-[#2B1B0C]' : 'border-[#2B1B0C]/20 text-[#6B5539] hover:border-[#2B1B0C]'
-          }`}
-        >
-          All
-        </button>
-        {options.map((o) => (
-          <button
-            key={o.id}
-            onClick={() => onSelect(o.id)}
-            className={`px-3 py-1.5 rounded-full border text-[10px] sm:text-xs font-bold uppercase tracking-wider font-body transition-all duration-200 flex-shrink-0 ${
-              active === o.id ? 'bg-[#9C5A26] text-[#2B1B0C] border-[#2B1B0C]' : 'border-[#2B1B0C]/20 text-[#6B5539] hover:border-[#2B1B0C]'
-            }`}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
+    <div className="pb-5 mb-5 border-b border-[#2B1B0C]/8 last:border-b-0 last:pb-0 last:mb-0">
+      <p className="font-body text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9C5A26] mb-3">{title}</p>
+      <div className="flex flex-col gap-0.5">{children}</div>
     </div>
   );
 }
 
-export function ShopFilters({ categories }: { categories: string[] }) {
+function FilterRow({
+  thumb,
+  label,
+  active,
+  onClick,
+}: {
+  thumb: React.ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`group flex items-center gap-2.5 rounded-full pl-1 pr-3 py-1 transition-colors duration-150 ${
+        active ? 'bg-gradient-to-r from-[#6B3D19] to-[#9C5A26]' : 'hover:bg-[#F6E4C2]/60'
+      }`}
+    >
+      <span
+        className={`relative w-8 h-8 flex-shrink-0 rounded-full overflow-hidden transition-all duration-200 ${
+          active ? 'ring-2 ring-[#FBF1DF] ring-offset-1 ring-offset-[#9C5A26]' : 'ring-1 ring-[#2B1B0C]/10 group-hover:ring-[#9C5A26]/50'
+        }`}
+      >
+        {thumb}
+      </span>
+      <span
+        className={`font-body text-[13px] font-medium text-left leading-tight ${
+          active ? 'text-[#FBF1DF]' : 'text-[#6B5539] group-hover:text-[#2B1B0C]'
+        }`}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
+const AllThumb = (
+  <span className="w-full h-full bg-gradient-to-br from-[#C9863F] to-[#6B3D19] flex items-center justify-center">
+    <span className="text-[8px] font-bold text-white uppercase">All</span>
+  </span>
+);
+
+export function ShopFilters({ categories }: { categories: CategoryThumb[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activePurpose = searchParams.get('purpose');
   const activeCategory = searchParams.get('category');
-  const activeSort = searchParams.get('sort') ?? 'newest';
 
   function setParam(key: string, value: string | null) {
     const params = new URLSearchParams(searchParams.toString());
@@ -59,40 +96,56 @@ export function ShopFilters({ categories }: { categories: string[] }) {
     router.push(`/shop?${params.toString()}`);
   }
 
-  const categoryOptions = categories.map((c) => ({ id: c, label: c }));
-
   return (
-    <div className="bg-white border border-[#2B1B0C] rounded-2xl p-4 sm:p-5 flex flex-col gap-4 mb-6 sm:mb-8">
-      <FilterRow
-        label="Intention"
-        active={activePurpose}
-        options={PURPOSES.map((p) => ({ id: p.id, label: p.label }))}
-        onSelect={(v) => setParam('purpose', v)}
-      />
+    <aside className="w-full rounded-2xl bg-[#F6E4C2]/35 border border-[#2B1B0C]/8 p-4">
+      <div className="hidden lg:flex items-center gap-1.5 mb-4">
+        <SlidersHorizontal className="w-3.5 h-3.5 text-[#2B1B0C]/70" strokeWidth={2} />
+        <p className="font-body text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2B1B0C]">Filter</p>
+      </div>
 
-      {categoryOptions.length > 0 && (
-        <>
-          <div className="h-px bg-[#2B1B0C]/8" />
-          <FilterRow label="Category" active={activeCategory} options={categoryOptions} onSelect={(v) => setParam('category', v)} />
-        </>
+      {categories.length > 0 && (
+        <FilterSection title="Category">
+          <FilterRow label="All" active={!activeCategory} onClick={() => setParam('category', null)} thumb={AllThumb} />
+          {categories.map((c) => (
+            <FilterRow
+              key={c.id}
+              label={c.label}
+              active={activeCategory === c.id}
+              onClick={() => setParam('category', activeCategory === c.id ? null : c.id)}
+              thumb={
+                c.image ? (
+                  <Image src={c.image} alt="" fill className="object-cover" sizes="32px" />
+                ) : (
+                  <span className="w-full h-full bg-[#F6E4C2] block" />
+                )
+              }
+            />
+          ))}
+        </FilterSection>
       )}
 
-      <div className="h-px bg-[#2B1B0C]/8" />
-
-      <div className="flex items-center justify-between sm:justify-end gap-3">
-        <span className="sm:hidden font-body text-[9px] font-bold uppercase tracking-[0.2em] text-[#8A7A63]">Sort</span>
-        <select
-          value={activeSort}
-          onChange={(e) => setParam('sort', e.target.value)}
-          className="bg-[#FBF1DF] border border-[#2B1B0C]/30 rounded-full px-4 py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider font-body focus:ring-2 focus:ring-[#9C5A26] focus:outline-none flex-shrink-0"
-        >
-          {PRODUCT_SORTS.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
+      <FilterSection title="Purpose">
+        {PURPOSES.map((p) => {
+          const Icon = ICONS[p.id as keyof typeof ICONS];
+          const [light, base] = GRADIENTS[p.id] ?? ['#C9863F', '#9C5A26'];
+          return (
+            <FilterRow
+              key={p.id}
+              label={p.label.split(' & ')[0]!}
+              active={activePurpose === p.id}
+              onClick={() => setParam('purpose', activePurpose === p.id ? null : p.id)}
+              thumb={
+                <span
+                  className="w-full h-full flex items-center justify-center"
+                  style={{ background: `radial-gradient(circle at 32% 28%, ${light}, ${base})` }}
+                >
+                  <Icon className="w-3.5 h-3.5 text-white/95" strokeWidth={1.5} />
+                </span>
+              }
+            />
+          );
+        })}
+      </FilterSection>
+    </aside>
   );
 }

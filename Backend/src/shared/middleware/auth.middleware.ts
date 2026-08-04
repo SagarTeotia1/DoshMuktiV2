@@ -9,6 +9,17 @@ export async function verifyAdmin(req: FastifyRequest, reply: FastifyReply) {
   }
 }
 
+export async function verifyCustomer(req: FastifyRequest, reply: FastifyReply) {
+  try {
+    await req.jwtVerify();
+  } catch {
+    return reply.code(401).send({ error: 'Unauthorized' });
+  }
+  if ((req.user as { role?: string }).role !== 'customer') {
+    return reply.code(401).send({ error: 'Unauthorized' });
+  }
+}
+
 // Stub for the future AI bot — not wired to any route yet. When the bot
 // ships, apply this to specific read-only routes only, never blanket access.
 export async function verifyServiceKey(req: FastifyRequest, reply: FastifyReply) {

@@ -8,6 +8,22 @@ export async function getOrderByNumber(orderNumber: string) {
   });
 }
 
+export async function listOrdersForUser(userId: string) {
+  return db.order.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    include: { items: true, payment: true, shipment: true },
+  });
+}
+
+export async function listOrdersByPhone(phone: string) {
+  return db.order.findMany({
+    where: { customerPhone: phone },
+    orderBy: { createdAt: 'desc' },
+    include: { items: true, payment: true, shipment: true },
+  });
+}
+
 export async function getOrderById(id: string) {
   return db.order.findUnique({
     where: { id },

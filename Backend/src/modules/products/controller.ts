@@ -15,6 +15,7 @@ import {
   getRelatedProducts,
   getFeaturedProducts,
   getDistinctCategories,
+  getDistinctCategoriesForAdmin,
   listProductsForAdmin,
   getProductByIdForAdmin,
   createProduct,
@@ -39,7 +40,7 @@ export async function getProductHandler(req: FastifyRequest, reply: FastifyReply
   const product = await getProductBySlug(parsed.data.slug);
   if (!product) return reply.code(404).send({ error: 'Product not found' });
 
-  const related = await getRelatedProducts(product.id, product.purpose, 4);
+  const related = await getRelatedProducts(product.id, product.purpose, 12);
   return reply.send({ product, related });
 }
 
@@ -52,6 +53,10 @@ export async function getCategoriesHandler(req: FastifyRequest, reply: FastifyRe
 }
 
 // ─── Admin ──────────────────────────────────────────────────────────────
+
+export async function getAdminCategoriesHandler(_req: FastifyRequest, reply: FastifyReply) {
+  return reply.send(await getDistinctCategoriesForAdmin());
+}
 
 export async function listAdminProductsHandler(req: FastifyRequest, reply: FastifyReply) {
   const parsed = listAdminProductsQuerySchema.safeParse(req.query);

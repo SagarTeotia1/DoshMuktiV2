@@ -54,7 +54,7 @@ export async function listProducts(query: ListProductsQuery) {
       orderBy,
       skip: (query.page - 1) * query.limit,
       take: query.limit,
-      include: { variants: { where: { isActive: true } } },
+      include: { variants: { where: { isActive: true } }, offers: { where: { isActive: true } } },
     }),
     db.product.count({ where }),
   ]);
@@ -72,7 +72,7 @@ export async function getProductBySlug(slug: string) {
 
   const product = await db.product.findFirst({
     where: { slug, status: 'ACTIVE' },
-    include: { variants: { where: { isActive: true } } },
+    include: { variants: { where: { isActive: true } }, offers: { where: { isActive: true } } },
   });
   if (!product) return null;
 
@@ -84,7 +84,7 @@ export async function getProductBySlug(slug: string) {
 export async function getRelatedProducts(productId: string, purpose: string[], limit = 4) {
   const products = await db.product.findMany({
     where: { status: 'ACTIVE', id: { not: productId }, purpose: { hasSome: purpose } },
-    include: { variants: { where: { isActive: true } } },
+    include: { variants: { where: { isActive: true } }, offers: { where: { isActive: true } } },
     take: limit,
   });
   return attachRatings(products);
@@ -107,6 +107,17 @@ export async function getDistinctCategories(): Promise<string[]> {
   return categories;
 }
 
+// Admin needs categories from DRAFT products too (to reuse when adding a new draft
+// in the same category), so no status filter — and no cache, admin traffic is low.
+export async function getDistinctCategoriesForAdmin(): Promise<string[]> {
+  const rows = await db.product.findMany({
+    select: { category: true },
+    distinct: ['category'],
+    orderBy: { category: 'asc' },
+  });
+  return rows.map((r) => r.category);
+}
+
 export async function getFeaturedProducts(limit = 4) {
   const key = cacheKeys.featuredProducts(limit);
   const cached = await redis.get(key);
@@ -114,7 +125,7 @@ export async function getFeaturedProducts(limit = 4) {
 
   const products = await db.product.findMany({
     where: { status: 'ACTIVE', featured: true },
-    include: { variants: { where: { isActive: true } } },
+    include: { variants: { where: { isActive: true } }, offers: { where: { isActive: true } } },
     orderBy: { createdAt: 'desc' },
     take: limit,
   });
@@ -137,7 +148,7 @@ export async function invalidateProductCaches() {
 import type { ListAdminProductsQuery, CreateProductInput, UpdateProductInput, CreateVariantInput, UpdateVariantInput } from './schema';
 
 export async function getProductByIdForAdmin(id: string) {
-  return db.product.findUnique({ where: { id }, include: { variants: true } });
+  return db.product.findUnique({ where: { id }, include: { variants: true, offers: true } });
 }
 
 export async function listProductsForAdmin(query: ListAdminProductsQuery) {
@@ -148,7 +159,7 @@ export async function listProductsForAdmin(query: ListAdminProductsQuery) {
       orderBy: { updatedAt: 'desc' },
       skip: (query.page - 1) * query.limit,
       take: query.limit,
-      include: { variants: true },
+      include: { variants: true, offers: true },
     }),
     db.product.count({ where }),
   ]);
@@ -162,18 +173,55 @@ export class DuplicateSlugError extends Error {
   }
 }
 
+// Keeps a real ProductVariant in sync with Product.sidhiPrice, so the Sidhi/Energizing
+// add-on flows through cart/checkout/stock like any other SKU — never delete, only deactivate,
+// matching the append-only convention used for StockMovement/RewardPoint/WalletTransaction.
+async function syncSidhiVariant(productId: string, sidhiPrice: number | null | undefined) {
+  if (sidhiPrice === undefined) return;
+  const existing = await db.productVariant.findFirst({
+    where: { productId, attributes: { path: ['type'], equals: 'service' } },
+  });
+
+  if (sidhiPrice === null) {
+    if (existing) await db.productVariant.update({ where: { id: existing.id }, data: { isActive: false } });
+    return;
+  }
+
+  if (existing) {
+    await db.productVariant.update({
+      where: { id: existing.id },
+      data: { priceOverride: sidhiPrice, isActive: true, stockQuantity: 999_999 },
+    });
+  } else {
+    await db.productVariant.create({
+      data: {
+        productId,
+        sku: `SIDHI-${productId}`,
+        attributes: { type: 'service', label: 'Sidhi / Energizing Service' },
+        priceOverride: sidhiPrice,
+        stockQuantity: 999_999,
+        isActive: true,
+      },
+    });
+  }
+}
+
 export async function createProduct(input: CreateProductInput) {
   const existing = await db.product.findUnique({ where: { slug: input.slug } });
   if (existing) throw new DuplicateSlugError(input.slug);
 
+  const { offerIds, ...rest } = input;
   const product = await db.product.create({
     data: {
-      ...input,
-      images: input.images as unknown as Prisma.InputJsonValue,
-      benefits: input.benefits as unknown as Prisma.InputJsonValue,
-      howToWear: input.howToWear as unknown as Prisma.InputJsonValue,
+      ...rest,
+      images: rest.images as unknown as Prisma.InputJsonValue,
+      benefits: rest.benefits as unknown as Prisma.InputJsonValue,
+      howToWear: rest.howToWear as unknown as Prisma.InputJsonValue,
+      descriptionImages: rest.descriptionImages as unknown as Prisma.InputJsonValue,
+      offers: offerIds && offerIds.length > 0 ? { connect: offerIds.map((id) => ({ id })) } : undefined,
     },
   });
+  await syncSidhiVariant(product.id, input.sidhiPrice);
   await invalidateProductCaches();
   return product;
 }
@@ -184,15 +232,20 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
     if (existing && existing.id !== id) throw new DuplicateSlugError(input.slug);
   }
 
+  const { offerIds, ...rest } = input;
   const product = await db.product.update({
     where: { id },
     data: {
-      ...input,
-      images: input.images as unknown as Prisma.InputJsonValue | undefined,
-      benefits: input.benefits as unknown as Prisma.InputJsonValue | undefined,
-      howToWear: input.howToWear as unknown as Prisma.InputJsonValue | undefined,
+      ...rest,
+      images: rest.images as unknown as Prisma.InputJsonValue | undefined,
+      benefits: rest.benefits as unknown as Prisma.InputJsonValue | undefined,
+      howToWear: rest.howToWear as unknown as Prisma.InputJsonValue | undefined,
+      descriptionImages: rest.descriptionImages as unknown as Prisma.InputJsonValue | undefined,
+      // set fully replaces the linked offers — matches a checkbox-picker UX in Admin
+      offers: offerIds !== undefined ? { set: offerIds.map((id) => ({ id })) } : undefined,
     },
   });
+  await syncSidhiVariant(product.id, input.sidhiPrice);
   await invalidateProductCaches();
   return product;
 }

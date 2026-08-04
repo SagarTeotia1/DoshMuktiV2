@@ -8,8 +8,10 @@ import { useCart } from '@/hooks/use-cart';
 import { usePincodeCheck } from '@/hooks/use-pincode-check';
 import { useWalletBalance } from '@/hooks/use-wallet-balance';
 import { useRazorpay } from '@/hooks/use-razorpay';
+import { useAuth } from '@/hooks/use-auth';
 import { api, ApiError } from '@/lib/api-client';
 import { getSessionId } from '@/lib/session';
+import { getToken } from '@/lib/auth';
 import { formatCurrency } from '@/lib/formatters';
 import { SHIPPING_FEE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
 import { trackBeginCheckout, trackPurchase } from '@/lib/firebase';
@@ -18,6 +20,12 @@ import type { RazorpayResponse } from '@/hooks/use-razorpay';
 
 const inputClass =
   'bg-[#FBF1DF] border border-[#2B1B0C]/25 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:border-[#9C5A26] focus:outline-none font-body placeholder:text-[#8A7A63] transition-colors';
+
+function normalizePhone(raw: string): string {
+  let digits = raw.replace(/\D/g, '');
+  if (digits.length > 10 && digits.startsWith('91')) digits = digits.slice(2);
+  return digits.slice(0, 10);
+}
 
 function StepLabel({ n, title }: { n: number; title: string }) {
   return (
@@ -34,6 +42,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { cart } = useCart();
   const { openCheckout, loading: rzpLoading } = useRazorpay();
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
   const [form, setForm] = useState({
@@ -47,7 +56,20 @@ export default function CheckoutPage() {
     pincode: '',
   });
 
-  const { isChecking, isServiceable } = usePincodeCheck(form.pincode);
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) router.push('/login?redirect=/checkout');
+  }, [authLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    setForm((f) => ({
+      ...f,
+      customerName: f.customerName || user.name,
+      customerPhone: f.customerPhone || user.phone.replace(/^\+91/, ''),
+    }));
+  }, [user]);
+
+  const { isChecking, serviceable } = usePincodeCheck(form.pincode);
   const { balance: walletBalance } = useWalletBalance(form.customerPhone);
   const [useWallet, setUseWallet] = useState(false);
 
@@ -70,7 +92,7 @@ export default function CheckoutPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (items.length === 0) return toast.error('Your cart is empty');
-    if (isServiceable === false) return toast.error('Sorry, we do not deliver to this pincode yet');
+    if (serviceable === false) return toast.error('Sorry, we do not deliver to this pincode yet');
 
     setSubmitting(true);
     try {
@@ -89,7 +111,10 @@ export default function CheckoutPage() {
         walletRedeem,
       };
 
-      const result = await api.post<CheckoutResponse>('/api/checkout', input, { 'x-session-id': getSessionId() });
+      const result = await api.post<CheckoutResponse>('/api/checkout', input, {
+        'x-session-id': getSessionId(),
+        Authorization: `Bearer ${getToken()}`,
+      });
 
       await openCheckout({
         amount: result.amount,
@@ -116,18 +141,22 @@ export default function CheckoutPage() {
     }
   }
 
+  if (authLoading || !isAuthenticated) {
+    return <div className="max-w-5xl mx-auto px-4 sm:px-6 py-24 text-center font-body text-sm text-[#8A7A63]">Loading...</div>;
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <div className="mb-8">
-        <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-[#9C5A26] mb-2">
+        <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#9C5A26] mb-2">
           Almost There
         </p>
-        <h1 className="font-heading text-3xl sm:text-4xl font-black tracking-tighter uppercase text-[#2B1B0C]">Checkout</h1>
+        <h1 className="font-heading font-black tracking-tight leading-[1.1] text-2xl sm:text-3xl text-[#2B1B0C]">Checkout</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="grid md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
         <div className="flex flex-col gap-8">
-          <div className="bg-white border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
+          <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
             <StepLabel n={1} title="Contact Details" />
             <div className="flex flex-col gap-3">
               <input
@@ -141,9 +170,10 @@ export default function CheckoutPage() {
                 <input
                   required
                   type="tel"
+                  inputMode="numeric"
                   placeholder="Mobile Number"
                   value={form.customerPhone}
-                  onChange={(e) => update('customerPhone', e.target.value)}
+                  onChange={(e) => update('customerPhone', normalizePhone(e.target.value))}
                   className={inputClass}
                 />
                 <input
@@ -157,7 +187,7 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          <div className="bg-white border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
+          <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
             <StepLabel n={2} title="Shipping Address" />
             <div className="flex flex-col gap-3">
               <input
@@ -198,18 +228,18 @@ export default function CheckoutPage() {
                   className={`${inputClass} w-full`}
                 />
                 {isChecking && <p className="text-xs text-[#8A7A63] mt-1.5 font-body">Checking serviceability...</p>}
-                {isServiceable === false && (
-                  <p className="text-xs text-red-600 mt-1.5 font-body font-semibold">Not serviceable at this pincode</p>
+                {serviceable === false && (
+                  <p className="text-xs text-brand-alert mt-1.5 font-body font-semibold">Not serviceable at this pincode</p>
                 )}
-                {isServiceable === true && (
-                  <p className="text-xs text-green-700 mt-1.5 font-body font-semibold">✓ Deliverable to this address</p>
+                {serviceable === true && (
+                  <p className="text-xs text-brand-success mt-1.5 font-body font-semibold">✓ Deliverable to this address</p>
                 )}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white border border-[#2B1B0C] rounded-2xl p-5 sm:p-6 h-fit flex flex-col gap-2 md:sticky md:top-20">
+        <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6 h-fit flex flex-col gap-2 md:sticky md:top-20">
           <h2 className="font-heading font-bold text-sm uppercase tracking-wide text-[#2B1B0C] mb-2">Order Summary</h2>
           <div className="flex flex-col gap-2 max-h-48 overflow-y-auto hide-scrollbar pr-1">
             {items.map((item) => (

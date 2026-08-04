@@ -40,7 +40,7 @@ export default function AboutPage() {
         <MandalaMotif className="pointer-events-none absolute -bottom-24 -right-24 w-72 h-72 text-[#C9863F]/[0.06]" />
 
         <Reveal className="relative max-w-3xl mx-auto px-6 text-center">
-          <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.3em] text-[#9C5A26] mb-3">
+          <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#9C5A26] mb-3">
             Our Story
           </p>
           <h1 className="font-heading text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-[#FBF1DF] leading-[1.05] mb-5">
@@ -57,7 +57,7 @@ export default function AboutPage() {
       <section className="py-14 sm:py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-12">
           <Reveal className="text-center mb-10 sm:mb-14">
-            <h2 className="font-heading text-2xl sm:text-3xl font-black tracking-tight text-[#2B1B0C]">
+            <h2 className="font-display font-bold tracking-tight leading-tight text-2xl sm:text-3xl text-[#2B1B0C]">
               What We Stand For
             </h2>
           </Reveal>
@@ -86,7 +86,7 @@ export default function AboutPage() {
 
       <section className="bg-[#F6E4C2]/50 py-12 sm:py-16">
         <Reveal className="max-w-2xl mx-auto px-6 text-center">
-          <h2 className="font-heading text-2xl sm:text-3xl font-black tracking-tight text-[#2B1B0C] mb-3">
+          <h2 className="font-display font-bold tracking-tight leading-tight text-2xl sm:text-3xl text-[#2B1B0C] mb-3">
             Ready To Find What You Seek?
           </h2>
           <p className="font-body text-sm text-[#6B5539] leading-relaxed mb-6">

@@ -40,6 +40,11 @@ export const createProductSchema = z.object({
   socialProofText: z.string().max(100).optional().nullable(),
   tags: z.array(z.string().min(1).max(40)).max(6).default([]),
   cashbackPercent: z.number().int().min(0).max(100).nullable().optional(),
+  descriptionImages: z.array(z.object({ thumb: z.string(), card: z.string(), full: z.string() })).default([]),
+  howToUseVideoUrl: z.string().url().max(500).nullable().optional(),
+  sidhiPrice: z.number().int().positive().max(999999).nullable().optional(),
+  selfEnergizeInstructions: z.string().max(5000).nullable().optional(),
+  offerIds: z.array(z.string()).default([]),
 });
 
 export const updateProductSchema = createProductSchema.partial().extend({

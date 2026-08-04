@@ -11,7 +11,7 @@ export default async function CheckoutSuccessPage({
   return (
     <div className="max-w-lg mx-auto px-4 py-20 text-center">
       <CheckCircle2 className="w-16 h-16 text-[#9C5A26] mx-auto mb-6" />
-      <h1 className="font-heading text-2xl sm:text-3xl font-black uppercase tracking-tighter text-[#2B1B0C] mb-3">Order Confirmed</h1>
+      <h1 className="font-heading font-black tracking-tight leading-tight text-2xl sm:text-3xl text-[#2B1B0C] mb-3">Order Confirmed</h1>
       {orderNumber && (
         <p className="font-body text-sm text-[#6B5539] mb-1">
           Order <span className="font-bold text-[#2B1B0C]">{orderNumber}</span>
