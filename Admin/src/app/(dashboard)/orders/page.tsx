@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Topbar } from '@/components/layout/Topbar';
@@ -20,6 +20,14 @@ const columns: ColumnDef<Order, unknown>[] = [
 ];
 
 export default function OrdersPage() {
+  return (
+    <Suspense fallback={<p className="text-sm text-slate-400 py-8 text-center">Loading...</p>}>
+      <OrdersPageContent />
+    </Suspense>
+  );
+}
+
+function OrdersPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState(searchParams.get('status') ?? '');
