@@ -22,11 +22,15 @@ echo "[entrypoint] Starting Admin on :3001"
 (cd /app/admin && PORT=3001 HOSTNAME=0.0.0.0 node server.js) &
 ADMIN_PID=$!
 
-# If any of the three Node processes dies, bring the whole container down so
-# the orchestrator (systemd / docker restart policy) restarts it cleanly —
-# a silently-half-dead container is worse than a visibly failed one.
-trap 'kill $BACKEND_PID $FRONTEND_PID $ADMIN_PID 2>/dev/null' EXIT
-( wait -n $BACKEND_PID $FRONTEND_PID $ADMIN_PID; echo "[entrypoint] A service exited — shutting down"; kill 0 ) &
-
 echo "[entrypoint] Starting nginx"
-exec nginx -g 'daemon off;'
+nginx -g 'daemon off;' &
+NGINX_PID=$!
+
+# If any of the four processes dies, bring the whole container down so the
+# orchestrator (systemd / docker restart policy) restarts it cleanly — a
+# silently-half-dead container is worse than a visibly failed one. wait -n
+# must run in this shell (not a backgrounded subshell) since only direct
+# children of this shell can be waited on.
+trap 'kill $BACKEND_PID $FRONTEND_PID $ADMIN_PID $NGINX_PID 2>/dev/null' EXIT
+wait -n $BACKEND_PID $FRONTEND_PID $ADMIN_PID $NGINX_PID
+echo "[entrypoint] A service exited — shutting down"
