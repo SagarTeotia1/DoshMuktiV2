@@ -55,6 +55,7 @@ export function HeroCarousel() {
   }, [active, paused, next]);
 
   const slide = SLIDES[active];
+  if (!slide) return null;
 
   return (
     <section
