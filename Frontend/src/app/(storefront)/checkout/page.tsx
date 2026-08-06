@@ -15,11 +15,21 @@ import { getToken } from '@/lib/auth';
 import { formatCurrency } from '@/lib/formatters';
 import { SHIPPING_FEE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
 import { trackBeginCheckout, trackPurchase } from '@/lib/firebase';
-import type { CheckoutInput, CheckoutResponse } from '@/types/api.types';
+import type { CheckoutInput, CheckoutResponse, CouponPreviewResponse } from '@/types/api.types';
 import type { RazorpayResponse } from '@/hooks/use-razorpay';
 
 const inputClass =
   'bg-[#FBF1DF] border border-[#2B1B0C]/25 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:border-[#9C5A26] focus:outline-none font-body placeholder:text-[#8A7A63] transition-colors';
+
+const COUPON_ERROR_CODES = new Set([
+  'COUPON_NOT_FOUND',
+  'COUPON_INACTIVE',
+  'COUPON_EXPIRED',
+  'COUPON_USAGE_LIMIT',
+  'COUPON_MIN_ORDER',
+  'COUPON_BIRTHDAY_INELIGIBLE',
+  'COUPON_EXHAUSTED',
+]);
 
 function normalizePhone(raw: string): string {
   let digits = raw.replace(/\D/g, '');
@@ -73,13 +83,54 @@ export default function CheckoutPage() {
   const { balance: walletBalance } = useWalletBalance(form.customerPhone);
   const [useWallet, setUseWallet] = useState(false);
 
+  const [couponInput, setCouponInput] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null);
+
   const items = cart?.items ?? [];
+  const checkoutItems = items.map((i) => ({ variantId: i.variantId, quantity: i.quantity }));
   const subtotal = cart?.subtotal ?? 0;
-  const shippingFee = subtotal >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE;
-  const preRedeemTotal = subtotal + shippingFee;
+  // Backend-computed — same resolution path checkout itself uses (see cart/service.ts's
+  // computeCartPricing), so this can never drift from what actually gets charged. Previously
+  // this page computed shippingFee locally and never subtracted AUTO_APPLIED offer discounts
+  // at all — the Razorpay charge was always correct, but the customer never saw the price
+  // move before paying, which is exactly the "total isn't going down" gap this closes.
+  const shippingFee = cart?.shippingFee ?? (subtotal >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE);
+  const autoAppliedDiscount = cart?.autoAppliedDiscount ?? 0;
+  const preRedeemTotal = subtotal + shippingFee - autoAppliedDiscount;
   // Razorpay requires a non-zero payable amount — never let wallet cover the full total.
   const walletRedeem = useWallet && walletBalance ? Math.min(walletBalance, Math.max(preRedeemTotal - 1, 0)) : 0;
-  const total = preRedeemTotal - walletRedeem;
+  const couponDiscount = appliedCoupon?.discountAmount ?? 0;
+  const total = Math.max(preRedeemTotal - walletRedeem - couponDiscount, 0);
+
+  async function handleApplyCoupon() {
+    const code = couponInput.trim();
+    if (!code || items.length === 0) return;
+    setCouponLoading(true);
+    setCouponError(null);
+    try {
+      const result = await api.post<CouponPreviewResponse>('/api/coupon/preview', { code, items: checkoutItems });
+      if (result.valid) {
+        setAppliedCoupon({ code, discountAmount: result.discountAmount });
+        setCouponError(null);
+      } else {
+        setAppliedCoupon(null);
+        setCouponError(result.error);
+      }
+    } catch (err) {
+      setAppliedCoupon(null);
+      setCouponError(err instanceof ApiError ? err.body.error : 'Something went wrong. Please try again.');
+    } finally {
+      setCouponLoading(false);
+    }
+  }
+
+  function handleRemoveCoupon() {
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponError(null);
+  }
 
   useEffect(() => {
     if (items.length > 0) trackBeginCheckout(total, items.length);
@@ -107,8 +158,9 @@ export default function CheckoutPage() {
           state: form.state,
           pincode: form.pincode,
         },
-        items: items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
+        items: checkoutItems,
         walletRedeem,
+        ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
       };
 
       const result = await api.post<CheckoutResponse>('/api/checkout', input, {
@@ -134,6 +186,10 @@ export default function CheckoutPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(err.body.error);
+        if (err.body.code && COUPON_ERROR_CODES.has(err.body.code)) {
+          setAppliedCoupon(null);
+          setCouponInput('');
+        }
       } else {
         toast.error('Something went wrong. Please try again.');
       }
@@ -250,6 +306,15 @@ export default function CheckoutPage() {
                 <span className="flex-shrink-0">{formatCurrency(item.price * item.quantity)}</span>
               </div>
             ))}
+            {(cart?.freeItems ?? []).map((item) => (
+              <div key={item.variantId} className="flex justify-between font-body text-xs text-[#9C5A26] font-semibold">
+                <span className="truncate pr-2">
+                  🎁 {item.productName}
+                  {item.quantity > 1 ? ` × ${item.quantity}` : ''}
+                </span>
+                <span className="flex-shrink-0">FREE</span>
+              </div>
+            ))}
           </div>
           <div className="flex justify-between font-body text-sm text-[#6B5539] pt-3 border-t border-[#2B1B0C]/10">
             <span>Subtotal</span>
@@ -259,6 +324,12 @@ export default function CheckoutPage() {
             <span>Shipping</span>
             <span>{shippingFee === 0 ? 'Free' : formatCurrency(shippingFee)}</span>
           </div>
+          {autoAppliedDiscount > 0 && (
+            <div className="flex justify-between font-body text-sm text-[#9C5A26] font-semibold">
+              <span>Offer Discount</span>
+              <span>−{formatCurrency(autoAppliedDiscount)}</span>
+            </div>
+          )}
 
           {!!walletBalance && walletBalance > 0 && (
             <label className="flex items-center justify-between gap-2 py-2 border-t border-[#2B1B0C]/10 cursor-pointer">
@@ -278,6 +349,51 @@ export default function CheckoutPage() {
             <div className="flex justify-between font-body text-sm text-[#9C5A26] font-semibold">
               <span>Wallet Redeemed</span>
               <span>−{formatCurrency(walletRedeem)}</span>
+            </div>
+          )}
+
+          {!appliedCoupon ? (
+            <div className="flex flex-col gap-1.5 py-2 border-t border-[#2B1B0C]/10">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Have a coupon code?"
+                  value={couponInput}
+                  onChange={(e) => {
+                    setCouponInput(e.target.value.toUpperCase());
+                    setCouponError(null);
+                  }}
+                  className={`${inputClass} flex-1 !px-3 !py-2 text-xs uppercase`}
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyCoupon}
+                  disabled={couponLoading || !couponInput.trim()}
+                  className="flex-shrink-0 font-body font-bold text-xs uppercase tracking-wide text-[#9C5A26] border border-[#9C5A26] rounded-full px-4 py-2.5 hover:bg-[#9C5A26] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {couponLoading ? 'Applying...' : 'Apply'}
+                </button>
+              </div>
+              {couponError && <p className="text-xs text-brand-alert font-body font-semibold">{couponError}</p>}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2 py-2 border-t border-[#2B1B0C]/10">
+              <span className="font-body text-sm text-[#6B5539]">
+                Coupon <span className="font-bold text-[#2B1B0C]">{appliedCoupon.code}</span> applied
+              </span>
+              <button
+                type="button"
+                onClick={handleRemoveCoupon}
+                className="flex-shrink-0 font-body text-xs font-bold uppercase tracking-wide text-[#8A7A63] hover:text-brand-alert transition-colors"
+              >
+                Remove
+              </button>
+            </div>
+          )}
+          {couponDiscount > 0 && (
+            <div className="flex justify-between font-body text-sm text-[#9C5A26] font-semibold">
+              <span>Coupon Discount</span>
+              <span>−{formatCurrency(couponDiscount)}</span>
             </div>
           )}
 

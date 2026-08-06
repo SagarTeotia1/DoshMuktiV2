@@ -3,7 +3,21 @@ import type { Prisma } from '@prisma/client';
 import { db } from '../../shared/db/client';
 import { redis } from '../../shared/cache/client';
 import { cacheKeys, CACHE_TTL } from '../../shared/cache/keys';
+import { attachApplicableOffers, type OfferWithCoupon } from '../offers/service';
 import type { ListProductsQuery } from './schema';
+
+// Offers are no longer a plain Prisma relation include — CATEGORY/ALL_PRODUCTS-scoped
+// offers apply without an explicit product link, so every storefront/admin read that
+// used to `include: { offers: { where: { isActive: true } } }` now fetches products
+// without `offers` and merges the scope-aware result from offers/service.ts's
+// attachApplicableOffers on top, keyed by product id. Response shape is unchanged —
+// callers still see `product.offers: Offer[]`, now widened to OfferWithCoupon[] so a
+// COUPON_BASED offer's `coupon.code` and any set `minOrderValue` reach the storefront.
+async function withOffers<T extends { id: string; category: string }>(products: T[]): Promise<Array<T & { offers: OfferWithCoupon[] }>> {
+  if (products.length === 0) return [];
+  const byProduct = await attachApplicableOffers(products);
+  return products.map((p) => ({ ...p, offers: byProduct.get(p.id) ?? [] }));
+}
 
 type ProductWithVariants = Prisma.ProductGetPayload<{ include: { variants: { where: { isActive: true } } } }>;
 type ProductWithRating = ProductWithVariants & { rating: { average: number; count: number } };
@@ -54,12 +68,13 @@ export async function listProducts(query: ListProductsQuery) {
       orderBy,
       skip: (query.page - 1) * query.limit,
       take: query.limit,
-      include: { variants: { where: { isActive: true } }, offers: { where: { isActive: true } } },
+      include: { variants: { where: { isActive: true } } },
     }),
     db.product.count({ where }),
   ]);
 
-  const rated = await attachRatings(products);
+  const withOffersApplied = await withOffers(products);
+  const rated = await attachRatings(withOffersApplied);
   const result = { products: rated, total, pages: Math.ceil(total / query.limit), page: query.page };
   await redis.set(key, result, { ex: CACHE_TTL.PRODUCTS_LIST });
   return result;
@@ -72,11 +87,14 @@ export async function getProductBySlug(slug: string) {
 
   const product = await db.product.findFirst({
     where: { slug, status: 'ACTIVE' },
-    include: { variants: { where: { isActive: true } }, offers: { where: { isActive: true } } },
+    include: { variants: { where: { isActive: true } } },
   });
   if (!product) return null;
 
-  const [rated] = await attachRatings([product]);
+  const [withOffersApplied] = await withOffers([product]);
+  // noUncheckedIndexedAccess makes this destructure `T | undefined`, but the input array
+  // always has exactly one element so the output always does too — safe to assert.
+  const [rated] = await attachRatings([withOffersApplied!]);
   await redis.set(key, rated, { ex: CACHE_TTL.PRODUCT_DETAIL });
   return rated;
 }
@@ -84,10 +102,11 @@ export async function getProductBySlug(slug: string) {
 export async function getRelatedProducts(productId: string, purpose: string[], limit = 4) {
   const products = await db.product.findMany({
     where: { status: 'ACTIVE', id: { not: productId }, purpose: { hasSome: purpose } },
-    include: { variants: { where: { isActive: true } }, offers: { where: { isActive: true } } },
+    include: { variants: { where: { isActive: true } } },
     take: limit,
   });
-  return attachRatings(products);
+  const withOffersApplied = await withOffers(products);
+  return attachRatings(withOffersApplied);
 }
 
 export async function getDistinctCategories(): Promise<string[]> {
@@ -125,14 +144,25 @@ export async function getFeaturedProducts(limit = 4) {
 
   const products = await db.product.findMany({
     where: { status: 'ACTIVE', featured: true },
-    include: { variants: { where: { isActive: true } }, offers: { where: { isActive: true } } },
+    include: { variants: { where: { isActive: true } } },
     orderBy: { createdAt: 'desc' },
     take: limit,
   });
 
-  const rated = await attachRatings(products);
+  const withOffersApplied = await withOffers(products);
+  const rated = await attachRatings(withOffersApplied);
   await redis.set(key, rated, { ex: CACHE_TTL.FEATURED });
   return rated;
+}
+
+// Reusable "which variant ships" rule: active variants of a product, richest stock
+// first. Used by the storefront's own display logic and by offers/rewards/free-gift.ts
+// to resolve which variant of a FREE_GIFT product to actually reserve/ship.
+export async function getActiveVariantsSortedByStock(productId: string) {
+  return db.productVariant.findMany({
+    where: { productId, isActive: true },
+    orderBy: { stockQuantity: 'desc' },
+  });
 }
 
 // Called by inventory/product admin services after any write — not exposed as a route
@@ -147,8 +177,21 @@ export async function invalidateProductCaches() {
 
 import type { ListAdminProductsQuery, CreateProductInput, UpdateProductInput, CreateVariantInput, UpdateVariantInput } from './schema';
 
+// Admin reads intentionally do NOT filter offers by isActive (unlike the storefront
+// reads above) — an admin editing a product should see every offer that would apply to
+// it, archived ones included — same scope-aware resolution via attachApplicableOffers,
+// just with includeInactive so nothing routes around the shared function.
+async function withAllOffers<T extends { id: string; category: string }>(products: T[]): Promise<Array<T & { offers: OfferWithCoupon[] }>> {
+  if (products.length === 0) return [];
+  const byProduct = await attachApplicableOffers(products, { includeInactive: true });
+  return products.map((p) => ({ ...p, offers: byProduct.get(p.id) ?? [] }));
+}
+
 export async function getProductByIdForAdmin(id: string) {
-  return db.product.findUnique({ where: { id }, include: { variants: true, offers: true } });
+  const product = await db.product.findUnique({ where: { id }, include: { variants: true } });
+  if (!product) return null;
+  const [withOffersApplied] = await withAllOffers([product]);
+  return withOffersApplied;
 }
 
 export async function listProductsForAdmin(query: ListAdminProductsQuery) {
@@ -159,11 +202,12 @@ export async function listProductsForAdmin(query: ListAdminProductsQuery) {
       orderBy: { updatedAt: 'desc' },
       skip: (query.page - 1) * query.limit,
       take: query.limit,
-      include: { variants: true, offers: true },
+      include: { variants: true },
     }),
     db.product.count({ where }),
   ]);
-  return { products, total, pages: Math.ceil(total / query.limit), page: query.page };
+  const withOffersApplied = await withAllOffers(products);
+  return { products: withOffersApplied, total, pages: Math.ceil(total / query.limit), page: query.page };
 }
 
 export class DuplicateSlugError extends Error {

@@ -1,204 +1,397 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Plus } from 'lucide-react';
+import { Plus, Copy, Pencil, Archive, ArchiveRestore } from 'lucide-react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Topbar } from '@/components/layout/Topbar';
-import { useOffers, useCreateOffer, useUpdateOffer, type CreateOfferInput } from '@/hooks/use-offers';
-import { useProducts } from '@/hooks/use-products';
+import { DataTable } from '@/components/ui/DataTable';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Drawer } from '@/components/ui/Drawer';
+import { OfferForm } from '@/components/offers/OfferForm';
+import {
+  useOffers,
+  useCreateOffer,
+  useUpdateOffer,
+  useDuplicateOffer,
+  type CreateOfferInput,
+  type UpdateOfferInput,
+} from '@/hooks/use-offers';
 import { formatDate } from '@/lib/utils';
 import { ApiError } from '@/lib/api-client';
-import type { Offer } from '@/types/api.types';
+import type { Offer, OfferBehavior, OfferReward, OfferScope } from '@/types/api.types';
 
-const TYPES: Array<{ value: Offer['type']; label: string }> = [
-  { value: 'DISPLAY', label: 'Display only (tag)' },
-  { value: 'FREE_ITEM', label: 'Free item' },
-  { value: 'CASHBACK', label: 'Cashback' },
-  { value: 'DISCOUNT', label: 'Discount' },
+const PAGE_SIZE = 20;
+
+const BEHAVIOR_OPTIONS: Array<{ value: OfferBehavior; label: string }> = [
+  { value: 'DISPLAY_ONLY', label: 'Display Only' },
+  { value: 'AUTO_APPLIED', label: 'Auto Applied' },
+  { value: 'COUPON_BASED', label: 'Coupon Based' },
 ];
 
-const inputClass = 'w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none';
+const REWARD_OPTIONS: Array<{ value: OfferReward; label: string }> = [
+  { value: 'DISPLAY_MESSAGE', label: 'Display Message' },
+  { value: 'PERCENTAGE_DISCOUNT', label: 'Percentage Discount' },
+  { value: 'FLAT_DISCOUNT', label: 'Flat Discount' },
+  { value: 'CASHBACK', label: 'Cashback' },
+  { value: 'FREE_GIFT', label: 'Free Gift' },
+  { value: 'BUY_X_GET_Y', label: 'Buy X Get Y' },
+  { value: 'FREE_SHIPPING', label: 'Free Shipping' },
+];
 
-const TYPE_BADGE: Record<Offer['type'], string> = {
-  DISPLAY: 'bg-slate-100 text-slate-600',
-  FREE_ITEM: 'bg-emerald-50 text-emerald-700',
-  CASHBACK: 'bg-[#9C5A26]/10 text-[#6B3D19]',
-  DISCOUNT: 'bg-blue-50 text-blue-700',
+const BEHAVIOR_BADGE: Record<OfferBehavior, string> = {
+  DISPLAY_ONLY: 'bg-slate-100 text-slate-600',
+  AUTO_APPLIED: 'bg-emerald-50 text-emerald-700',
+  COUPON_BASED: 'bg-blue-50 text-blue-700',
 };
 
+const REWARD_BADGE: Record<OfferReward, string> = {
+  DISPLAY_MESSAGE: 'bg-slate-100 text-slate-600',
+  PERCENTAGE_DISCOUNT: 'bg-[#9C5A26]/10 text-[#6B3D19]',
+  FLAT_DISCOUNT: 'bg-[#9C5A26]/10 text-[#6B3D19]',
+  CASHBACK: 'bg-amber-50 text-amber-700',
+  FREE_GIFT: 'bg-emerald-50 text-emerald-700',
+  BUY_X_GET_Y: 'bg-indigo-50 text-indigo-700',
+  FREE_SHIPPING: 'bg-sky-50 text-sky-700',
+};
+
+const SCOPE_OPTIONS: Array<{ value: OfferScope; label: string }> = [
+  { value: 'SPECIFIC_PRODUCTS', label: 'Specific Products' },
+  { value: 'CATEGORY', label: 'Category' },
+  { value: 'ALL_PRODUCTS', label: 'All Products' },
+];
+
+const SCOPE_BADGE: Record<OfferScope, string> = {
+  SPECIFIC_PRODUCTS: 'bg-slate-100 text-slate-600',
+  CATEGORY: 'bg-violet-50 text-violet-700',
+  ALL_PRODUCTS: 'bg-rose-50 text-rose-700',
+};
+
+const behaviorLabel = (b: OfferBehavior) => BEHAVIOR_OPTIONS.find((o) => o.value === b)?.label ?? b;
+const rewardLabel = (r: OfferReward) => REWARD_OPTIONS.find((o) => o.value === r)?.label ?? r;
+const scopeLabel = (s: OfferScope) => SCOPE_OPTIONS.find((o) => o.value === s)?.label ?? s;
+
+function productUsageText(offer: Offer): string {
+  if (offer.scope === 'ALL_PRODUCTS') return `All ${offer.productCount} products`;
+  if (offer.scope === 'CATEGORY') return `${offer.productCount} in ${offer.category}`;
+  return `Used on ${offer.productCount} products`;
+}
+
+const inputClass = 'bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none';
+
+type DrawerState = { mode: 'create' } | { mode: 'edit'; offer: Offer } | null;
+
 export default function OffersPage() {
-  const { data: offers, isLoading } = useOffers();
-  const { data: products } = useProducts('ACTIVE');
+  const [search, setSearch] = useState('');
+  const [behavior, setBehavior] = useState<OfferBehavior | ''>('');
+  const [reward, setReward] = useState<OfferReward | ''>('');
+  const [status, setStatus] = useState<'active' | 'archived' | ''>('');
+  const [page, setPage] = useState(1);
+  const [drawer, setDrawer] = useState<DrawerState>(null);
+  const [archiveTarget, setArchiveTarget] = useState<Offer | null>(null);
+
+  const { data, isLoading } = useOffers({
+    search: search || undefined,
+    behavior: behavior || undefined,
+    reward: reward || undefined,
+    status: status || undefined,
+    page,
+    pageSize: PAGE_SIZE,
+  });
+
   const createOffer = useCreateOffer();
   const updateOffer = useUpdateOffer();
+  const duplicateOffer = useDuplicateOffer();
 
-  const [title, setTitle] = useState('');
-  const [type, setType] = useState<Offer['type']>('DISPLAY');
-  const [cashbackPercent, setCashbackPercent] = useState(0);
-  const [discountType, setDiscountType] = useState<'FLAT' | 'PERCENT'>('PERCENT');
-  const [discountValue, setDiscountValue] = useState(0);
-  const [maxDiscount, setMaxDiscount] = useState(0);
-  const [freeProductId, setFreeProductId] = useState('');
+  const totalPages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
 
-  function resetForm() {
-    setTitle('');
-    setType('DISPLAY');
-    setCashbackPercent(0);
-    setDiscountType('PERCENT');
-    setDiscountValue(0);
-    setMaxDiscount(0);
-    setFreeProductId('');
-  }
-
-  function handleCreate() {
-    const value = title.trim();
-    if (!value) return;
-
-    const input: CreateOfferInput = { title: value, type };
-    if (type === 'CASHBACK') input.cashbackPercent = cashbackPercent;
-    if (type === 'DISCOUNT') {
-      input.discountType = discountType;
-      input.discountValue = discountValue;
-      if (maxDiscount > 0) input.maxDiscount = maxDiscount;
-    }
-    if (type === 'FREE_ITEM') input.freeProductId = freeProductId || null;
-
-    createOffer.mutate(input, {
+  function handleCreate(values: CreateOfferInput | UpdateOfferInput) {
+    createOffer.mutate(values as CreateOfferInput, {
       onSuccess: () => {
         toast.success('Offer created');
-        resetForm();
+        setDrawer(null);
       },
       onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to create offer'),
     });
   }
 
-  function toggleActive(id: string, isActive: boolean) {
+  function handleUpdate(id: string, values: CreateOfferInput | UpdateOfferInput) {
     updateOffer.mutate(
-      { id, input: { isActive: !isActive } },
-      { onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to update offer') }
+      { id, input: values },
+      {
+        onSuccess: () => {
+          toast.success('Offer updated');
+          setDrawer(null);
+        },
+        onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to update offer'),
+      }
     );
   }
+
+  function handleDuplicate(offer: Offer) {
+    duplicateOffer.mutate(offer.id, {
+      onSuccess: (copy) => {
+        toast.success('Offer duplicated — edit the copy below');
+        setDrawer({ mode: 'edit', offer: copy });
+      },
+      onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to duplicate offer'),
+    });
+  }
+
+  function confirmArchive() {
+    if (!archiveTarget) return;
+    updateOffer.mutate(
+      { id: archiveTarget.id, input: { isActive: false } },
+      {
+        onSuccess: () => toast.success('Offer archived'),
+        onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to archive offer'),
+        onSettled: () => setArchiveTarget(null),
+      }
+    );
+  }
+
+  function restore(offer: Offer) {
+    updateOffer.mutate(
+      { id: offer.id, input: { isActive: true } },
+      {
+        onSuccess: () => toast.success('Offer restored'),
+        onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to restore offer'),
+      }
+    );
+  }
+
+  const columns = useMemo<ColumnDef<Offer, unknown>[]>(
+    () => [
+      {
+        accessorKey: 'title',
+        header: 'Title',
+        cell: ({ row }) => (
+          <span className={row.original.isActive ? 'font-semibold text-slate-900' : 'font-semibold text-slate-400 line-through'}>
+            {row.original.title}
+          </span>
+        ),
+      },
+      {
+        id: 'behavior',
+        header: 'Behavior',
+        cell: ({ row }) => (
+          <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${BEHAVIOR_BADGE[row.original.behavior]}`}>
+            {behaviorLabel(row.original.behavior)}
+          </span>
+        ),
+      },
+      {
+        id: 'reward',
+        header: 'Reward',
+        cell: ({ row }) => (
+          <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${REWARD_BADGE[row.original.reward]}`}>
+            {rewardLabel(row.original.reward)}
+          </span>
+        ),
+      },
+      {
+        id: 'scope',
+        header: 'Scope',
+        cell: ({ row }) => (
+          <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${SCOPE_BADGE[row.original.scope]}`}>
+            {scopeLabel(row.original.scope)}
+          </span>
+        ),
+      },
+      {
+        id: 'productCount',
+        header: 'Product Usage',
+        cell: ({ row }) => <span className="text-slate-600">{productUsageText(row.original)}</span>,
+      },
+      {
+        accessorKey: 'createdAt',
+        header: 'Created',
+        cell: ({ row }) => <span className="text-slate-500">{formatDate(row.original.createdAt)}</span>,
+      },
+      {
+        id: 'status',
+        header: 'Status',
+        cell: ({ row }) => (
+          <span
+            className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${
+              row.original.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+            }`}
+          >
+            {row.original.isActive ? 'Active' : 'Archived'}
+          </span>
+        ),
+      },
+      {
+        id: 'actions',
+        header: '',
+        cell: ({ row }) => {
+          const offer = row.original;
+          return (
+            <div className="flex items-center gap-1 justify-end">
+              <button
+                type="button"
+                onClick={() => setDrawer({ mode: 'edit', offer })}
+                title="Edit"
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDuplicate(offer)}
+                title="Duplicate"
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+              {offer.isActive ? (
+                <button
+                  type="button"
+                  onClick={() => setArchiveTarget(offer)}
+                  title="Archive"
+                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <Archive className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => restore(offer)}
+                  title="Restore"
+                  className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                >
+                  <ArchiveRestore className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          );
+        },
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   return (
     <>
       <Topbar title="Offers" />
-      <div className="p-6 flex flex-col gap-4 max-w-2xl">
-        <p className="text-sm text-slate-500">
-          Create offers here, then enable the ones that apply on each product's edit page. Free item / Cashback / Discount
-          apply automatically at checkout — no coupon code needed.
-        </p>
-
-        <div className="bg-white border border-slate-200 rounded-lg shadow-card p-4 flex flex-col gap-3">
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. 100% Cashback on First Order"
-            className={inputClass}
-          />
-
-          <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1 block">Type</label>
-            <select value={type} onChange={(e) => setType(e.target.value as Offer['type'])} className={inputClass}>
-              {TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
+      <div className="p-6 flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              value={search}
+              onChange={(e) => {
+                setPage(1);
+                setSearch(e.target.value);
+              }}
+              placeholder="Search by title..."
+              className={`${inputClass} w-56`}
+            />
+            <select
+              value={behavior}
+              onChange={(e) => {
+                setPage(1);
+                setBehavior(e.target.value as OfferBehavior | '');
+              }}
+              className={inputClass}
+            >
+              <option value="">All behaviors</option>
+              {BEHAVIOR_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
                 </option>
               ))}
             </select>
+            <select
+              value={reward}
+              onChange={(e) => {
+                setPage(1);
+                setReward(e.target.value as OfferReward | '');
+              }}
+              className={inputClass}
+            >
+              <option value="">All rewards</option>
+              {REWARD_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={status}
+              onChange={(e) => {
+                setPage(1);
+                setStatus(e.target.value as 'active' | 'archived' | '');
+              }}
+              className={inputClass}
+            >
+              <option value="">All statuses</option>
+              <option value="active">Active</option>
+              <option value="archived">Archived</option>
+            </select>
           </div>
 
-          {type === 'CASHBACK' && (
-            <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1 block">Cashback %</label>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={cashbackPercent}
-                onChange={(e) => setCashbackPercent(Number(e.target.value))}
-                className={`${inputClass} max-w-[140px]`}
-              />
-            </div>
-          )}
-
-          {type === 'DISCOUNT' && (
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1 block">Discount Type</label>
-                <select value={discountType} onChange={(e) => setDiscountType(e.target.value as 'FLAT' | 'PERCENT')} className={inputClass}>
-                  <option value="PERCENT">Percent</option>
-                  <option value="FLAT">Flat (₹)</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1 block">Value</label>
-                <input type="number" min={0} value={discountValue} onChange={(e) => setDiscountValue(Number(e.target.value))} className={inputClass} />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1 block">
-                  Max Discount (₹) <span className="text-slate-400 font-normal">(optional)</span>
-                </label>
-                <input type="number" min={0} value={maxDiscount} onChange={(e) => setMaxDiscount(Number(e.target.value))} className={inputClass} />
-              </div>
-            </div>
-          )}
-
-          {type === 'FREE_ITEM' && (
-            <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1 block">Free Product</label>
-              <select value={freeProductId} onChange={(e) => setFreeProductId(e.target.value)} className={inputClass}>
-                <option value="">Select product...</option>
-                {products?.products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
           <button
-            onClick={handleCreate}
-            disabled={createOffer.isPending || !title.trim()}
-            className="self-start flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#9C5A26] text-white text-sm font-semibold hover:bg-[#6B3D19] disabled:opacity-50 transition-colors"
+            onClick={() => setDrawer({ mode: 'create' })}
+            className="flex items-center gap-1.5 bg-[#9C5A26] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#6B3D19] transition-colors"
           >
-            <Plus className="w-4 h-4" /> Add Offer
+            <Plus className="w-4 h-4" />
+            Create Offer
           </button>
         </div>
 
         {isLoading ? (
           <p className="text-sm text-slate-400 py-8 text-center">Loading...</p>
-        ) : !offers || offers.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-lg shadow-card p-10 text-center text-sm text-slate-400">
-            No offers yet — add one above.
-          </div>
         ) : (
-          <div className="bg-white border border-slate-200 rounded-lg shadow-card divide-y divide-slate-100">
-            {offers.map((offer) => (
-              <div key={offer.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className={`text-sm font-semibold ${offer.isActive ? 'text-slate-900' : 'text-slate-400 line-through'}`}>{offer.title}</p>
-                    <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${TYPE_BADGE[offer.type]}`}>
-                      {offer.type.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400">Created {formatDate(offer.createdAt)}</p>
+          <>
+            <DataTable data={data?.offers ?? []} columns={columns} />
+
+            {data && data.total > PAGE_SIZE && (
+              <div className="flex items-center justify-between text-sm text-slate-500">
+                <span>
+                  Page {page} of {totalPages} — {data.total} offers
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-40 transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-40 transition-colors"
+                  >
+                    Next
+                  </button>
                 </div>
-                <label className="flex items-center gap-2 flex-shrink-0 cursor-pointer">
-                  <span className="text-xs font-semibold text-slate-500">{offer.isActive ? 'Active' : 'Inactive'}</span>
-                  <input
-                    type="checkbox"
-                    checked={offer.isActive}
-                    onChange={() => toggleActive(offer.id, offer.isActive)}
-                    className="w-4 h-4 accent-[#9C5A26]"
-                  />
-                </label>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
+
+      <Drawer open={drawer !== null} onClose={() => setDrawer(null)} title={drawer?.mode === 'edit' ? 'Edit Offer' : 'Create Offer'}>
+        {drawer !== null && (
+          <OfferForm
+            key={drawer.mode === 'edit' ? drawer.offer.id : 'create'}
+            offer={drawer.mode === 'edit' ? drawer.offer : undefined}
+            submitLabel={drawer.mode === 'edit' ? 'Save Changes' : 'Create Offer'}
+            submitting={createOffer.isPending || updateOffer.isPending}
+            onSubmit={(values) => (drawer.mode === 'edit' ? handleUpdate(drawer.offer.id, values) : handleCreate(values))}
+          />
+        )}
+      </Drawer>
+
+      <ConfirmDialog
+        open={archiveTarget !== null}
+        title="Archive offer?"
+        message={`"${archiveTarget?.title}" will stop showing on any product it's linked to. You can restore it later.`}
+        onConfirm={confirmArchive}
+        onCancel={() => setArchiveTarget(null)}
+      />
     </>
   );
 }

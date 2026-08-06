@@ -1,6 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { checkoutSchema } from './schema';
 import { initiateCheckout, OutOfStockError, NotServiceableError } from './service';
+import { mapCouponValidationError } from '../coupons/controller';
 
 export async function checkoutHandler(req: FastifyRequest, reply: FastifyReply) {
   const parsed = checkoutSchema.safeParse(req.body);
@@ -18,6 +19,10 @@ export async function checkoutHandler(req: FastifyRequest, reply: FastifyReply) 
     }
     if (err instanceof NotServiceableError) {
       return reply.code(409).send({ error: 'Pincode not serviceable', code: 'NOT_SERVICEABLE', pincode: err.pincode });
+    }
+    const couponError = mapCouponValidationError(err);
+    if (couponError) {
+      return reply.code(couponError.status).send({ error: couponError.message, code: couponError.code });
     }
     throw err;
   }

@@ -9,9 +9,32 @@ import { HowToUseVideo } from './how-to-use-video';
 import { ProductGallery } from './product-gallery';
 import { ReviewsSection } from './reviews-section';
 import { RelatedProductsRail } from './related-products-rail';
+import { ExclusiveOffers } from '@/components/storefront/ExclusiveOffers';
 import { api } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
 import type { Product } from '@/types/api.types';
+
+type Offer = Product['offers'][number];
+
+// Reward-specific customer-facing badge text. Falls back to the offer's title
+// (admin-internal name) if the config doesn't have what a formatter expects —
+// keeps this resilient against data that predates a full backfill.
+const OFFER_REWARD_FORMATTERS: Record<Offer['reward'], (offer: Offer) => string> = {
+  DISPLAY_MESSAGE: (offer) => (typeof offer.config.bannerText === 'string' && offer.config.bannerText) || offer.title,
+  PERCENTAGE_DISCOUNT: (offer) => (typeof offer.config.percent === 'number' ? `${offer.config.percent}% OFF` : offer.title),
+  FLAT_DISCOUNT: (offer) => (typeof offer.config.amount === 'number' ? `${formatCurrency(offer.config.amount)} OFF` : offer.title),
+  CASHBACK: (offer) => (typeof offer.config.percent === 'number' ? `${offer.config.percent}% Cashback` : offer.title),
+  FREE_GIFT: () => 'Free Gift',
+  BUY_X_GET_Y: (offer) =>
+    typeof offer.config.buyQuantity === 'number' && typeof offer.config.getQuantity === 'number'
+      ? `Buy ${offer.config.buyQuantity} Get ${offer.config.getQuantity}`
+      : offer.title,
+  FREE_SHIPPING: () => 'Free Shipping',
+};
+
+function formatOfferBadgeText(offer: Offer): string {
+  return OFFER_REWARD_FORMATTERS[offer.reward](offer);
+}
 
 interface ProductDetailResponse {
   product: Product;
@@ -93,9 +116,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const mrp = product.compareAtPrice && product.compareAtPrice > price ? product.compareAtPrice : null;
   const discountPct = mrp ? Math.round(((mrp - price) / mrp) * 100) : null;
 
-  // Cashback is already shown once via cashbackPercent's own badge — a CASHBACK-type Offer
+  // Cashback is already shown once via cashbackPercent's own badge — a CASHBACK-reward Offer
   // saying the same thing in a second badge would just contradict it if the numbers differ.
-  const displayOffers = product.offers.filter((o) => o.type !== 'CASHBACK');
+  const displayOffers = product.offers.filter((o) => o.reward !== 'CASHBACK');
 
   type DetailSection = { title: string; content: React.ReactNode };
   const rawDetailSections: Array<DetailSection | false | '' | null> = [
@@ -231,7 +254,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               ...shownOffers.map((offer) => (
                 <div key={offer.id} className="brutal-border flex items-center gap-2 bg-[#2B1B0C] text-[#FBF1DF] rounded-lg px-3 py-2 shadow-[2px_2px_0_0_#9C5A26]">
                   <Gift className="w-4 h-4 text-[#C9863F] flex-shrink-0" />
-                  <p className="font-heading font-black text-[11px] uppercase tracking-wide leading-tight">{offer.title}</p>
+                  <p className="font-heading font-black text-[11px] uppercase tracking-wide leading-tight">{formatOfferBadgeText(offer)}</p>
                 </div>
               )),
             ].filter(Boolean);
@@ -246,7 +269,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                         key={offer.id}
                         className="brutal-border text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-[#F6E4C2] text-[#6B3D19] font-body rounded-full shadow-[2px_2px_0_0_#2B1B0C]"
                       >
-                        {offer.title}
+                        {formatOfferBadgeText(offer)}
                       </span>
                     ))}
                   </div>
@@ -267,6 +290,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <div className="mb-6">
             <TrustStrip />
           </div>
+
+          {/* Exclusive offers — its own card section, distinct from the compact badge row above the CTA */}
+          <ExclusiveOffers offers={product.offers} />
 
           {product.socialProofText && (
             <p className="font-body text-xs text-[#9C5A26] font-semibold mb-5 flex items-center gap-1.5">

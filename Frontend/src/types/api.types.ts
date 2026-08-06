@@ -33,7 +33,30 @@ export const productSchema = z.object({
   howToUseVideoUrl: z.string().nullable(),
   sidhiPrice: z.number().nullable(),
   selfEnergizeInstructions: z.string().nullable(),
-  offers: z.array(z.object({ id: z.string(), title: z.string(), type: z.string() })).default([]),
+  offers: z
+    .array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        behavior: z.enum(['DISPLAY_ONLY', 'AUTO_APPLIED', 'COUPON_BASED']),
+        reward: z.enum([
+          'DISPLAY_MESSAGE',
+          'PERCENTAGE_DISCOUNT',
+          'FLAT_DISCOUNT',
+          'CASHBACK',
+          'FREE_GIFT',
+          'BUY_X_GET_Y',
+          'FREE_SHIPPING',
+        ]),
+        config: z.record(z.string(), z.unknown()),
+        // Spend threshold — meaningful for DISPLAY_ONLY/AUTO_APPLIED, always null for
+        // COUPON_BASED (that behavior's minimum-order condition lives on the coupon itself).
+        minOrderValue: z.number().nullable(),
+        // Only non-null when behavior === 'COUPON_BASED'.
+        coupon: z.object({ code: z.string() }).nullable(),
+      })
+    )
+    .default([]),
   rating: z.object({ average: z.number(), count: z.number() }).default({ average: 0, count: 0 }),
   variants: z.array(productVariantSchema),
 });
@@ -60,6 +83,16 @@ export interface CartResponse {
   sessionId: string;
   items: CartItem[];
   subtotal: number;
+  // Backend-computed pricing preview — same resolution path checkout itself uses, so this
+  // can never drift from what actually gets charged. Discount from AUTO_APPLIED offers
+  // (percent/flat/free-gift, not tied to a coupon code) — coupon discount is separate,
+  // applied client-side on top of this via the checkout page's own coupon-preview call.
+  autoAppliedDiscount: number;
+  // Full details of any auto-applied free gift(s) — enough to render an actual
+  // "🎁 Attar (3ml) x1 — FREE" line, not just a count.
+  freeItems: Array<{ variantId: string; productName: string; sku: string; quantity: number }>;
+  shippingFee: number;
+  total: number;
   updatedAt: string;
 }
 
@@ -70,7 +103,21 @@ export interface CheckoutInput {
   shippingAddress: { line1: string; line2?: string; city: string; state: string; pincode: string; country?: string };
   items: Array<{ variantId: string; quantity: number }>;
   walletRedeem?: number;
+  couponCode?: string;
 }
+
+export type CouponErrorCode =
+  | 'COUPON_NOT_FOUND'
+  | 'COUPON_INACTIVE'
+  | 'COUPON_EXPIRED'
+  | 'COUPON_USAGE_LIMIT'
+  | 'COUPON_MIN_ORDER'
+  | 'COUPON_BIRTHDAY_INELIGIBLE'
+  | 'COUPON_EXHAUSTED';
+
+export type CouponPreviewResponse =
+  | { valid: true; discountAmount: number }
+  | { valid: false; error: string; code: CouponErrorCode };
 
 export interface CheckoutResponse {
   orderId: string;

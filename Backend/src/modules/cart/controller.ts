@@ -1,10 +1,19 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { cartItemSchema, updateQuantitySchema } from './schema';
-import { getCart, addItemToCart, updateItemQuantity, removeItemFromCart, clearCart, cartSubtotal, VariantNotFoundError } from './service';
+import { getCart, addItemToCart, updateItemQuantity, removeItemFromCart, clearCart, computeCartPricing, VariantNotFoundError } from './service';
+import type { Cart } from './schema';
 
 function sessionIdOf(req: FastifyRequest): string | null {
   const id = req.headers['x-session-id'];
   return typeof id === 'string' && id.length > 0 ? id : null;
+}
+
+// subtotal/autoAppliedDiscount/freeItems/shippingFee/total — every cart response
+// carries the full pricing preview now, not just subtotal, so cart/checkout pages can
+// display an accurate running total (and any free-gift line items) without recomputing
+// (or worse, under-computing) discount logic client-side.
+async function cartResponse(cart: Cart, reply: FastifyReply) {
+  return reply.send({ ...cart, ...(await computeCartPricing(cart)) });
 }
 
 export async function getCartHandler(req: FastifyRequest, reply: FastifyReply) {
@@ -12,7 +21,7 @@ export async function getCartHandler(req: FastifyRequest, reply: FastifyReply) {
   if (!sessionId) return reply.code(400).send({ error: 'Missing x-session-id header' });
 
   const cart = await getCart(sessionId);
-  return reply.send({ ...cart, subtotal: cartSubtotal(cart) });
+  return cartResponse(cart, reply);
 }
 
 export async function addItemHandler(req: FastifyRequest, reply: FastifyReply) {
@@ -24,7 +33,7 @@ export async function addItemHandler(req: FastifyRequest, reply: FastifyReply) {
 
   try {
     const cart = await addItemToCart(sessionId, parsed.data);
-    return reply.send({ ...cart, subtotal: cartSubtotal(cart) });
+    return cartResponse(cart, reply);
   } catch (err) {
     if (err instanceof VariantNotFoundError) return reply.code(404).send({ error: err.message });
     throw err;
@@ -40,7 +49,7 @@ export async function updateItemHandler(req: FastifyRequest, reply: FastifyReply
   if (!parsed.success) return reply.code(400).send({ error: 'Invalid input' });
 
   const cart = await updateItemQuantity(sessionId, variantId, parsed.data.quantity);
-  return reply.send({ ...cart, subtotal: cartSubtotal(cart) });
+  return cartResponse(cart, reply);
 }
 
 export async function removeItemHandler(req: FastifyRequest, reply: FastifyReply) {
@@ -49,7 +58,7 @@ export async function removeItemHandler(req: FastifyRequest, reply: FastifyReply
 
   const { variantId } = req.params as { variantId: string };
   const cart = await removeItemFromCart(sessionId, variantId);
-  return reply.send({ ...cart, subtotal: cartSubtotal(cart) });
+  return cartResponse(cart, reply);
 }
 
 export async function clearCartHandler(req: FastifyRequest, reply: FastifyReply) {

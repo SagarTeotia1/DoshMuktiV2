@@ -10,9 +10,13 @@ export default function CartPage() {
   const { cart, isLoading, updateQuantity, removeItem, isUpdating, isRemoving } = useCart();
   const items = cart?.items ?? [];
   const subtotal = cart?.subtotal ?? 0;
-  const shippingFee = subtotal >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE;
+  // Backend-computed (see cart/service.ts's computeCartPricing) — same resolution path
+  // checkout itself uses for AUTO_APPLIED offer discounts, so this preview total can
+  // never drift from what checkout actually charges.
+  const shippingFee = cart?.shippingFee ?? (subtotal >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE);
+  const autoAppliedDiscount = cart?.autoAppliedDiscount ?? 0;
   const remainingForFreeShipping = Math.max(0, FREE_SHIPPING_ABOVE - subtotal);
-  const total = subtotal + shippingFee;
+  const total = Math.max(subtotal + shippingFee - autoAppliedDiscount, 0);
 
   if (isLoading) {
     return <div className="max-w-4xl mx-auto px-4 py-16 text-center text-[#8A7A63] font-body text-sm">Loading cart...</div>;
@@ -96,6 +100,24 @@ export default function CartPage() {
             </button>
           </div>
         ))}
+
+        {(cart?.freeItems ?? []).map((item) => (
+          <div
+            key={item.variantId}
+            className="flex items-center gap-3 sm:gap-4 bg-[#F6E4C2]/40 border border-dashed border-[#9C5A26] rounded-2xl p-3 sm:p-4"
+          >
+            <div className="flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-[#F6E4C2] border border-[#2B1B0C]/20 flex items-center justify-center">
+              <span className="text-xl" role="img" aria-label="Gift">🎁</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-heading font-bold text-xs sm:text-sm text-[#2B1B0C] truncate">
+                {item.productName} {item.quantity > 1 ? `× ${item.quantity}` : ''}
+              </p>
+              <p className="font-body text-[10px] sm:text-xs text-[#9C5A26] font-semibold">Free gift with your order</p>
+            </div>
+            <p className="font-heading font-bold text-xs sm:text-sm text-[#9C5A26] flex-shrink-0">FREE</p>
+          </div>
+        ))}
       </div>
 
       <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6 flex flex-col gap-2">
@@ -107,6 +129,12 @@ export default function CartPage() {
           <span>Shipping</span>
           <span>{shippingFee === 0 ? 'Free' : formatCurrency(shippingFee)}</span>
         </div>
+        {autoAppliedDiscount > 0 && (
+          <div className="flex justify-between font-body text-sm text-[#9C5A26] font-semibold">
+            <span>Offer Discount</span>
+            <span>−{formatCurrency(autoAppliedDiscount)}</span>
+          </div>
+        )}
         <div className="flex justify-between font-heading font-bold text-lg text-[#2B1B0C] pt-3 border-t border-[#2B1B0C]/10">
           <span>Total</span>
           <span>{formatCurrency(total)}</span>
