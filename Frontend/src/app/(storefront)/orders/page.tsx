@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { PackageSearch } from 'lucide-react';
-import { api } from '@/lib/api-client';
+import { PackageSearch, FileDown } from 'lucide-react';
+import { api, invoiceUrl } from '@/lib/api-client';
 import { getToken } from '@/lib/auth';
 import { useAuth } from '@/hooks/use-auth';
 import { formatCurrency, formatDate } from '@/lib/formatters';
@@ -49,24 +49,48 @@ export default function OrdersPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {orders.map((order) => (
-            <Link
-              key={order.orderNumber}
-              href={`/track/${order.orderNumber}`}
-              className="block bg-white border border-[#2B1B0C] rounded-2xl p-4 sm:p-5 hover:shadow-neo-md transition-shadow duration-200"
-            >
-              <div className="flex items-center justify-between gap-3 mb-2">
-                <span className="font-heading font-bold text-sm text-[#2B1B0C]">{order.orderNumber}</span>
-                <span className="inline-block bg-[#9C5A26] text-[#2B1B0C] border border-[#2B1B0C] rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider font-body whitespace-nowrap">
-                  {ORDER_STATUS_LABELS[order.status] ?? order.status}
-                </span>
+          {orders.map((order) => {
+            const invoiceEligible = order.payment?.status === 'CAPTURED';
+            return (
+              <div
+                key={order.orderNumber}
+                className="relative bg-white border border-[#2B1B0C] rounded-2xl p-4 sm:p-5 hover:shadow-neo-md transition-shadow duration-200"
+              >
+                {/* Stretched link — makes the whole card navigate to /track, while the
+                    invoice icon below stays independently clickable via its own z-10
+                    (avoids nesting an <a> inside a <Link>, which is invalid HTML). */}
+                <Link
+                  href={`/track/${order.orderNumber}`}
+                  className="absolute inset-0"
+                  aria-label={`Track order ${order.orderNumber}`}
+                />
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <span className="font-heading font-bold text-sm text-[#2B1B0C]">{order.orderNumber}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block bg-[#9C5A26] text-[#2B1B0C] border border-[#2B1B0C] rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider font-body whitespace-nowrap">
+                      {ORDER_STATUS_LABELS[order.status] ?? order.status}
+                    </span>
+                    {invoiceEligible && (
+                      <a
+                        href={invoiceUrl(order.orderNumber)}
+                        aria-label={`Download invoice for order ${order.orderNumber}`}
+                        title="Download Invoice"
+                        className="relative z-10 text-[#8A7A63] hover:text-[#9C5A26] transition-colors duration-200"
+                      >
+                        <FileDown className="w-4 h-4" strokeWidth={2} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <p className="font-body text-xs text-[#8A7A63] mb-1">
+                    {order.items.length} item{order.items.length === 1 ? '' : 's'} · Placed {formatDate(order.createdAt)}
+                  </p>
+                  <p className="font-heading font-bold text-base text-[#2B1B0C]">{formatCurrency(order.total)}</p>
+                </div>
               </div>
-              <p className="font-body text-xs text-[#8A7A63] mb-1">
-                {order.items.length} item{order.items.length === 1 ? '' : 's'} · Placed {formatDate(order.createdAt)}
-              </p>
-              <p className="font-heading font-bold text-base text-[#2B1B0C]">{formatCurrency(order.total)}</p>
-            </Link>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ShieldCheck, Wallet } from 'lucide-react';
-import { useCart } from '@/hooks/use-cart';
+import { useCart, type CartScope } from '@/hooks/use-cart';
 import { usePincodeCheck } from '@/hooks/use-pincode-check';
 import { useWalletBalance } from '@/hooks/use-wallet-balance';
 import { useRazorpay } from '@/hooks/use-razorpay';
 import { useAuth } from '@/hooks/use-auth';
 import { api, ApiError } from '@/lib/api-client';
-import { getSessionId } from '@/lib/session';
+import { getSessionId, getBuyNowSessionId } from '@/lib/session';
 import { getToken } from '@/lib/auth';
 import { formatCurrency } from '@/lib/formatters';
 import { SHIPPING_FEE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
@@ -48,9 +49,16 @@ function StepLabel({ n, title }: { n: number; title: string }) {
   );
 }
 
-export default function CheckoutPage() {
+function sessionIdForScope(scope: CartScope): string {
+  return scope === 'buyNow' ? getBuyNowSessionId() : getSessionId();
+}
+
+function CheckoutPageContent() {
   const router = useRouter();
-  const { cart } = useCart();
+  const searchParams = useSearchParams();
+  const scope: CartScope = searchParams.get('mode') === 'buyNow' ? 'buyNow' : 'cart';
+  const queryClient = useQueryClient();
+  const { cart } = useCart(scope);
   const { openCheckout, loading: rzpLoading } = useRazorpay();
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [submitting, setSubmitting] = useState(false);
@@ -164,7 +172,7 @@ export default function CheckoutPage() {
       };
 
       const result = await api.post<CheckoutResponse>('/api/checkout', input, {
-        'x-session-id': getSessionId(),
+        'x-session-id': sessionIdForScope(scope),
         Authorization: `Bearer ${getToken()}`,
       });
 
@@ -175,8 +183,31 @@ export default function CheckoutPage() {
         order_id: result.rzpOrderId,
         prefill: { name: form.customerName, email: form.customerEmail, contact: form.customerPhone },
         theme: { color: '#9C5A26' },
-        handler: (response: RazorpayResponse) => {
+        handler: async (response: RazorpayResponse) => {
           trackPurchase({ orderNumber: result.orderNumber, total, itemCount: items.length });
+          // Payment has already succeeded by the time this fires — this call is only
+          // about getting OUR order status flipped to PAID promptly, since the Razorpay
+          // webhook (the usual trigger) never reaches localhost and is fragile even in
+          // prod. Best-effort: never block/fail checkout completion on this, and never
+          // let a rejection reach the handleSubmit catch below (that's for /api/checkout
+          // only) — the webhook remains a backstop that reconciles the order regardless.
+          try {
+            await api.post('/api/checkout/verify', {
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            }, {
+              Authorization: `Bearer ${getToken()}`,
+            });
+          } catch {
+            // Non-fatal — no toast, no rethrow. Webhook backstop will reconcile.
+          }
+          // Buy Now: Backend already cleared this pseudo-cart server-side on order
+          // creation (safe since it's disposable) — this refetch just syncs the cache.
+          // Cart scope: Backend deliberately does NOT clear the real cart pre-payment
+          // (see checkout/controller.ts), so this refetch is a no-op today, but it's
+          // still correct to invalidate here in case that changes post-payment-confirm.
+          queryClient.invalidateQueries({ queryKey: ['cart', sessionIdForScope(scope), scope] });
           router.push(
             `/checkout/success?orderNumber=${result.orderNumber}&paymentId=${response.razorpay_payment_id}`
           );
@@ -417,5 +448,17 @@ export default function CheckoutPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-24 text-center font-body text-sm text-[#8A7A63]">Loading...</div>
+      }
+    >
+      <CheckoutPageContent />
+    </Suspense>
   );
 }

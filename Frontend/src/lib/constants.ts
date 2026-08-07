@@ -14,6 +14,7 @@ export const ORDER_STATUS_LABELS: Record<string, string> = {
   PENDING_PAYMENT: 'Pending Payment',
   PAID: 'Paid — Ready to Pack',
   PROCESSING: 'Packing',
+  PACKED: 'Packed — Ready to Ship',
   SHIPPED: 'Shipped',
   DELIVERED: 'Delivered',
   CANCELLED: 'Cancelled',

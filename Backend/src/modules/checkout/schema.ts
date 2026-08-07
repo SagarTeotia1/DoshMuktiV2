@@ -24,3 +24,10 @@ export const checkoutSchema = z.object({
   customerDob: z.coerce.date().optional(),
 });
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
+
+export const verifyPaymentSchema = z.object({
+  razorpayOrderId: z.string().min(1),
+  razorpayPaymentId: z.string().min(1),
+  razorpaySignature: z.string().min(1),
+});
+export type VerifyPaymentInput = z.infer<typeof verifyPaymentSchema>;

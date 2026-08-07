@@ -10,7 +10,8 @@ import type { Product } from '@/types/api.types';
 
 export function AddToCart({ product }: { product: Product }) {
   const router = useRouter();
-  const { addItem, addItemAsync, isAdding } = useCart();
+  const { addItem, isAdding } = useCart();
+  const { addItemAsync: buyNowAddItemAsync, clearCart: buyNowClearCart } = useCart('buyNow');
   const activeVariants = product.variants.filter((v) => v.isActive && v.attributes.type !== 'service');
   const [variantId, setVariantId] = useState(activeVariants[0]?.id ?? '');
   const selected = activeVariants.find((v) => v.id === variantId);
@@ -44,9 +45,12 @@ export function AddToCart({ product }: { product: Product }) {
     if (!selected) return;
     setIsOrdering(true);
     try {
-      await addItemAsync({ variantId: selected.id, quantity });
+      // Buy Now uses an isolated pseudo-cart, never the real one — clear any
+      // leftover item from a previous abandoned attempt, then add just this one.
+      await buyNowClearCart();
+      await buyNowAddItemAsync({ variantId: selected.id, quantity });
       track();
-      router.push('/checkout');
+      router.push('/checkout?mode=buyNow');
     } catch {
       toast.error('Could not start checkout — try again');
       setIsOrdering(false);

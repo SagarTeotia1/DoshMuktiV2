@@ -288,7 +288,18 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
 
         return { order, payment };
       },
-      { isolationLevel: "Serializable" },
+      {
+        isolationLevel: "Serializable",
+        // Prisma's defaults (maxWait 2s, timeout 5s) are too tight for this transaction's
+        // full round-trip count (stock reserve + coupon reservation + order/items create +
+        // wallet redeem + payment create) against Neon's serverless Postgres, where a
+        // cold-started compute alone can eat several seconds on the first query. Hitting
+        // the default timeout closes the transaction mid-flight — any later query against
+        // it (e.g. payment.create) then fails with P2028 "Transaction not found", even
+        // though nothing was actually wrong with the transaction's logic.
+        maxWait: 5000,
+        timeout: 15000,
+      },
     ),
   );
 

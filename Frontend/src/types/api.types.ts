@@ -133,6 +133,12 @@ export interface OrderTrackingResponse {
   total: number;
   items: Array<{ variantSnapshot: { productName: string; sku: string }; quantity: number; priceAtPurchase: number }>;
   shipment: { delhiveryWaybill: string | null; status: string; trackingEvents: unknown[] } | null;
+  // Mirrors the Backend's actual invoice-download gate exactly (payment.status === 'CAPTURED'
+  // in Backend/src/modules/orders/controller.ts) — checking this instead of order.status keeps
+  // the Frontend's "should we show the Download Invoice link" logic from ever drifting out of
+  // sync with what the endpoint will actually allow (e.g. an admin manually moving an order's
+  // status forward before payment is actually captured).
+  payment: { status: string } | null;
   shippingAddress: { line1: string; line2?: string; city: string; state: string; pincode: string; country?: string };
   createdAt: string;
 }

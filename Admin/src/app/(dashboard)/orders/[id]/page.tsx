@@ -29,6 +29,26 @@ export default function OrderDetailPage() {
     );
   }
 
+  function startPackaging() {
+    updateStatus.mutate(
+      { status: 'PROCESSING' },
+      {
+        onSuccess: () => toast.success('Order marked as packaging started'),
+        onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to update status'),
+      }
+    );
+  }
+
+  function markPackagingDone() {
+    updateStatus.mutate(
+      { status: 'PACKED' },
+      {
+        onSuccess: () => toast.success('Order marked as packed'),
+        onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to update status'),
+      }
+    );
+  }
+
   if (isLoading || !order) {
     return (
       <>
@@ -121,6 +141,30 @@ export default function OrderDetailPage() {
               <h2 className="font-heading font-bold text-sm text-slate-900 mb-2">Shipment</h2>
               <p className="text-sm text-slate-500">Status: {order.shipment.status}</p>
               {order.shipment.delhiveryWaybill && <p className="text-xs text-slate-400 mt-1">Waybill: {order.shipment.delhiveryWaybill}</p>}
+            </div>
+          )}
+
+          {(order.status === 'PAID' || order.status === 'PROCESSING') && (
+            <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">
+              <h2 className="font-heading font-bold text-sm text-slate-900 mb-3">Packaging</h2>
+              {order.status === 'PAID' && (
+                <button
+                  onClick={startPackaging}
+                  disabled={updateStatus.isPending}
+                  className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#9C5A26] hover:bg-[#6B3D19] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Start Packaging
+                </button>
+              )}
+              {order.status === 'PROCESSING' && (
+                <button
+                  onClick={markPackagingDone}
+                  disabled={updateStatus.isPending}
+                  className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#9C5A26] hover:bg-[#6B3D19] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Mark Packaging Done
+                </button>
+              )}
             </div>
           )}
 

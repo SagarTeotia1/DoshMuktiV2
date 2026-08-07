@@ -259,6 +259,7 @@ enum OrderStatus {
   CANCELLED
   RETURN_REQUESTED
   REFUNDED
+  PACKED
 }
 
 model OrderItem {
