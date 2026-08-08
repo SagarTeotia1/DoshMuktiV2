@@ -3,7 +3,12 @@ import { z } from 'zod';
 const envSchema = z.object({
   PORT: z.coerce.number().int().default(4000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  FRONTEND_ORIGIN: z.string().url(),
+  // Comma-separated so local dev can allow both localhost and a LAN IP at once
+  // (e.g. for testing the storefront on a phone against the same dev backend).
+  FRONTEND_ORIGIN: z
+    .string()
+    .transform((s) => s.split(',').map((origin) => origin.trim()))
+    .pipe(z.array(z.string().url()).min(1)),
   ADMIN_ORIGIN: z.string().url(),
 
   DATABASE_URL: z.string().min(1),

@@ -75,8 +75,12 @@ function CheckoutPageContent() {
   });
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) router.push('/login?redirect=/checkout');
-  }, [authLoading, isAuthenticated, router]);
+    if (!authLoading && !isAuthenticated) {
+      const query = searchParams.toString();
+      const redirectTarget = query ? `/checkout?${query}` : '/checkout';
+      router.push(`/login?redirect=${encodeURIComponent(redirectTarget)}`);
+    }
+  }, [authLoading, isAuthenticated, router, searchParams]);
 
   useEffect(() => {
     if (!user) return;

@@ -30,7 +30,7 @@ export async function buildApp() {
 
   await app.register(helmet);
   await app.register(cors, {
-    origin: [env.FRONTEND_ORIGIN, env.ADMIN_ORIGIN], // storefront + admin panel — separate apps, separate origins
+    origin: [...env.FRONTEND_ORIGIN, env.ADMIN_ORIGIN], // storefront (possibly multiple origins in dev) + admin panel
     credentials: false, // auth is Bearer/header-based, not cookie-based across origins
   });
   await app.register(rateLimit, { global: false }); // per-route limits set in each module

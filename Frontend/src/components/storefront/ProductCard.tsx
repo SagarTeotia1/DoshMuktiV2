@@ -12,7 +12,7 @@ import type { Product } from '@/types/api.types';
 const MotionLink = motion.create(Link);
 
 export function ProductCard({ product }: { product: Product }) {
-  const { addItem, isAdding } = useCart();
+  const { addItemAsync, isAdding } = useCart();
   const image = product.images[0]?.card ?? null;
   const hoverImage = product.images[1]?.card ?? null;
   const activeVariants = product.variants.filter((v) => v.isActive);
@@ -25,13 +25,17 @@ export function ProductCard({ product }: { product: Product }) {
   const mrp = product.compareAtPrice && product.compareAtPrice > price ? product.compareAtPrice : null;
   const discountPct = mrp ? Math.round(((mrp - price) / mrp) * 100) : null;
 
-  function quickAdd(e: React.MouseEvent) {
+  async function quickAdd(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
     const variant = activeVariants.find((v) => v.stockQuantity > 0);
     if (!variant) return;
-    addItem({ variantId: variant.id, quantity: 1 });
-    toast.success('Added to cart');
+    try {
+      await addItemAsync({ variantId: variant.id, quantity: 1 });
+      toast.success('Added to cart');
+    } catch {
+      toast.error('Could not add to cart — try again');
+    }
   }
 
   return (
