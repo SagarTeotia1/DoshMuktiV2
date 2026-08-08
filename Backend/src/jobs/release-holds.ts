@@ -1,5 +1,6 @@
 import { db } from '../shared/db/client';
 import { invalidateProductCaches } from '../modules/products/service';
+import { releaseCouponUsageTx } from '../modules/coupons/service';
 
 // Sweeps orders stuck in PENDING_PAYMENT past their reservation window and
 // releases the reserved stock back to inventory. Hit by Cloud Scheduler.
@@ -19,6 +20,12 @@ export async function releaseExpiredHolds(): Promise<{ released: number }> {
           data: { variantId: item.variantId, change: item.quantity, reason: 'RESERVATION_RELEASED', orderId: order.id, createdBy: 'system' },
         });
       }
+      // Mirrors the stock release above — an abandoned checkout shouldn't permanently
+      // burn a limited-use coupon slot. Same atomicity guarantee (same transaction).
+      if (order.couponId) {
+        await releaseCouponUsageTx(tx, order.couponId);
+      }
+
       await tx.order.update({
         where: { id: order.id },
         data: { status: 'CANCELLED', statusLog: { create: { from: 'PENDING_PAYMENT', to: 'CANCELLED', createdBy: 'system', note: 'Reservation expired' } } },

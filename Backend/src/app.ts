@@ -19,6 +19,7 @@ import { inventoryRoutes } from './modules/inventory/routes';
 import { uploadRoutes } from './modules/upload/routes';
 import { dashboardRoutes } from './modules/dashboard/routes';
 import { offersRoutes } from './modules/offers/routes';
+import { couponsRoutes } from './modules/coupons/routes';
 import { walletRoutes } from './modules/wallet/routes';
 import { reviewsRoutes } from './modules/reviews/routes';
 import { chatRoutes } from './modules/chat/routes';
@@ -29,7 +30,7 @@ export async function buildApp() {
 
   await app.register(helmet);
   await app.register(cors, {
-    origin: [env.FRONTEND_ORIGIN, env.ADMIN_ORIGIN], // storefront + admin panel — separate apps, separate origins
+    origin: [...env.FRONTEND_ORIGIN, env.ADMIN_ORIGIN], // storefront (possibly multiple origins in dev) + admin panel
     credentials: false, // auth is Bearer/header-based, not cookie-based across origins
   });
   await app.register(rateLimit, { global: false }); // per-route limits set in each module
@@ -66,6 +67,7 @@ export async function buildApp() {
   await app.register(uploadRoutes, { prefix: '/api' });
   await app.register(dashboardRoutes, { prefix: '/api' });
   await app.register(offersRoutes, { prefix: '/api' });
+  await app.register(couponsRoutes, { prefix: '/api' });
   await app.register(walletRoutes, { prefix: '/api' });
   await app.register(reviewsRoutes, { prefix: '/api' });
   await app.register(chatRoutes, { prefix: '/api' });

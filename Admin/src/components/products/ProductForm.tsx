@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, X, Eye, EyeOff } from 'lucide-react';
 import { PURPOSE_IDS, PRODUCT_STATUSES } from '@/lib/constants';
-import type { Product } from '@/types/api.types';
+import type { Offer, Product } from '@/types/api.types';
 import { useOffers } from '@/hooks/use-offers';
 import { useCategories } from '@/hooks/use-categories';
 import { StagedImageUploader } from './StagedImageUploader';
@@ -103,7 +103,11 @@ export function ProductForm({
     },
   });
 
-  const { data: offers } = useOffers();
+  // Large pageSize because this picker needs the full offer catalog (active +
+  // any already-linked inactive ones), not one paginated page — the Offers
+  // admin page owns real pagination, this is just a checkbox list.
+  const { data: offersData } = useOffers({ pageSize: 500 });
+  const offers = offersData?.offers;
   const { data: categories } = useCategories();
 
   const selectedPurposes = watch('purpose');
@@ -111,6 +115,17 @@ export function ProductForm({
   const selectedOfferIds = watch('offerIds');
   const selectedCategory = watch('category');
   const previewValues = watch();
+
+  // CATEGORY/ALL_PRODUCTS offers apply automatically based on scope — there's
+  // nothing to toggle per-product, so the checkbox groups above only ever
+  // list SPECIFIC_PRODUCTS-scoped offers (same offerIds M:N as before).
+  const specificProductOffers = (offers ?? []).filter((o) => o.scope === 'SPECIFIC_PRODUCTS');
+  // Read-only: which CATEGORY/ALL_PRODUCTS offers apply to *this* product
+  // automatically, so admins understand why an applicable offer isn't in
+  // their toggle list above.
+  const autoAppliedOffers = (offers ?? []).filter(
+    (o) => o.isActive && (o.scope === 'ALL_PRODUCTS' || (o.scope === 'CATEGORY' && o.category === selectedCategory))
+  );
   const [tagInput, setTagInput] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
 
@@ -422,28 +437,47 @@ export function ProductForm({
 
         <div>
           <label className="text-xs font-semibold text-slate-600 mb-2 block">
-            Offers <span className="text-slate-400 font-normal">(enable which universal offers show on this product — manage the list on the Offers page)</span>
+            Offers <span className="text-slate-400 font-normal">(enable which offers show on this product — manage the list on the Offers page)</span>
           </label>
           {!offers || offers.length === 0 ? (
             <p className="text-xs text-slate-400">No offers created yet — add one on the Offers page first.</p>
           ) : (
-            <div className="flex flex-col gap-1.5">
-              {offers.map((offer) => {
-                const linked = (selectedOfferIds ?? []).includes(offer.id);
-                if (!offer.isActive && !linked) return null;
-                return (
-                  <label
-                    key={offer.id}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
-                      linked ? 'border-[#9C5A26] bg-[#9C5A26]/5' : 'border-slate-200 hover:border-slate-300'
-                    } ${!offer.isActive ? 'opacity-60' : ''}`}
-                  >
-                    <input type="checkbox" checked={linked} onChange={() => toggleOffer(offer.id)} className="w-4 h-4 accent-[#9C5A26]" />
-                    <span className="text-sm text-slate-700">{offer.title}</span>
-                    {!offer.isActive && <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">(disabled)</span>}
-                  </label>
-                );
-              })}
+            <div className="flex flex-col gap-4">
+              <OfferGroup
+                title="Display Offers"
+                offers={specificProductOffers.filter((o) => o.behavior === 'DISPLAY_ONLY')}
+                selectedOfferIds={selectedOfferIds}
+                onToggle={toggleOffer}
+              />
+              <OfferGroup
+                title="Auto Offers"
+                offers={specificProductOffers.filter((o) => o.behavior === 'AUTO_APPLIED')}
+                selectedOfferIds={selectedOfferIds}
+                onToggle={toggleOffer}
+              />
+              <OfferGroup
+                title="Coupon Offers"
+                offers={specificProductOffers.filter((o) => o.behavior === 'COUPON_BASED')}
+                selectedOfferIds={selectedOfferIds}
+                onToggle={toggleOffer}
+              />
+            </div>
+          )}
+
+          {autoAppliedOffers.length > 0 && (
+            <div className="mt-3 flex flex-col gap-1.5">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Auto-Applied Offers</p>
+              {autoAppliedOffers.map((offer) => (
+                <div
+                  key={offer.id}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-slate-200 bg-slate-50"
+                >
+                  <span className="text-sm text-slate-600 flex-1">{offer.title}</span>
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
+                    {offer.scope === 'ALL_PRODUCTS' ? 'Auto-applied store-wide' : 'Auto-applied via category'}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -480,6 +514,47 @@ export function ProductForm({
           {submitting ? 'Saving...' : submitLabel}
         </button>
       </form>
+    </div>
+  );
+}
+
+// One labeled checkbox group per offer `behavior` in the product form's offer
+// picker (Display / Auto / Coupon) — hides inactive offers unless the
+// product is already linked to them, same rule as before the redesign.
+function OfferGroup({
+  title,
+  offers,
+  selectedOfferIds,
+  onToggle,
+}: {
+  title: string;
+  offers: Offer[];
+  selectedOfferIds: string[] | undefined;
+  onToggle: (id: string) => void;
+}) {
+  const visible = offers.filter((offer) => offer.isActive || (selectedOfferIds ?? []).includes(offer.id));
+  if (visible.length === 0) return null;
+
+  return (
+    <div>
+      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">{title}</p>
+      <div className="flex flex-col gap-1.5">
+        {visible.map((offer) => {
+          const linked = (selectedOfferIds ?? []).includes(offer.id);
+          return (
+            <label
+              key={offer.id}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
+                linked ? 'border-[#9C5A26] bg-[#9C5A26]/5' : 'border-slate-200 hover:border-slate-300'
+              } ${!offer.isActive ? 'opacity-60' : ''}`}
+            >
+              <input type="checkbox" checked={linked} onChange={() => onToggle(offer.id)} className="w-4 h-4 accent-[#9C5A26]" />
+              <span className="text-sm text-slate-700">{offer.title}</span>
+              {!offer.isActive && <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">(disabled)</span>}
+            </label>
+          );
+        })}
+      </div>
     </div>
   );
 }

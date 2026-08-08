@@ -34,7 +34,6 @@ model Product {
   sidhiPrice               Int? // ₹ price for the Sidhi/Energizing service add-on; null = feature hidden. Syncs to a "-SIDHI" ProductVariant — see products/service.ts
   selfEnergizeInstructions String?          @db.Text // DIY energizing steps, shown as the "Energize It Yourself" tab
   offers                   Offer[]          @relation("OfferProducts") // universal, admin-managed offers enabled on this product — see Offer model
-  freeItemOffers           Offer[]          @relation("OfferFreeProduct") // offers that ship this product for free — see Offer.freeProductId
   variants                 ProductVariant[]
   reviews                  Review[]
   createdAt                DateTime         @default(now())
@@ -45,41 +44,71 @@ model Product {
   @@index([slug])
 }
 
-enum OfferType {
-  DISPLAY // pure marketing tag, no backend effect
-  FREE_ITEM // auto-ships Offer.freeProduct at ₹0 with the order
-  CASHBACK // credits wallet — sums with Product.cashbackPercent, doesn't replace it
-  DISCOUNT // reduces order total automatically, no coupon code needed
+enum OfferBehavior {
+  DISPLAY_ONLY // pure marketing banner — never evaluated at checkout
+  AUTO_APPLIED // reward applies automatically whenever an enabled product is in the cart
+  COUPON_BASED // reward only applies when the linked Coupon code is redeemed — see couponId
 }
 
-enum OfferDiscountType {
-  FLAT
-  PERCENT
+enum OfferReward {
+  DISPLAY_MESSAGE // banner-only, no monetary effect
+  PERCENTAGE_DISCOUNT
+  FLAT_DISCOUNT
+  CASHBACK
+  FREE_GIFT
+  BUY_X_GET_Y
+  FREE_SHIPPING
 }
 
-// Universal, reusable offers (e.g. "100% Cashback on First Order") — created once,
-// enabled per-product via the Product.offers relation. Never delete, only isActive:false.
+enum OfferScope {
+  SPECIFIC_PRODUCTS // applies only to products explicitly linked via the `products` relation
+  CATEGORY // applies to every product where Product.category == Offer.category, no explicit links needed
+  ALL_PRODUCTS // applies store-wide to every product, no explicit links needed
+}
+
+// Universal, reusable offers (e.g. "100% Cashback on First Order") — created once, then
+// either linked to specific products, matched against a whole Product.category, or applied
+// store-wide, per `scope`. Never delete, only isActive:false.
+// `behavior` decides WHEN the reward activates, `reward` decides WHAT the customer gets —
+// they vary independently (e.g. a FREE_GIFT can be DISPLAY_ONLY-teased or AUTO_APPLIED).
+// `config` carries reward-specific data, shape defined per-reward in
+// src/modules/offers/rewards/*.ts and enforced by the Zod schema in offers/schema.ts.
+// Adding a new reward is a new file in rewards/, never a new column here.
+// Which offers actually apply to a given product is NOT just `products.some(...)` once scope
+// exists — see offers/service.ts's getApplicableOffersForProduct, the single source of truth
+// every read path (storefront, checkout, wallet, admin) must go through.
 model Offer {
-  id       String    @id @default(cuid())
+  id       String        @id @default(cuid())
   title    String
-  type     OfferType @default(DISPLAY)
-  isActive Boolean   @default(true)
-  products Product[] @relation("OfferProducts")
+  behavior OfferBehavior @default(DISPLAY_ONLY)
+  reward   OfferReward   @default(DISPLAY_MESSAGE)
+  config   Json          @default("{}")
+  isActive Boolean       @default(true)
 
-  cashbackPercent Int? // CASHBACK — % credited to wallet, summed with Product.cashbackPercent
+  scope    OfferScope @default(SPECIFIC_PRODUCTS)
+  products Product[]  @relation("OfferProducts") // used only when scope = SPECIFIC_PRODUCTS
+  category String? // used only when scope = CATEGORY — matches Product.category
 
-  discountType  OfferDiscountType? // DISCOUNT
-  discountValue Decimal?           @db.Decimal(10, 2)
-  maxDiscount   Decimal?           @db.Decimal(10, 2) // cap for PERCENT, mirrors Coupon.maxDiscount
+  couponId String? // set only when behavior = COUPON_BASED
+  coupon   Coupon? @relation(fields: [couponId], references: [id])
 
-  freeProductId String? // FREE_ITEM — which product ships free
-  freeProduct   Product? @relation("OfferFreeProduct", fields: [freeProductId], references: [id])
+  // Optional spend threshold, independent of reward/behavior (not part of `config` — every
+  // reward can have one, so it lives at the top level like scope/category do). Enforced at
+  // checkout only for AUTO_APPLIED (the reward doesn't apply below this cart subtotal).
+  // Informational-only for DISPLAY_ONLY (never evaluated at checkout anyway — it's just
+  // teaser copy). Not meant for COUPON_BASED — Coupon.minOrder already serves that role
+  // there; this field is left settable but ignored by checkout for that behavior to avoid
+  // two competing conditions on one redemption.
+  minOrderValue Decimal? @db.Decimal(10, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([isActive])
-  @@index([type])
+  @@index([behavior])
+  @@index([reward])
+  @@index([couponId])
+  @@index([scope, category])
 }
 
 enum ProductStatus {
@@ -230,6 +259,7 @@ enum OrderStatus {
   CANCELLED
   RETURN_REQUESTED
   REFUNDED
+  PACKED
 }
 
 model OrderItem {
@@ -324,6 +354,7 @@ model Coupon {
   expiresAt   DateTime?
   isActive    Boolean    @default(true)
   orders      Order[]
+  offers      Offer[] // offers with behavior = COUPON_BASED that activate when this code is redeemed
   createdAt   DateTime   @default(now())
 
   @@index([code])

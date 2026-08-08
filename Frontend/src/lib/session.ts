@@ -16,3 +16,12 @@ export function getSessionId(): string {
   document.cookie = `${COOKIE_NAME}=${id}; expires=${expires}; path=/; SameSite=Lax`;
   return id;
 }
+
+// Derived, not stored — Backend's cart is keyed purely by whatever opaque string
+// arrives in x-session-id, so this gives "Buy Now" a fully isolated one-item cart in
+// Redis for free, without a new cookie or any new client-side state. Used to keep a
+// single-item "Order Now" purchase from pulling in whatever is already in the
+// customer's real cart. See CLAUDE.md's Buy Now fix design.
+export function getBuyNowSessionId(): string {
+  return getSessionId() + ':buynow';
+}

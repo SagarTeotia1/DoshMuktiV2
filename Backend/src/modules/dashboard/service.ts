@@ -10,7 +10,7 @@ export async function getDashboardSummary() {
 
   const [todayOrders, actionNeeded, lowStockRows] = await Promise.all([
     db.order.findMany({
-      where: { status: { in: ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED'] }, createdAt: { gte: startOfDay } },
+      where: { status: { in: ['PAID', 'PROCESSING', 'PACKED', 'SHIPPED', 'DELIVERED'] }, createdAt: { gte: startOfDay } },
       select: { total: true },
     }),
     db.order.count({ where: { status: 'PAID' } }),
@@ -43,7 +43,7 @@ export async function getSalesTrend(days: number) {
            COUNT(*) as "orderCount"
     FROM "Order"
     WHERE "createdAt" >= NOW() - (${days} || ' days')::interval
-      AND status IN ('PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED')
+      AND status IN ('PAID', 'PROCESSING', 'PACKED', 'SHIPPED', 'DELIVERED')
     GROUP BY day
     ORDER BY day ASC
   `;

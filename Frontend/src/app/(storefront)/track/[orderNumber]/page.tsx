@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { api } from '@/lib/api-client';
+import { api, invoiceUrl } from '@/lib/api-client';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ORDER_STATUS_LABELS } from '@/lib/constants';
 import type { OrderTrackingResponse } from '@/types/api.types';
@@ -30,6 +30,17 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ ord
         {order.shipment?.delhiveryWaybill && (
           <p className="font-body text-xs text-[#6B5539] mt-3">
             Waybill: <span className="font-bold text-[#2B1B0C]">{order.shipment.delhiveryWaybill}</span>
+          </p>
+        )}
+
+        {order.payment?.status === 'CAPTURED' && (
+          <p className="font-body text-xs mt-3">
+            <a
+              href={invoiceUrl(order.orderNumber)}
+              className="font-bold text-[#2B1B0C] underline hover:text-[#9C5A26]"
+            >
+              Download Invoice
+            </a>
           </p>
         )}
       </div>

@@ -4,10 +4,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
 import type { PaginatedProducts, Product, ProductVariant } from '@/types/api.types';
 
-export function useProducts(status?: string) {
+// `limit` is optional and only needed by callers that want more than the
+// backend's default page (20) in one shot — e.g. the offer scope picker's
+// "Specific Products" checkbox list, which wants as much of the catalog as
+// the backend will hand back in a single page (capped at 100 server-side).
+export function useProducts(status?: string, limit?: number) {
   return useQuery({
-    queryKey: ['admin-products', status],
-    queryFn: () => api.get<PaginatedProducts>(`/api/admin/products${status ? `?status=${status}` : ''}`),
+    queryKey: ['admin-products', status, limit],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (status) params.set('status', status);
+      if (limit) params.set('limit', String(limit));
+      const qs = params.toString();
+      return api.get<PaginatedProducts>(`/api/admin/products${qs ? `?${qs}` : ''}`);
+    },
   });
 }
 

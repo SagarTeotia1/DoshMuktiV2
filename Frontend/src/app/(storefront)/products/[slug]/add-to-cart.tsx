@@ -5,12 +5,15 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Minus, Plus, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
+import { useAuth } from '@/hooks/use-auth';
 import { trackAddToCart } from '@/lib/firebase';
 import type { Product } from '@/types/api.types';
 
 export function AddToCart({ product }: { product: Product }) {
   const router = useRouter();
-  const { addItem, addItemAsync, isAdding } = useCart();
+  const { addItemAsync, isAdding } = useCart();
+  const { addItemAsync: buyNowAddItemAsync, clearCart: buyNowClearCart } = useCart('buyNow');
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const activeVariants = product.variants.filter((v) => v.isActive && v.attributes.type !== 'service');
   const [variantId, setVariantId] = useState(activeVariants[0]?.id ?? '');
   const selected = activeVariants.find((v) => v.id === variantId);
@@ -33,20 +36,32 @@ export function AddToCart({ product }: { product: Product }) {
     });
   }
 
-  function handleAdd() {
+  async function handleAdd() {
     if (!selected) return;
-    addItem({ variantId: selected.id, quantity });
-    track();
-    toast.success('Added to cart');
+    try {
+      await addItemAsync({ variantId: selected.id, quantity });
+      track();
+      toast.success('Added to cart');
+    } catch {
+      toast.error('Could not add to cart — try again');
+    }
   }
 
   async function handleOrderNow() {
     if (!selected) return;
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      router.push(`/login?redirect=${encodeURIComponent('/checkout?mode=buyNow')}`);
+      return;
+    }
     setIsOrdering(true);
     try {
-      await addItemAsync({ variantId: selected.id, quantity });
+      // Buy Now uses an isolated pseudo-cart, never the real one — clear any
+      // leftover item from a previous abandoned attempt, then add just this one.
+      await buyNowClearCart();
+      await buyNowAddItemAsync({ variantId: selected.id, quantity });
       track();
-      router.push('/checkout');
+      router.push('/checkout?mode=buyNow');
     } catch {
       toast.error('Could not start checkout — try again');
       setIsOrdering(false);

@@ -1,5 +1,9 @@
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL!;
 
+export function invoiceUrl(orderNumber: string): string {
+  return `${BASE_URL}/api/orders/${orderNumber}/invoice`;
+}
+
 export interface ApiErrorBody {
   error: string;
   details?: Record<string, string[]>;

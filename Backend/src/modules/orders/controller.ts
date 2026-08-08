@@ -8,6 +8,7 @@ import {
   listOrdersForAdmin,
   updateOrderStatus,
 } from './service';
+import { generateInvoicePdf } from './invoice';
 
 export async function trackOrderHandler(req: FastifyRequest, reply: FastifyReply) {
   const parsed = orderNumberParamSchema.safeParse(req.params);
@@ -17,6 +18,25 @@ export async function trackOrderHandler(req: FastifyRequest, reply: FastifyReply
   if (!order) return reply.code(404).send({ error: 'Order not found' });
 
   return reply.send(order);
+}
+
+export async function invoiceHandler(req: FastifyRequest, reply: FastifyReply) {
+  const parsed = orderNumberParamSchema.safeParse(req.params);
+  if (!parsed.success) return reply.code(400).send({ error: 'Invalid order number' });
+
+  const order = await getOrderByNumber(parsed.data.orderNumber);
+  if (!order) return reply.code(404).send({ error: 'Order not found' });
+
+  if (order.payment?.status !== 'CAPTURED') {
+    return reply.code(409).send({ error: 'Invoice not available until payment is confirmed' });
+  }
+
+  const pdfBuffer = await generateInvoicePdf(order);
+
+  return reply
+    .header('Content-Type', 'application/pdf')
+    .header('Content-Disposition', `attachment; filename="invoice-${order.orderNumber}.pdf"`)
+    .send(pdfBuffer);
 }
 
 export async function listMyOrdersHandler(req: FastifyRequest, reply: FastifyReply) {
