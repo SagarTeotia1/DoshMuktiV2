@@ -119,12 +119,11 @@ function CouponCode({ code }: { code: string }) {
 export function ExclusiveOffers({ offers }: { offers: Product['offers'] }) {
   // Cashback already has its own dedicated badge elsewhere on the page — showing it a
   // third time here would just be redundant/contradictory, same reasoning as the badge row.
-  // DISPLAY_ONLY offers stay in the existing badge row above (their whole purpose is a
-  // lightweight marketing tag) — this section is specifically for offers a customer can
-  // actually redeem (COUPON_BASED, via the code) or that apply automatically at checkout
-  // (AUTO_APPLIED), so showing a DISPLAY_ONLY offer here too would be redundant with the
-  // badge row and misleadingly imply it does something at checkout when it doesn't.
-  const shownOffers = offers.filter((o) => o.reward !== 'CASHBACK' && o.behavior !== 'DISPLAY_ONLY');
+  // DISPLAY_ONLY and AUTO_APPLIED offers both stay in the badge row above (DISPLAY_ONLY is a
+  // lightweight marketing tag, AUTO_APPLIED needs no customer action) — this section is
+  // exclusively for offers a customer must actively redeem via a coupon code, and every offer
+  // shown here is one not already shown up top, so nothing repeats on the page.
+  const shownOffers = offers.filter((o) => o.reward !== 'CASHBACK' && o.behavior === 'COUPON_BASED');
   if (shownOffers.length === 0) return null;
 
   return (
@@ -152,12 +151,7 @@ export function ExclusiveOffers({ offers }: { offers: Product['offers'] }) {
                 </div>
               </div>
 
-              {offer.behavior === 'COUPON_BASED' && offer.coupon && <CouponCode code={offer.coupon.code} />}
-              {offer.behavior === 'AUTO_APPLIED' && (
-                <span className="self-start brutal-border rounded-full bg-[#2B1B0C] px-2.5 py-1 font-body text-[10px] font-bold uppercase tracking-wide text-[#FBF1DF]">
-                  Auto Applied
-                </span>
-              )}
+              {offer.coupon && <CouponCode code={offer.coupon.code} />}
             </div>
           );
         })}

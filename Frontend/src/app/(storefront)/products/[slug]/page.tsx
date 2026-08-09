@@ -1,3 +1,4 @@
+import { cloneElement, type ReactElement } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Gem, Truck, ShieldCheck, RotateCcw, Sparkles, Wallet, Star, Gift } from 'lucide-react';
@@ -118,7 +119,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   // Cashback is already shown once via cashbackPercent's own badge — a CASHBACK-reward Offer
   // saying the same thing in a second badge would just contradict it if the numbers differ.
-  const displayOffers = product.offers.filter((o) => o.reward !== 'CASHBACK');
+  // COUPON_BASED offers live exclusively in the Exclusive Offers card section below (they need
+  // the code + copy button, which doesn't fit this compact badge), so this row only carries
+  // AUTO_APPLIED (applies with no action needed) and DISPLAY_ONLY (pure marketing tag) —
+  // keeping every offer in exactly one place on the page.
+  const displayOffers = product.offers.filter((o) => o.reward !== 'CASHBACK' && o.behavior !== 'COUPON_BASED');
 
   type DetailSection = { title: string; content: React.ReactNode };
   const rawDetailSections: Array<DetailSection | false | '' | null> = [
@@ -235,10 +240,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             )}
           </div>
 
-          {/* Offer badges — up to 2 side by side. Cashback % (if set) takes the first slot. */}
+          {/* Offer badges — every offer rendered the same way, wrapping to as many rows as needed.
+              Cashback % (if set) takes the first slot. An odd badge out spans the full row
+              instead of leaving an empty half-slot next to it. */}
           {(() => {
             const cashbackBadge = !!product.cashbackPercent ? (
-              <div key="cashback" className="brutal-border flex items-center gap-2 bg-[#2B1B0C] text-[#FBF1DF] rounded-lg px-3 py-2 shadow-[2px_2px_0_0_#9C5A26]">
+              <div key="cashback" className="brutal-border flex items-center gap-2 bg-[#2B1B0C] text-[#FBF1DF] rounded-lg px-3 py-3 shadow-[2px_2px_0_0_#9C5A26]">
                 <Wallet className="w-4 h-4 text-[#C9863F] flex-shrink-0" />
                 <div className="leading-tight">
                   <p className="font-heading font-black text-[11px] uppercase tracking-wide">{product.cashbackPercent}% Cashback</p>
@@ -246,35 +253,29 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                 </div>
               </div>
             ) : null;
-            const offerBadgesNeeded = cashbackBadge ? 1 : 2;
-            const shownOffers = displayOffers.slice(0, offerBadgesNeeded);
-            const remainingOffers = displayOffers.slice(offerBadgesNeeded);
-            const badges = [
+            const badges: ReactElement<{ className: string }>[] = [
               cashbackBadge,
-              ...shownOffers.map((offer) => (
-                <div key={offer.id} className="brutal-border flex items-center gap-2 bg-[#2B1B0C] text-[#FBF1DF] rounded-lg px-3 py-2 shadow-[2px_2px_0_0_#9C5A26]">
+              ...displayOffers.map((offer) => (
+                <div key={offer.id} className="brutal-border flex items-center gap-2 bg-[#2B1B0C] text-[#FBF1DF] rounded-lg px-3 py-3 shadow-[2px_2px_0_0_#9C5A26]">
                   <Gift className="w-4 h-4 text-[#C9863F] flex-shrink-0" />
                   <p className="font-heading font-black text-[11px] uppercase tracking-wide leading-tight">{formatOfferBadgeText(offer)}</p>
                 </div>
               )),
-            ].filter(Boolean);
+            ].filter((b): b is ReactElement<{ className: string }> => b !== null);
+            const isLastOdd = badges.length % 2 === 1;
 
             return (
-              <>
-                {badges.length > 0 && <div className="grid grid-cols-2 gap-2 mb-5">{badges}</div>}
-                {remainingOffers.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-5">
-                    {remainingOffers.map((offer) => (
-                      <span
-                        key={offer.id}
-                        className="brutal-border text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-[#F6E4C2] text-[#6B3D19] font-body rounded-full shadow-[2px_2px_0_0_#2B1B0C]"
-                      >
-                        {formatOfferBadgeText(offer)}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </>
+              badges.length > 0 && (
+                <div className="grid grid-cols-2 gap-2 mb-5">
+                  {badges.map((badge, i) =>
+                    isLastOdd && i === badges.length - 1
+                      ? cloneElement(badge, {
+                          className: `${badge.props.className} col-span-2 justify-center`,
+                        })
+                      : badge
+                  )}
+                </div>
+              )
             );
           })()}
 
