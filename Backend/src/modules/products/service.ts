@@ -109,6 +109,24 @@ export async function getRelatedProducts(productId: string, purpose: string[], l
   return attachRatings(withOffersApplied);
 }
 
+// Used by the Acharya chat bot to recommend real products for a purpose without ever
+// exposing price in the chat turn — deliberately narrow select, no offers/ratings, this
+// isn't a storefront listing.
+export async function getProductsForChatRecommendation(purpose: string, limit = 3) {
+  const products = await db.product.findMany({
+    where: { status: 'ACTIVE', purpose: { has: purpose } },
+    select: { id: true, name: true, slug: true, images: true },
+    orderBy: { featured: 'desc' },
+    take: limit,
+  });
+  return products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    thumb: (Array.isArray(p.images) && (p.images[0] as { thumb?: unknown } | undefined)?.thumb) || null,
+  })) as Array<{ id: string; name: string; slug: string; thumb: string | null }>;
+}
+
 export async function getDistinctCategories(): Promise<string[]> {
   const key = cacheKeys.productCategories();
   const cached = await redis.get<string[]>(key);

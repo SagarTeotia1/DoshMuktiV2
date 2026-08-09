@@ -16,7 +16,10 @@ export class GroqNotConfiguredError extends Error {
   }
 }
 
-export async function chatCompletion(messages: ChatMessage[]): Promise<string> {
+export async function chatCompletion(
+  messages: ChatMessage[],
+  opts?: { jsonMode?: boolean },
+): Promise<string> {
   if (!env.GROQ_API_KEY) throw new GroqNotConfiguredError();
 
   const res = await fetch(GROQ_URL, {
@@ -29,7 +32,8 @@ export async function chatCompletion(messages: ChatMessage[]): Promise<string> {
       model: env.GROQ_MODEL,
       messages,
       temperature: 0.8,
-      max_tokens: 400,
+      max_tokens: 500,
+      ...(opts?.jsonMode ? { response_format: { type: 'json_object' } } : {}),
     }),
   });
 

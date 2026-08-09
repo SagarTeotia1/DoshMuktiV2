@@ -2,6 +2,8 @@ import { db } from '../../shared/db/client';
 import { sendOrderConfirmation } from '../../shared/integrations/resend/client';
 import { createShipment } from '../../shared/integrations/delhivery/client';
 import { creditCashbackForOrder } from '../wallet/service';
+import { releaseCouponUsageTx } from '../coupons/service';
+import { invalidateProductCaches } from '../products/service';
 
 interface RazorpayShippingAddress {
   line1: string;
@@ -56,12 +58,58 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
   });
 }
 
+// A payment.failed webhook means this order is definitively dead — not just
+// "not yet paid" like a still-in-progress checkout. Previously this only flipped
+// Payment to FAILED and left the Order sitting in PENDING_PAYMENT indefinitely
+// (reserved stock held, coupon slot held), relying on the release-holds cron to
+// eventually notice once reservedUntil passed — so a real failure looked
+// indistinguishable from a live in-progress order in Admin for up to
+// RESERVATION_MINUTES. Now it releases the reservation immediately, same
+// atomic/append-only rules as release-holds.ts.
 export async function handlePaymentFailed(razorpayOrderId: string, reason: string): Promise<void> {
   const updated: number = await db.$executeRaw`
     UPDATE "Payment" SET status = 'FAILED', "failureReason" = ${reason}
     WHERE "razorpayOrderId" = ${razorpayOrderId} AND status = 'PENDING'
   `;
   if (updated === 0) return; // already processed
+
+  const payment = await db.payment.findUnique({
+    where: { razorpayOrderId },
+    include: { order: { include: { items: true } } },
+  });
+  if (!payment) return;
+
+  const order = payment.order;
+
+  await db.$transaction(async (tx) => {
+    // Idempotent: only an order still PENDING_PAYMENT gets cancelled/released —
+    // guards against a replayed webhook or a race with the release-holds sweep
+    // double-releasing the same stock.
+    const cancelled: number = await tx.$executeRaw`
+      UPDATE "Order" SET status = 'CANCELLED', "updatedAt" = NOW()
+      WHERE id = ${order.id} AND status = 'PENDING_PAYMENT'
+    `;
+    if (cancelled === 0) return;
+
+    for (const item of order.items) {
+      await tx.$executeRaw`
+        UPDATE "ProductVariant" SET "stockQuantity" = "stockQuantity" + ${item.quantity} WHERE id = ${item.variantId}
+      `;
+      await tx.stockMovement.create({
+        data: { variantId: item.variantId, change: item.quantity, reason: 'RESERVATION_RELEASED', orderId: order.id, createdBy: 'system' },
+      });
+    }
+
+    if (order.couponId) {
+      await releaseCouponUsageTx(tx, order.couponId);
+    }
+
+    await tx.orderStatusLog.create({
+      data: { orderId: order.id, from: 'PENDING_PAYMENT', to: 'CANCELLED', createdBy: 'system', note: `Payment failed: ${reason}` },
+    });
+  });
+
+  await invalidateProductCaches();
 }
 
 export async function handleDelhiveryStatusUpdate(waybill: string, event: { status: string; location: string; description: string; timestamp: string }): Promise<void> {

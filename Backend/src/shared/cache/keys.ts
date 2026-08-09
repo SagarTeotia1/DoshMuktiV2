@@ -6,6 +6,7 @@ export const cacheKeys = {
   featuredProducts: (limit: number) => `products:featured:${limit}` as const,
   productCategories: () => `products:categories` as const,
   cronLock: (job: string) => `cron:lock:${job}` as const,
+  chatProfile: (sessionId: string) => `chat:profile:${sessionId}` as const,
 } as const;
 
 export const CACHE_TTL = {
@@ -16,4 +17,5 @@ export const CACHE_TTL = {
   FEATURED: 60 * 10,
   CATEGORIES: 60 * 15,
   CRON_LOCK: 60,
+  CHAT_PROFILE: 60 * 60 * 24 * 30,
 } as const;

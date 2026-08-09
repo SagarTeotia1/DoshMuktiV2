@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { MoonStar, X, Send } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { MoonStar, X, Send, Sparkles } from 'lucide-react';
 import { useAcharyaChat } from '@/hooks/use-acharya-chat';
 
 export function ChatWidget() {
@@ -59,15 +61,42 @@ export function ChatWidget() {
           {/* Messages */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-3.5 py-4 flex flex-col gap-3">
             {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 font-body text-xs leading-relaxed ${
-                  m.role === 'user'
-                    ? 'self-end bg-[#9C5A26] text-white rounded-br-sm'
-                    : 'self-start bg-white text-[#2B1B0C] rounded-bl-sm'
-                }`}
-              >
-                {m.content}
+              <div key={i} className={`flex flex-col gap-2 max-w-[85%] ${m.role === 'user' ? 'self-end' : 'self-start'}`}>
+                <div
+                  className={`rounded-2xl px-3.5 py-2.5 font-body text-xs leading-relaxed ${
+                    m.role === 'user'
+                      ? 'bg-[#9C5A26] text-white rounded-br-sm'
+                      : 'bg-white text-[#2B1B0C] rounded-bl-sm'
+                  }`}
+                >
+                  {m.content}
+                </div>
+                {m.recommendedProducts && m.recommendedProducts.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    {m.recommendationReason && (
+                      <p className="font-body text-[10px] italic text-[#8A7A63] px-1 leading-relaxed">
+                        {m.recommendationReason}
+                      </p>
+                    )}
+                    {m.recommendedProducts.map((p) => (
+                      <Link
+                        key={p.id}
+                        href={`/products/${p.slug}`}
+                        className="flex items-center gap-2.5 bg-white border border-[#2B1B0C]/10 rounded-xl px-2.5 py-2 hover:border-[#9C5A26] transition-colors"
+                      >
+                        <div className="relative w-9 h-9 rounded-lg bg-[#F6E4C2] flex-shrink-0 overflow-hidden flex items-center justify-center">
+                          {p.thumb ? (
+                            <Image src={p.thumb} alt={p.name} fill className="object-cover" sizes="36px" />
+                          ) : (
+                            <Sparkles className="w-3.5 h-3.5 text-[#9C5A26]" />
+                          )}
+                        </div>
+                        <p className="flex-1 min-w-0 font-heading font-bold text-[11px] text-[#2B1B0C] truncate">{p.name}</p>
+                        <span className="flex-shrink-0 font-body text-[10px] font-semibold text-[#9C5A26]">View →</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             {isSending && (

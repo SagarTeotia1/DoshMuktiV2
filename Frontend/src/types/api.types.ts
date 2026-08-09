@@ -77,6 +77,7 @@ export interface CartItem {
   maxStock: number;
   productName: string;
   sku: string;
+  imageUrl: string | null;
 }
 
 export interface CartResponse {
@@ -167,8 +168,17 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface ChatRecommendedProduct {
+  id: string;
+  name: string;
+  slug: string;
+  thumb: string | null;
+}
+
 export interface ChatResponse {
   reply: string;
+  recommendedProducts?: ChatRecommendedProduct[];
+  recommendationReason?: string | null;
 }
 
 export interface CreateReviewInput {

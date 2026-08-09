@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { formatCurrency } from '@/lib/formatters';
@@ -59,9 +60,18 @@ export default function CartPage() {
 
       <div className="flex flex-col gap-3 mb-8">
         {items.map((item) => (
-          <div key={item.variantId} className="flex items-center gap-3 sm:gap-4 bg-brand-paper border border-[#2B1B0C] rounded-2xl p-3 sm:p-4">
-            <div className="flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-[#F6E4C2] border border-[#2B1B0C]/20 flex items-center justify-center">
-              <span className="font-heading font-black text-lg text-[#9C5A26]">{item.productName.charAt(0)}</span>
+          <div
+            key={item.variantId}
+            className="neo-card flex items-center gap-3 sm:gap-4 bg-[#FCEFE0] border border-[#2B1B0C] rounded-2xl p-3 sm:p-4 shadow-neo-sm"
+          >
+            <div className="relative flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-[#F6E4C2] border border-[#2B1B0C] shadow-[3px_3px_0_0_#2B1B0C]">
+              {item.imageUrl ? (
+                <Image src={item.imageUrl} alt={item.productName} fill className="object-cover" sizes="80px" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <span className="font-heading font-black text-lg text-[#9C5A26]">{item.productName.charAt(0)}</span>
+                </div>
+              )}
             </div>
 
             <div className="flex-1 min-w-0">
@@ -70,20 +80,20 @@ export default function CartPage() {
               <p className="font-heading font-bold text-xs sm:text-sm text-[#2B1B0C] mt-1">{formatCurrency(item.price)}</p>
             </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 border border-[#2B1B0C] rounded-full bg-white/60 p-0.5">
               <button
                 onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
                 disabled={isUpdating}
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-[#2B1B0C] flex items-center justify-center hover:bg-[#F6E4C2] disabled:opacity-50 transition-colors"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center hover:bg-[#F6E4C2] disabled:opacity-50 transition-colors"
                 aria-label="Decrease quantity"
               >
                 <Minus className="w-3 h-3" />
               </button>
-              <span className="font-body text-sm w-5 text-center tabular-nums">{item.quantity}</span>
+              <span className="font-body font-bold text-sm w-5 text-center tabular-nums">{item.quantity}</span>
               <button
                 onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
                 disabled={isUpdating || item.quantity >= item.maxStock}
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-[#2B1B0C] flex items-center justify-center hover:bg-[#F6E4C2] disabled:opacity-50 transition-colors"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center hover:bg-[#F6E4C2] disabled:opacity-50 transition-colors"
                 aria-label="Increase quantity"
               >
                 <Plus className="w-3 h-3" />
@@ -106,7 +116,7 @@ export default function CartPage() {
             key={item.variantId}
             className="flex items-center gap-3 sm:gap-4 bg-[#F6E4C2]/40 border border-dashed border-[#9C5A26] rounded-2xl p-3 sm:p-4"
           >
-            <div className="flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-[#F6E4C2] border border-[#2B1B0C]/20 flex items-center justify-center">
+            <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-[#F6E4C2] border border-[#2B1B0C]/20 flex items-center justify-center">
               <span className="text-xl" role="img" aria-label="Gift">🎁</span>
             </div>
             <div className="flex-1 min-w-0">
@@ -120,7 +130,7 @@ export default function CartPage() {
         ))}
       </div>
 
-      <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6 flex flex-col gap-2">
+      <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6 flex flex-col gap-2 shadow-[4px_4px_0_0_#2B1B0C]">
         <div className="flex justify-between font-body text-sm text-[#6B5539]">
           <span>Subtotal</span>
           <span>{formatCurrency(subtotal)}</span>

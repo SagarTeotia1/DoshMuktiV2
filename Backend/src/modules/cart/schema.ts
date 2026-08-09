@@ -17,6 +17,7 @@ export interface CartItem {
   maxStock: number;
   productName: string;
   sku: string;
+  imageUrl: string | null;
 }
 
 export interface Cart {

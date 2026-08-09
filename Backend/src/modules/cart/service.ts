@@ -13,6 +13,14 @@ export class VariantNotFoundError extends Error {
   }
 }
 
+// Product.images is stored as Json ([{thumb,card,full}]) — see prisma/schema.prisma.
+// Cart/free-gift lines only ever need the thumb-sized crop.
+function firstThumb(images: unknown): string | null {
+  if (!Array.isArray(images) || images.length === 0) return null;
+  const first = images[0] as { thumb?: unknown } | undefined;
+  return typeof first?.thumb === "string" ? first.thumb : null;
+}
+
 export async function getCart(sessionId: string): Promise<Cart> {
   const cached = await redis.get<Cart>(cacheKeys.cart(sessionId));
   if (cached) return cached;
@@ -31,7 +39,7 @@ export async function addItemToCart(
 ): Promise<Cart> {
   const variant = await db.productVariant.findFirst({
     where: { id: input.variantId, isActive: true },
-    include: { product: { select: { name: true, basePrice: true } } },
+    include: { product: { select: { name: true, basePrice: true, images: true } } },
   });
   if (!variant) throw new VariantNotFoundError(input.variantId);
 
@@ -48,6 +56,7 @@ export async function addItemToCart(
     maxStock: variant.stockQuantity,
     productName: variant.product.name,
     sku: variant.sku,
+    imageUrl: firstThumb(variant.product.images),
   };
 
   if (existingIndex >= 0) {
