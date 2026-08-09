@@ -71,7 +71,7 @@ const OFFER_CONDITION_FORMATTERS: Record<Offer['reward'], (offer: Offer) => stri
 };
 
 function formatOfferCondition(offer: Offer): string | null {
-  return OFFER_CONDITION_FORMATTERS[offer.reward](offer);
+  return (OFFER_CONDITION_FORMATTERS[offer.reward] ?? (() => null))(offer);
 }
 
 function CouponCode({ code }: { code: string }) {
@@ -132,7 +132,7 @@ export function ExclusiveOffers({ offers }: { offers: Product['offers'] }) {
       <h2 className="font-heading font-bold text-sm uppercase tracking-wide text-[#2B1B0C] mb-4">Exclusive Offers</h2>
       <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
         {shownOffers.map((offer) => {
-          const Icon = OFFER_ICONS[offer.reward];
+          const Icon = OFFER_ICONS[offer.reward] ?? Gift;
           const condition = formatOfferCondition(offer);
 
           return (

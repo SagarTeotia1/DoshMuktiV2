@@ -33,7 +33,7 @@ const OFFER_REWARD_FORMATTERS: Record<Offer['reward'], (offer: Offer) => string>
 };
 
 function formatOfferBadgeText(offer: Offer): string {
-  return OFFER_REWARD_FORMATTERS[offer.reward](offer);
+  return (OFFER_REWARD_FORMATTERS[offer.reward] ?? (() => offer.title))(offer);
 }
 
 interface ProductDetailResponse {
