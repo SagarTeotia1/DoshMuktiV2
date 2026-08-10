@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Tag, ShoppingBag, Eye } from 'lucide-react';
@@ -12,7 +13,10 @@ import type { Product } from '@/types/api.types';
 const MotionLink = motion.create(Link);
 
 export function ProductCard({ product }: { product: Product }) {
+  const router = useRouter();
   const { addItemAsync, isAdding } = useCart();
+  const href = `/products/${product.slug}`;
+  const prefetch = () => router.prefetch(href);
   const image = product.images[0]?.card ?? null;
   const hoverImage = product.images[1]?.card ?? null;
   const activeVariants = product.variants.filter((v) => v.isActive);
@@ -40,7 +44,9 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <MotionLink
-      href={`/products/${product.slug}`}
+      href={href}
+      onMouseEnter={prefetch}
+      onTouchStart={prefetch}
       className="neo-card group block h-full rounded-2xl flex flex-col bg-[#FCEFE0] shadow-neo-sm pt-3 pl-3 pr-4 pb-4 sm:pt-4 sm:pl-4 sm:pr-5 sm:pb-5"
       whileHover={{ y: -5, x: -2 }}
       whileTap={{ scale: 0.97 }}

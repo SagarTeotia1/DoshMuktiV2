@@ -23,8 +23,26 @@ function firstThumb(images: unknown): string | null {
 
 export async function getCart(sessionId: string): Promise<Cart> {
   const cached = await redis.get<Cart>(cacheKeys.cart(sessionId));
-  if (cached) return cached;
-  return { sessionId, items: [], updatedAt: new Date().toISOString() };
+  if (!cached) return { sessionId, items: [], updatedAt: new Date().toISOString() };
+
+  // Carts persist in Redis across deploys — a session created before `imageUrl` was
+  // added to CartItem still has that field missing/undefined in its cached JSON, so it
+  // silently falls back to the frontend's initials placeholder forever (Redis TTL is
+  // long, the item is never re-added). Backfill it here instead of making the customer
+  // clear and re-add their cart.
+  const staleImageIds = cached.items.filter((i) => i.imageUrl === undefined).map((i) => i.variantId);
+  if (staleImageIds.length === 0) return cached;
+
+  const variants = await db.productVariant.findMany({
+    where: { id: { in: staleImageIds } },
+    include: { product: { select: { images: true } } },
+  });
+  cached.items = cached.items.map((item) => {
+    if (item.imageUrl !== undefined) return item;
+    const v = variants.find((x) => x.id === item.variantId);
+    return { ...item, imageUrl: v ? firstThumb(v.product.images) : null };
+  });
+  return saveCart(cached);
 }
 
 async function saveCart(cart: Cart): Promise<Cart> {

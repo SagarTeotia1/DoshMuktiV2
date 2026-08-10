@@ -2,11 +2,15 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Star, Tag } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
 import type { Product } from '@/types/api.types';
 
 export function ProductCardHorizontal({ product }: { product: Product }) {
+  const router = useRouter();
+  const href = `/products/${product.slug}`;
+  const prefetch = () => router.prefetch(href);
   const image = product.images[0]?.card ?? null;
   const activeVariants = product.variants.filter((v) => v.isActive);
   const price =
@@ -20,7 +24,9 @@ export function ProductCardHorizontal({ product }: { product: Product }) {
 
   return (
     <Link
-      href={`/products/${product.slug}`}
+      href={href}
+      onMouseEnter={prefetch}
+      onTouchStart={prefetch}
       className="neo-card group flex items-stretch gap-4 rounded-2xl bg-[#FCEFE0] shadow-neo-sm pt-3 pl-3 pr-4 pb-4 sm:pt-4 sm:pl-4 sm:pr-5 sm:pb-5"
     >
       <div className="relative flex-shrink-0 w-28 h-28 sm:w-36 sm:h-36 rounded-xl overflow-hidden bg-[#F6E4C2] border border-[#2B1B0C] shadow-[4px_4px_0_0_#2B1B0C]">
