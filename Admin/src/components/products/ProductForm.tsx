@@ -10,16 +10,22 @@ import type { Offer, Product } from '@/types/api.types';
 import { useOffers } from '@/hooks/use-offers';
 import { useCategories } from '@/hooks/use-categories';
 import { StagedImageUploader } from './StagedImageUploader';
+import { DescriptionEditor } from './DescriptionEditor';
 import { ProductPreview } from './ProductPreview';
 
 const NEW_CATEGORY = '__new__';
 
 const imageSchema = z.object({ thumb: z.string(), card: z.string(), full: z.string() });
 
+const descriptionBlockSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('text'), content: z.string().min(1, 'Required') }),
+  z.object({ type: z.literal('image'), thumb: z.string(), card: z.string(), full: z.string() }),
+]);
+
 const productFormSchema = z.object({
   name: z.string().min(1, 'Required'),
   slug: z.string().min(2, 'Required').regex(/^[a-z0-9-]+$/, 'Lowercase, numbers, hyphens only'),
-  description: z.string().min(1, 'Required'),
+  description: z.array(descriptionBlockSchema).min(1, 'Add at least one block'),
   category: z.string().min(1, 'Required'),
   basePrice: z.coerce.number().positive('Must be positive'),
   compareAtPrice: z.coerce.number().min(0).default(0), // 0 = no strikethrough MRP, mapped to null on submit
@@ -34,7 +40,6 @@ const productFormSchema = z.object({
   howToWear: z.array(z.object({ text: z.string().min(1, 'Required') })).default([]),
   careInstructions: z.string().optional(),
   socialProofText: z.string().optional(),
-  descriptionImages: z.array(imageSchema).default([]),
   howToUseVideoUrl: z.string().optional(),
   sidhiPrice: z.coerce.number().min(0).default(0), // 0 = feature hidden, mapped to null on submit
   selfEnergizeInstructions: z.string().optional(),
@@ -80,7 +85,7 @@ export function ProductForm({
     defaultValues: {
       name: defaultValues?.name ?? '',
       slug: defaultValues?.slug ?? '',
-      description: defaultValues?.description ?? '',
+      description: defaultValues?.description ?? [],
       category: defaultValues?.category ?? '',
       basePrice: defaultValues?.basePrice ?? 0,
       compareAtPrice: defaultValues?.compareAtPrice ?? 0,
@@ -95,7 +100,6 @@ export function ProductForm({
       howToWear: defaultValues?.howToWear?.map((text) => ({ text })) ?? [],
       careInstructions: defaultValues?.careInstructions ?? '',
       socialProofText: defaultValues?.socialProofText ?? '',
-      descriptionImages: defaultValues?.descriptionImages ?? [],
       howToUseVideoUrl: defaultValues?.howToUseVideoUrl ?? '',
       sidhiPrice: defaultValues?.sidhiPrice ?? 0,
       selfEnergizeInstructions: defaultValues?.selfEnergizeInstructions ?? '',
@@ -183,7 +187,7 @@ export function ProductForm({
             category: previewValues.category,
             basePrice: previewValues.basePrice,
             purpose: previewValues.purpose ?? [],
-            description: previewValues.description,
+            description: previewValues.description ?? [],
             socialProofText: previewValues.socialProofText,
             benefits: previewValues.benefits ?? [],
             howToWear: (previewValues.howToWear ?? []).map((s) => s.text),
@@ -207,9 +211,13 @@ export function ProductForm({
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-slate-600 mb-1 block">Description</label>
-          <textarea {...register('description')} rows={4} className={inputClass} />
-          {errors.description && <p className="text-xs text-red-600 mt-1">{errors.description.message}</p>}
+          <label className="text-xs font-semibold text-slate-600 mb-2 block">
+            Description <span className="text-slate-400 font-normal">(add text and image blocks in any order — this is what shows on the product page)</span>
+          </label>
+          <DescriptionEditor control={control} name="description" />
+          {errors.description && !Array.isArray(errors.description) && (
+            <p className="text-xs text-red-600 mt-1">{errors.description.message as string}</p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -483,27 +491,14 @@ export function ProductForm({
         </div>
 
         {!defaultValues && (
-          <>
-            <div>
-              <label className="text-xs font-semibold text-slate-600 mb-2 block">Images</label>
-              <Controller
-                control={control}
-                name="images"
-                render={({ field }) => <StagedImageUploader images={field.value ?? []} onChange={field.onChange} />}
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-slate-600 mb-2 block">
-                Description Photos <span className="text-slate-400 font-normal">(shown alongside the description on the product page)</span>
-              </label>
-              <Controller
-                control={control}
-                name="descriptionImages"
-                render={({ field }) => <StagedImageUploader images={field.value ?? []} onChange={field.onChange} />}
-              />
-            </div>
-          </>
+          <div>
+            <label className="text-xs font-semibold text-slate-600 mb-2 block">Images</label>
+            <Controller
+              control={control}
+              name="images"
+              render={({ field }) => <StagedImageUploader images={field.value ?? []} onChange={field.onChange} />}
+            />
+          </div>
         )}
 
         <button

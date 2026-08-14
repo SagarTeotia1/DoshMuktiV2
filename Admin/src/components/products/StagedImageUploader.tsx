@@ -19,16 +19,19 @@ export function StagedImageUploader({
   const [uploading, setUploading] = useState(false);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
 
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const urls = await api.upload<StagedImage>('/api/admin/upload', formData);
-      onChange([...images, urls]);
-      toast.success('Image uploaded');
+      const uploaded: StagedImage[] = [];
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        uploaded.push(await api.upload<StagedImage>('/api/admin/upload', formData));
+      }
+      onChange([...images, ...uploaded]);
+      toast.success(uploaded.length > 1 ? `${uploaded.length} images uploaded` : 'Image uploaded');
     } catch (err) {
       toast.error(err instanceof ApiError ? err.body.error : 'Upload failed');
     } finally {
@@ -66,7 +69,7 @@ export function StagedImageUploader({
         >
           <Upload className="w-4 h-4 text-slate-400" />
         </button>
-        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+        <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFile} />
       </div>
     </div>
   );

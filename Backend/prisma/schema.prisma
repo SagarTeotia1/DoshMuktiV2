@@ -14,7 +14,7 @@ model Product {
   id                       String           @id @default(cuid())
   name                     String
   slug                     String           @unique
-  description              String           @db.Text
+  description              Json             @default("[]") // DescriptionBlock[] — ordered [{type:'text',content} | {type:'image',thumb,card,full}], admin-composed, see products/schema.ts
   category                 String
   basePrice                Decimal          @db.Decimal(10, 2)
   compareAtPrice           Decimal?         @db.Decimal(10, 2) // strikethrough "MRP" — null = no discount shown
@@ -29,8 +29,8 @@ model Product {
   socialProofText          String? // "Loved by 15 lakh+ customers"
   tags                     String[]         @default([]) // ["100% Cashback in Wallet", "New", ...] — admin-managed display tags
   cashbackPercent          Int? // % of paid price credited to wallet when order is marked PAID; null = no cashback
-  descriptionImages        Json             @default("[]") // [{thumb,card,full}] — contextual photos shown alongside the description, same shape as `images`
   howToUseVideoUrl         String? // YouTube/Vimeo/mp4 URL, shown in the "How to Use" section
+  testimonialVideos        Json             @default("[]") // TestimonialVideo[] — [{id, videoUrl, posterUrl, caption, views}], shown as "Loved by X customers" row on PDP
   sidhiPrice               Int? // ₹ price for the Sidhi/Energizing service add-on; null = feature hidden. Syncs to a "-SIDHI" ProductVariant — see products/service.ts
   selfEnergizeInstructions String?          @db.Text // DIY energizing steps, shown as the "Energize It Yourself" tab
   offers                   Offer[]          @relation("OfferProducts") // universal, admin-managed offers enabled on this product — see Offer model

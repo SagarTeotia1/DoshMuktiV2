@@ -479,7 +479,7 @@ async function main() {
       data: {
         name: p.name,
         slug,
-        description: p.description,
+        description: [{ type: 'text', content: p.description }],
         category: p.category,
         basePrice: p.price,
         compareAtPrice,

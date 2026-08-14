@@ -2,13 +2,14 @@
 
 import Image from 'next/image';
 import type { StagedImage } from './StagedImageUploader';
+import type { DescriptionBlock } from '@/types/api.types';
 
 interface PreviewData {
   name: string;
   category: string;
   basePrice: number;
   purpose: string[];
-  description: string;
+  description: DescriptionBlock[];
   socialProofText?: string | null;
   benefits: Array<{ title: string; description: string }>;
   howToWear: string[];
@@ -54,7 +55,25 @@ export function ProductPreview({ data }: { data: PreviewData }) {
             <p className="text-[10px] font-bold uppercase tracking-wider text-[#9C5A26]">{data.socialProofText}</p>
           )}
 
-          {data.description && <p className="text-xs text-[#6B5539] leading-relaxed">{data.description}</p>}
+          {data.description.length > 0 && (
+            <div className="flex flex-col gap-2">
+              {data.description.map((block, i) =>
+                block.type === 'text' ? (
+                  <p key={i} className="text-xs text-[#6B5539] leading-relaxed">
+                    {block.content}
+                  </p>
+                ) : (
+                  // Plain <img> at natural size — `full` is aspect-preserved (uncropped
+                  // at upload, unlike `card`'s hard square crop), and a fixed aspect-video
+                  // + object-cover box would crop it right back, same bug as the storefront.
+                  <div key={i} className="w-full rounded-lg overflow-hidden border border-[#2B1B0C]/10">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={block.full} alt="" className="w-full h-auto block" />
+                  </div>
+                )
+              )}
+            </div>
+          )}
         </div>
       </div>
 

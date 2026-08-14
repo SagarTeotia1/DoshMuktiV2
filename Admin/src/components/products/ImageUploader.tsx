@@ -12,19 +12,29 @@ export function ImageUploader({ product }: { product: Product }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const updateProduct = useUpdateProduct(product.id);
+  const current = product.images ?? [];
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
 
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const urls = await api.upload<{ thumb: string; card: string; full: string }>('/api/admin/upload', formData);
+      // Upload sequentially, then merge and PATCH once — parallel/multiple
+      // mutate() calls each read the same stale `current` array closure and
+      // last-write-wins, silently dropping all but one uploaded image.
+      const uploaded: { thumb: string; card: string; full: string }[] = [];
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        uploaded.push(await api.upload<{ thumb: string; card: string; full: string }>('/api/admin/upload', formData));
+      }
       updateProduct.mutate(
-        { images: [...product.images, urls] },
-        { onSuccess: () => toast.success('Image uploaded'), onError: () => toast.error('Failed to save image to product') }
+        { images: [...current, ...uploaded] },
+        {
+          onSuccess: () => toast.success(uploaded.length > 1 ? `${uploaded.length} images uploaded` : 'Image uploaded'),
+          onError: () => toast.error('Failed to save image to product'),
+        }
       );
     } catch (err) {
       toast.error(err instanceof ApiError ? err.body.error : 'Upload failed');
@@ -35,15 +45,15 @@ export function ImageUploader({ product }: { product: Product }) {
   }
 
   function removeImage(index: number) {
-    const images = product.images.filter((_, i) => i !== index);
-    updateProduct.mutate({ images });
+    const updated = current.filter((_, i) => i !== index);
+    updateProduct.mutate({ images: updated });
   }
 
   return (
     <div className="bg-white border border-slate-200 rounded-lg shadow-card p-4">
       <h2 className="font-heading font-bold text-sm text-slate-900 mb-3">Images</h2>
       <div className="flex flex-wrap gap-3">
-        {product.images.map((img, i) => (
+        {current.map((img, i) => (
           <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 group">
             <Image src={img.thumb} alt="" fill className="object-cover" />
             <button
@@ -62,7 +72,7 @@ export function ImageUploader({ product }: { product: Product }) {
         >
           <Upload className="w-4 h-4 text-slate-400" />
         </button>
-        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+        <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFile} />
       </div>
     </div>
   );

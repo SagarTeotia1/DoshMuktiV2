@@ -6,6 +6,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { ProductForm, type ProductFormValues } from '@/components/products/ProductForm';
 import { VariantsPanel } from '@/components/products/VariantsPanel';
 import { ImageUploader } from '@/components/products/ImageUploader';
+import { TestimonialVideosUploader } from '@/components/products/TestimonialVideosUploader';
 import { useProduct, useUpdateProduct } from '@/hooks/use-products';
 import { ApiError } from '@/lib/api-client';
 
@@ -15,9 +16,14 @@ export default function EditProductPage() {
   const updateProduct = useUpdateProduct(id);
 
   function handleSubmit(values: ProductFormValues) {
+    // images is owned by the ImageUploader panel above (PATCHes immediately
+    // on upload/remove). ProductForm's copy of this field is a stale
+    // snapshot taken at mount — never resynced — so including it here would
+    // silently overwrite live image edits on save.
+    const { images: _images, ...rest } = values;
     updateProduct.mutate(
       {
-        ...values,
+        ...rest,
         badge: values.badge || null,
         careInstructions: values.careInstructions || null,
         socialProofText: values.socialProofText || null,

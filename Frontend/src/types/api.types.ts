@@ -2,6 +2,26 @@
 // in the same commit — see docs/PATTERNS.md § "Why No Shared Package."
 import { z } from 'zod';
 
+// Admin-composed, fully-ordered product description — any mix/count of text and
+// image blocks, in the order the admin arranges them (not a fixed alternation).
+// Mirrors Backend/src/modules/products/schema.ts's descriptionBlockSchema.
+export const descriptionBlockSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('text'), content: z.string() }),
+  z.object({ type: z.literal('image'), thumb: z.string(), card: z.string(), full: z.string() }),
+]);
+export type DescriptionBlock = z.infer<typeof descriptionBlockSchema>;
+
+// One "Loved by X customers" PDP testimonial video card, admin-managed.
+// Mirrors Backend/src/modules/products/schema.ts's testimonialVideoSchema.
+export const testimonialVideoSchema = z.object({
+  id: z.string(),
+  videoUrl: z.string(),
+  posterUrl: z.string().nullable().optional(),
+  caption: z.string(),
+  views: z.string(),
+});
+export type TestimonialVideo = z.infer<typeof testimonialVideoSchema>;
+
 export const productVariantSchema = z.object({
   id: z.string(),
   sku: z.string(),
@@ -15,7 +35,10 @@ export const productSchema = z.object({
   id: z.string(),
   name: z.string(),
   slug: z.string(),
-  description: z.string(),
+  description: z.array(descriptionBlockSchema).default([]),
+  // Short plain-text teaser derived server-side from the first text block —
+  // used for card excerpts/meta copy where a full block array can't render.
+  excerpt: z.string().default(''),
   category: z.string(),
   basePrice: z.number(),
   compareAtPrice: z.number().nullable(),
@@ -29,8 +52,8 @@ export const productSchema = z.object({
   socialProofText: z.string().nullable(),
   tags: z.array(z.string()).default([]),
   cashbackPercent: z.number().nullable(),
-  descriptionImages: z.array(z.object({ thumb: z.string(), card: z.string(), full: z.string() })).default([]),
   howToUseVideoUrl: z.string().nullable(),
+  testimonialVideos: z.array(testimonialVideoSchema).default([]),
   sidhiPrice: z.number().nullable(),
   selfEnergizeInstructions: z.string().nullable(),
   offers: z

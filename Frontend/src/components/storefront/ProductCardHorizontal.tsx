@@ -91,9 +91,9 @@ export function ProductCardHorizontal({ product }: { product: Product }) {
           {mrp && <p className="text-xs sm:text-sm text-[#8A7A63] line-through font-body tabular-nums">{formatCurrency(mrp)}</p>}
         </div>
 
-        {product.description && (
+        {product.excerpt && (
           <p className="hidden sm:block font-body text-xs text-[#8A7A63] line-clamp-2 mt-2 leading-relaxed">
-            {product.description}
+            {product.excerpt}
           </p>
         )}
       </div>

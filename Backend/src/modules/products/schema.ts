@@ -1,6 +1,26 @@
 import { z } from 'zod';
 import { PURPOSE_IDS, PRODUCT_SORTS } from '../../shared/constants/purposes';
 
+const imageObjSchema = z.object({ thumb: z.string(), card: z.string(), full: z.string() });
+
+// Admin-composed, fully-ordered product description — any mix/count of text and
+// image blocks, in the order the admin arranges them (not a fixed alternation).
+export const descriptionBlockSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('text'), content: z.string().min(1) }),
+  z.object({ type: z.literal('image'), thumb: z.string(), card: z.string(), full: z.string() }),
+]);
+export type DescriptionBlock = z.infer<typeof descriptionBlockSchema>;
+
+// One "Loved by X customers" PDP testimonial video card, admin-managed.
+export const testimonialVideoSchema = z.object({
+  id: z.string().min(1),
+  videoUrl: z.string().url().max(500),
+  posterUrl: z.string().url().max(500).nullable().optional(),
+  caption: z.string().max(200),
+  views: z.string().max(20), // free-text display label, e.g. "18.0K"
+});
+export type TestimonialVideo = z.infer<typeof testimonialVideoSchema>;
+
 export const listProductsQuerySchema = z.object({
   purpose: z.enum(PURPOSE_IDS).optional(),
   category: z.string().min(1).max(100).optional(),
@@ -26,11 +46,11 @@ export type ListAdminProductsQuery = z.infer<typeof listAdminProductsQuerySchema
 export const createProductSchema = z.object({
   name: z.string().min(1).max(200),
   slug: z.string().min(2).max(200).regex(/^[a-z0-9-]+$/),
-  description: z.string().min(1),
+  description: z.array(descriptionBlockSchema).min(1),
   category: z.string().min(1).max(100),
   basePrice: z.number().positive().multipleOf(0.01).max(999999),
   compareAtPrice: z.number().positive().multipleOf(0.01).max(999999).nullable().optional(),
-  images: z.array(z.object({ thumb: z.string(), card: z.string(), full: z.string() })).default([]),
+  images: z.array(imageObjSchema).default([]),
   purpose: z.array(z.enum(PURPOSE_IDS)).default([]),
   badge: z.string().max(50).nullable().optional(),
   featured: z.boolean().default(false),
@@ -40,8 +60,8 @@ export const createProductSchema = z.object({
   socialProofText: z.string().max(100).optional().nullable(),
   tags: z.array(z.string().min(1).max(40)).max(6).default([]),
   cashbackPercent: z.number().int().min(0).max(100).nullable().optional(),
-  descriptionImages: z.array(z.object({ thumb: z.string(), card: z.string(), full: z.string() })).default([]),
   howToUseVideoUrl: z.string().url().max(500).nullable().optional(),
+  testimonialVideos: z.array(testimonialVideoSchema).default([]),
   sidhiPrice: z.number().int().positive().max(999999).nullable().optional(),
   selfEnergizeInstructions: z.string().max(5000).nullable().optional(),
   offerIds: z.array(z.string()).default([]),

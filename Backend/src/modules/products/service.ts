@@ -4,7 +4,22 @@ import { db } from '../../shared/db/client';
 import { redis } from '../../shared/cache/client';
 import { cacheKeys, CACHE_TTL } from '../../shared/cache/keys';
 import { attachApplicableOffers, type OfferWithCoupon } from '../offers/service';
-import type { ListProductsQuery } from './schema';
+import type { ListProductsQuery, DescriptionBlock } from './schema';
+
+// Short plain-text teaser derived from the first text block of the structured
+// description — used for product-card excerpts. Never stored; always computed
+// on read so it can't drift from the blocks the admin actually edits.
+function deriveExcerpt(description: unknown): string {
+  const blocks = Array.isArray(description) ? (description as DescriptionBlock[]) : [];
+  const firstText = blocks.find((b): b is Extract<DescriptionBlock, { type: 'text' }> => b.type === 'text');
+  if (!firstText) return '';
+  const content = firstText.content.trim();
+  return content.length > 160 ? `${content.slice(0, 157)}...` : content;
+}
+
+function withExcerpt<T extends { description: unknown }>(products: T[]): Array<T & { excerpt: string }> {
+  return products.map((p) => ({ ...p, excerpt: deriveExcerpt(p.description) }));
+}
 
 // Offers are no longer a plain Prisma relation include — CATEGORY/ALL_PRODUCTS-scoped
 // offers apply without an explicit product link, so every storefront/admin read that
@@ -20,9 +35,14 @@ async function withOffers<T extends { id: string; category: string }>(products: 
 }
 
 type ProductWithVariants = Prisma.ProductGetPayload<{ include: { variants: { where: { isActive: true } } } }>;
-type ProductWithRating = ProductWithVariants & { rating: { average: number; count: number } };
+type ProductWithRating = ProductWithVariants & { rating: { average: number; count: number }; excerpt: string };
 
-async function attachRatings<T extends { id: string }>(products: T[]): Promise<Array<T & { rating: { average: number; count: number } }>> {
+// Storefront-facing products always get both a rating summary and a derived plain-text
+// excerpt attached in the same pass — every caller of attachRatings is a storefront read,
+// so this is the one place to compute `excerpt` without touching each call site.
+async function attachRatings<T extends { id: string; description: unknown }>(
+  products: T[]
+): Promise<Array<T & { rating: { average: number; count: number }; excerpt: string }>> {
   if (products.length === 0) return [];
   const grouped = await db.review.groupBy({
     by: ['productId'],
@@ -31,7 +51,8 @@ async function attachRatings<T extends { id: string }>(products: T[]): Promise<A
     _count: true,
   });
   const byId = new Map(grouped.map((g) => [g.productId, { average: g._avg.rating ?? 0, count: g._count }]));
-  return products.map((p) => ({ ...p, rating: byId.get(p.id) ?? { average: 0, count: 0 } }));
+  const withRating = products.map((p) => ({ ...p, rating: byId.get(p.id) ?? { average: 0, count: 0 } }));
+  return withExcerpt(withRating);
 }
 
 export async function listProducts(query: ListProductsQuery) {
@@ -46,12 +67,13 @@ export async function listProducts(query: ListProductsQuery) {
     ...(query.purpose ? { purpose: { has: query.purpose } } : {}),
     ...(query.featured !== undefined ? { featured: query.featured } : {}),
     ...(query.category ? { category: { equals: query.category, mode: 'insensitive' } } : {}),
+    // `description` is now a structured Json block array, not free text — Prisma's
+    // string `contains` filter no longer applies to it, so search is name/category only.
     ...(query.q
       ? {
           OR: [
             { name: { contains: query.q, mode: 'insensitive' } },
             { category: { contains: query.q, mode: 'insensitive' } },
-            { description: { contains: query.q, mode: 'insensitive' } },
           ],
         }
       : {}),
@@ -276,10 +298,11 @@ export async function createProduct(input: CreateProductInput) {
   const product = await db.product.create({
     data: {
       ...rest,
+      description: rest.description as unknown as Prisma.InputJsonValue,
       images: rest.images as unknown as Prisma.InputJsonValue,
       benefits: rest.benefits as unknown as Prisma.InputJsonValue,
       howToWear: rest.howToWear as unknown as Prisma.InputJsonValue,
-      descriptionImages: rest.descriptionImages as unknown as Prisma.InputJsonValue,
+      testimonialVideos: rest.testimonialVideos as unknown as Prisma.InputJsonValue,
       offers: offerIds && offerIds.length > 0 ? { connect: offerIds.map((id) => ({ id })) } : undefined,
     },
   });
@@ -299,10 +322,11 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
     where: { id },
     data: {
       ...rest,
+      description: rest.description as unknown as Prisma.InputJsonValue | undefined,
       images: rest.images as unknown as Prisma.InputJsonValue | undefined,
       benefits: rest.benefits as unknown as Prisma.InputJsonValue | undefined,
       howToWear: rest.howToWear as unknown as Prisma.InputJsonValue | undefined,
-      descriptionImages: rest.descriptionImages as unknown as Prisma.InputJsonValue | undefined,
+      testimonialVideos: rest.testimonialVideos as unknown as Prisma.InputJsonValue | undefined,
       // set fully replaces the linked offers — matches a checkbox-picker UX in Admin
       offers: offerIds !== undefined ? { set: offerIds.map((id) => ({ id })) } : undefined,
     },

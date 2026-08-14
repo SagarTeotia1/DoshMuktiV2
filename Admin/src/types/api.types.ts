@@ -119,6 +119,23 @@ export interface PaginatedCoupons {
   pageSize: number;
 }
 
+// Admin-composed, fully-ordered product description — any mix/count of text and
+// image blocks, in the order the admin arranges them (not a fixed alternation).
+// Mirrors Backend/src/modules/products/schema.ts's descriptionBlockSchema.
+export type DescriptionBlock =
+  | { type: 'text'; content: string }
+  | { type: 'image'; thumb: string; card: string; full: string };
+
+// One "Loved by X customers" PDP testimonial video card, admin-managed.
+// Mirrors Backend/src/modules/products/schema.ts's testimonialVideoSchema.
+export interface TestimonialVideo {
+  id: string;
+  videoUrl: string;
+  posterUrl: string | null;
+  caption: string;
+  views: string;
+}
+
 export interface ProductVariant {
   id: string;
   sku: string;
@@ -134,7 +151,7 @@ export interface Product {
   id: string;
   name: string;
   slug: string;
-  description: string;
+  description: DescriptionBlock[];
   category: string;
   basePrice: number;
   compareAtPrice: number | null;
@@ -149,8 +166,8 @@ export interface Product {
   socialProofText: string | null;
   tags: string[];
   cashbackPercent: number | null;
-  descriptionImages: Array<{ thumb: string; card: string; full: string }>;
   howToUseVideoUrl: string | null;
+  testimonialVideos: TestimonialVideo[];
   sidhiPrice: number | null;
   selfEnergizeInstructions: string | null;
   offers: Offer[];

@@ -3,10 +3,11 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Gem, Truck, ShieldCheck, RotateCcw, Sparkles, Wallet, Star, Gift } from 'lucide-react';
 import { Accordion } from '@/components/storefront/Accordion';
+import Image from 'next/image';
 import { AddToCart } from './add-to-cart';
 import { SidhiTabs } from './sidhi-tabs';
-import { DescriptionPhotos } from './description-photos';
 import { HowToUseVideo } from './how-to-use-video';
+import { TestimonialVideos } from './testimonial-videos';
 import { ProductGallery } from './product-gallery';
 import { ReviewsSection } from './reviews-section';
 import { RelatedProductsRail } from './related-products-rail';
@@ -302,13 +303,36 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             </p>
           )}
 
-          {/* Description — the only "read more" section left open by default */}
-          <div className="border-t border-[#2B1B0C]/10 pt-6 mb-2">
-            <p className="font-body text-sm text-[#6B5539] leading-relaxed whitespace-pre-line mb-4">
-              {product.description}
-            </p>
-            <DescriptionPhotos images={product.descriptionImages} />
-          </div>
+          {/* Optional-chained: backend may not have deployed this field yet on a given
+              environment (stale server, migration not run) — never crash the whole PDP over it. */}
+          {(product.testimonialVideos ?? []).length > 0 && (
+            <TestimonialVideos videos={product.testimonialVideos ?? []} product={product} price={price} />
+          )}
+
+          {/* Description — the only "read more" section left open by default. Renders the
+              admin-composed, fully-ordered block array (text/image, any mix/count, in the
+              order the admin arranged them) rather than a fixed text-then-gallery layout. */}
+          {(product.description ?? []).length > 0 && (
+            <div className="border-t border-[#2B1B0C]/10 pt-6 mb-2 flex flex-col gap-4">
+              {(product.description ?? []).map((block, i) =>
+                block.type === 'text' ? (
+                  <p key={i} className="font-body text-sm text-[#6B5539] leading-relaxed whitespace-pre-line">
+                    {block.content}
+                  </p>
+                ) : (
+                  // Full image, no forced 16:9 crop — a fixed aspect-video box with
+                  // object-cover was cutting off portrait/tall images. Plain <img>, not
+                  // next/image, so an arbitrary uploaded aspect ratio (portrait, square,
+                  // landscape) always renders at its real proportions instead of being
+                  // squeezed into a guessed width/height box.
+                  <div key={i} className="w-full rounded-lg overflow-hidden border border-[#2B1B0C]/15">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={block.full} alt="" className="w-full h-auto block" />
+                  </div>
+                )
+              )}
+            </div>
+          )}
 
           {/* How to Use — always open, not tucked into the accordion */}
           <HowToUseVideo url={product.howToUseVideoUrl} />
