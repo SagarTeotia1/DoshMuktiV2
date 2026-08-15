@@ -235,7 +235,18 @@ export async function getProductByIdForAdmin(id: string) {
 }
 
 export async function listProductsForAdmin(query: ListAdminProductsQuery) {
-  const where = query.status ? { status: query.status } : {};
+  const where: Prisma.ProductWhereInput = {
+    ...(query.status ? { status: query.status } : {}),
+    ...(query.q
+      ? {
+          OR: [
+            { name: { contains: query.q, mode: 'insensitive' } },
+            { category: { contains: query.q, mode: 'insensitive' } },
+            { variants: { some: { sku: { contains: query.q, mode: 'insensitive' } } } },
+          ],
+        }
+      : {}),
+  };
   const [products, total] = await Promise.all([
     db.product.findMany({
       where,

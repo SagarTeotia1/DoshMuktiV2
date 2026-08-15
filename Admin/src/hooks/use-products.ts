@@ -8,14 +8,15 @@ import type { PaginatedProducts, Product, ProductVariant } from '@/types/api.typ
 // backend's default page (20) in one shot — e.g. the offer scope picker's
 // "Specific Products" checkbox list, which wants as much of the catalog as
 // the backend will hand back in a single page (capped at 100 server-side).
-export function useProducts(status?: string, limit?: number, page?: number) {
+export function useProducts(status?: string, limit?: number, page?: number, q?: string) {
   return useQuery({
-    queryKey: ['admin-products', status, limit, page],
+    queryKey: ['admin-products', status, limit, page, q],
     queryFn: () => {
       const params = new URLSearchParams();
       if (status) params.set('status', status);
       if (limit) params.set('limit', String(limit));
       if (page) params.set('page', String(page));
+      if (q) params.set('q', q);
       const qs = params.toString();
       return api.get<PaginatedProducts>(`/api/admin/products${qs ? `?${qs}` : ''}`);
     },

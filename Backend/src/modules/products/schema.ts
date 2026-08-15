@@ -38,6 +38,7 @@ export const slugParamSchema = z.object({
 
 export const listAdminProductsQuerySchema = z.object({
   status: z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']).optional(),
+  q: z.string().min(1).max(200).optional(),
   page: z.coerce.number().int().min(1).max(999).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });

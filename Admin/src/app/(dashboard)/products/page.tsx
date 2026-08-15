@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { Plus, Search, X } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Topbar } from '@/components/layout/Topbar';
 import { DataTable } from '@/components/ui/DataTable';
@@ -26,7 +26,18 @@ export default function ProductsPage() {
   const router = useRouter();
   const [status, setStatus] = useState<string>('');
   const [page, setPage] = useState(1);
-  const { data, isLoading } = useProducts(status || undefined, PAGE_SIZE, page);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const { data, isLoading } = useProducts(status || undefined, PAGE_SIZE, page, debouncedSearch || undefined);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
 
   function handleStatusChange(s: string) {
     setStatus(s);
@@ -37,7 +48,7 @@ export default function ProductsPage() {
     <>
       <Topbar title="Products" />
       <div className="p-6 flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div className="flex gap-2">
             {['', 'DRAFT', 'ACTIVE', 'ARCHIVED'].map((s) => (
               <button
@@ -52,13 +63,35 @@ export default function ProductsPage() {
             ))}
           </div>
 
-          <Link
-            href="/products/new"
-            className="flex items-center gap-1.5 bg-[#9C5A26] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#6B3D19] transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            New Product
-          </Link>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name, category, or SKU..."
+                className="w-72 pl-9 pr-8 py-1.5 rounded-lg text-sm border border-slate-200 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#9C5A26]/30 focus:border-[#9C5A26]"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  aria-label="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <Link
+              href="/products/new"
+              className="flex items-center gap-1.5 bg-[#9C5A26] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#6B3D19] transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              New Product
+            </Link>
+          </div>
         </div>
 
         {isLoading ? (
