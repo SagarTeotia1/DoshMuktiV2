@@ -311,10 +311,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
           {/* Description — the only "read more" section left open by default. Renders the
               admin-composed, fully-ordered block array (text/image, any mix/count, in the
-              order the admin arranged them) rather than a fixed text-then-gallery layout. */}
-          {(product.description ?? []).length > 0 && (
+              order the admin arranged them) rather than a fixed text-then-gallery layout.
+              Array.isArray guard, not just `?? []` — a Prisma Json column has no runtime
+              shape guarantee, so a non-array value here must not crash the whole PDP. */}
+          {Array.isArray(product.description) && product.description.length > 0 && (
             <div className="border-t border-[#2B1B0C]/10 pt-6 mb-2 flex flex-col gap-4">
-              {(product.description ?? []).map((block, i) =>
+              {product.description.map((block, i) =>
                 block.type === 'text' ? (
                   <p key={i} className="font-body text-sm text-[#6B5539] leading-relaxed whitespace-pre-line">
                     {block.content}
