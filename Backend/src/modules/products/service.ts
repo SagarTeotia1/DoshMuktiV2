@@ -257,6 +257,27 @@ export class DuplicateSlugError extends Error {
   }
 }
 
+// Catches the "3 Mukhi Rudraksh" vs "3 Mukhi Rudraksha" case — different slugs
+// pass the slug-uniqueness check but are the same product to a shopper. Case/
+// whitespace-insensitive so admins can't dodge it with a trailing space either.
+export class DuplicateNameError extends Error {
+  constructor(public name: string) {
+    super(`A product named "${name}" already exists`);
+    this.name = 'DuplicateNameError';
+  }
+}
+
+async function assertNoDuplicateName(name: string, excludeId?: string) {
+  const normalized = name.trim();
+  const existing = await db.product.findFirst({
+    where: {
+      name: { equals: normalized, mode: 'insensitive' },
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+  });
+  if (existing) throw new DuplicateNameError(normalized);
+}
+
 // Keeps a real ProductVariant in sync with Product.sidhiPrice, so the Sidhi/Energizing
 // add-on flows through cart/checkout/stock like any other SKU — never delete, only deactivate,
 // matching the append-only convention used for StockMovement/RewardPoint/WalletTransaction.
@@ -293,6 +314,7 @@ async function syncSidhiVariant(productId: string, sidhiPrice: number | null | u
 export async function createProduct(input: CreateProductInput) {
   const existing = await db.product.findUnique({ where: { slug: input.slug } });
   if (existing) throw new DuplicateSlugError(input.slug);
+  await assertNoDuplicateName(input.name);
 
   const { offerIds, ...rest } = input;
   const product = await db.product.create({
@@ -316,6 +338,7 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
     const existing = await db.product.findUnique({ where: { slug: input.slug } });
     if (existing && existing.id !== id) throw new DuplicateSlugError(input.slug);
   }
+  if (input.name) await assertNoDuplicateName(input.name, id);
 
   const { offerIds, ...rest } = input;
   const product = await db.product.update({

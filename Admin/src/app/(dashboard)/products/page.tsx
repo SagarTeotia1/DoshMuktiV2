@@ -20,10 +20,18 @@ const columns: ColumnDef<Product, unknown>[] = [
   { id: 'status', header: 'Status', cell: ({ row }) => <ProductStatusBadge status={row.original.status} /> },
 ];
 
+const PAGE_SIZE = 20;
+
 export default function ProductsPage() {
   const router = useRouter();
   const [status, setStatus] = useState<string>('');
-  const { data, isLoading } = useProducts(status || undefined);
+  const [page, setPage] = useState(1);
+  const { data, isLoading } = useProducts(status || undefined, PAGE_SIZE, page);
+
+  function handleStatusChange(s: string) {
+    setStatus(s);
+    setPage(1);
+  }
 
   return (
     <>
@@ -34,7 +42,7 @@ export default function ProductsPage() {
             {['', 'DRAFT', 'ACTIVE', 'ARCHIVED'].map((s) => (
               <button
                 key={s}
-                onClick={() => setStatus(s)}
+                onClick={() => handleStatusChange(s)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                   status === s ? 'bg-[#9C5A26] text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
                 }`}
@@ -56,7 +64,33 @@ export default function ProductsPage() {
         {isLoading ? (
           <p className="text-sm text-slate-400 py-8 text-center">Loading...</p>
         ) : (
-          <DataTable data={data?.products ?? []} columns={columns} onRowClick={(p) => router.push(`/products/${p.id}`)} />
+          <>
+            <DataTable data={data?.products ?? []} columns={columns} onRowClick={(p) => router.push(`/products/${p.id}`)} />
+
+            {data && data.pages > 1 && (
+              <div className="flex items-center justify-between pt-2">
+                <p className="text-xs text-slate-500">
+                  Page {data.page} of {data.pages} &middot; {data.total} products
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setPage((p) => Math.min(data.pages, p + 1))}
+                    disabled={page >= data.pages}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </>

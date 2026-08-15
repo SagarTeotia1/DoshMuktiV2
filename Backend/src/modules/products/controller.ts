@@ -23,6 +23,7 @@ import {
   addVariant,
   updateVariant,
   DuplicateSlugError,
+  DuplicateNameError,
 } from './service';
 
 export async function listProductsHandler(req: FastifyRequest, reply: FastifyReply) {
@@ -82,6 +83,7 @@ export async function createProductHandler(req: FastifyRequest, reply: FastifyRe
     return reply.code(201).send(product);
   } catch (err) {
     if (err instanceof DuplicateSlugError) return reply.code(409).send({ error: err.message });
+    if (err instanceof DuplicateNameError) return reply.code(409).send({ error: err.message });
     throw err;
   }
 }
@@ -98,6 +100,7 @@ export async function updateProductHandler(req: FastifyRequest, reply: FastifyRe
     return reply.send(product);
   } catch (err) {
     if (err instanceof DuplicateSlugError) return reply.code(409).send({ error: err.message });
+    if (err instanceof DuplicateNameError) return reply.code(409).send({ error: err.message });
     throw err;
   }
 }
