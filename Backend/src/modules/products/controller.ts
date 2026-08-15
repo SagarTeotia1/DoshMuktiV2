@@ -20,10 +20,12 @@ import {
   getProductByIdForAdmin,
   createProduct,
   updateProduct,
+  deleteProduct,
   addVariant,
   updateVariant,
   DuplicateSlugError,
   DuplicateNameError,
+  ProductHasOrdersError,
 } from './service';
 
 export async function listProductsHandler(req: FastifyRequest, reply: FastifyReply) {
@@ -101,6 +103,19 @@ export async function updateProductHandler(req: FastifyRequest, reply: FastifyRe
   } catch (err) {
     if (err instanceof DuplicateSlugError) return reply.code(409).send({ error: err.message });
     if (err instanceof DuplicateNameError) return reply.code(409).send({ error: err.message });
+    throw err;
+  }
+}
+
+export async function deleteProductHandler(req: FastifyRequest, reply: FastifyReply) {
+  const params = idParamSchema.safeParse(req.params);
+  if (!params.success) return reply.code(400).send({ error: 'Invalid id' });
+
+  try {
+    await deleteProduct(params.data.id);
+    return reply.code(204).send();
+  } catch (err) {
+    if (err instanceof ProductHasOrdersError) return reply.code(409).send({ error: err.message });
     throw err;
   }
 }

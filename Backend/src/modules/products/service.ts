@@ -381,3 +381,23 @@ export async function updateVariant(variantId: string, input: UpdateVariantInput
   await invalidateProductCaches();
   return variant;
 }
+
+// Thrown when an admin tries to hard-delete a product that has real order history —
+// ProductVariant cascades on Product delete, but OrderItem.variant has no cascade, so
+// letting that hit the DB would throw a raw FK violation instead of a clear message.
+// Archiving (status = ARCHIVED) is the correct path for those; it already removes the
+// product from every storefront read, which only ever queries status: 'ACTIVE'.
+export class ProductHasOrdersError extends Error {
+  constructor(public productId: string) {
+    super('Cannot delete a product that has order history — archive it instead');
+    this.name = 'ProductHasOrdersError';
+  }
+}
+
+export async function deleteProduct(id: string) {
+  const orderItemCount = await db.orderItem.count({ where: { variant: { productId: id } } });
+  if (orderItemCount > 0) throw new ProductHasOrdersError(id);
+
+  await db.product.delete({ where: { id } });
+  await invalidateProductCaches();
+}

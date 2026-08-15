@@ -50,6 +50,14 @@ export function useUpdateProduct(id: string) {
   });
 }
 
+export function useDeleteProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/api/admin/products/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-products'] }),
+  });
+}
+
 export function useAddVariant(productId: string) {
   const qc = useQueryClient();
   return useMutation({

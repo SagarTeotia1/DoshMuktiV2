@@ -1,24 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { Plus, Search, Trash2, X } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Topbar } from '@/components/layout/Topbar';
 import { DataTable } from '@/components/ui/DataTable';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ProductStatusBadge } from '@/components/ui/StatusBadge';
-import { useProducts } from '@/hooks/use-products';
+import { useProducts, useDeleteProduct } from '@/hooks/use-products';
 import { formatCurrency } from '@/lib/utils';
+import { ApiError } from '@/lib/api-client';
 import type { Product } from '@/types/api.types';
-
-const columns: ColumnDef<Product, unknown>[] = [
-  { accessorKey: 'name', header: 'Name' },
-  { accessorKey: 'category', header: 'Category' },
-  { accessorKey: 'basePrice', header: 'Price', cell: ({ row }) => formatCurrency(row.original.basePrice) },
-  { id: 'variants', header: 'Variants', cell: ({ row }) => row.original.variants.length },
-  { id: 'status', header: 'Status', cell: ({ row }) => <ProductStatusBadge status={row.original.status} /> },
-];
 
 const PAGE_SIZE = 20;
 
@@ -28,7 +23,9 @@ export default function ProductsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const { data, isLoading } = useProducts(status || undefined, PAGE_SIZE, page, debouncedSearch || undefined);
+  const deleteProduct = useDeleteProduct();
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -43,6 +40,43 @@ export default function ProductsPage() {
     setStatus(s);
     setPage(1);
   }
+
+  function confirmDelete() {
+    if (!deleteTarget) return;
+    deleteProduct.mutate(deleteTarget.id, {
+      onSuccess: () => toast.success(`"${deleteTarget.name}" deleted`),
+      onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to delete product'),
+      onSettled: () => setDeleteTarget(null),
+    });
+  }
+
+  const columns = useMemo<ColumnDef<Product, unknown>[]>(
+    () => [
+      { accessorKey: 'name', header: 'Name' },
+      { accessorKey: 'category', header: 'Category' },
+      { accessorKey: 'basePrice', header: 'Price', cell: ({ row }) => formatCurrency(row.original.basePrice) },
+      { id: 'variants', header: 'Variants', cell: ({ row }) => row.original.variants.length },
+      { id: 'status', header: 'Status', cell: ({ row }) => <ProductStatusBadge status={row.original.status} /> },
+      {
+        id: 'actions',
+        header: '',
+        cell: ({ row }) => (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setDeleteTarget(row.original);
+            }}
+            title="Delete"
+            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        ),
+      },
+    ],
+    []
+  );
 
   return (
     <>
@@ -126,6 +160,14 @@ export default function ProductsPage() {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete product?"
+        message={`"${deleteTarget?.name}" will be permanently removed and immediately disappear from the storefront. This cannot be undone.`}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </>
   );
 }

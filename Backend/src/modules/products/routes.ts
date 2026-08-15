@@ -10,6 +10,7 @@ import {
   getAdminProductHandler,
   createProductHandler,
   updateProductHandler,
+  deleteProductHandler,
   addVariantHandler,
   updateVariantHandler,
 } from './controller';
@@ -25,6 +26,7 @@ export async function productsRoutes(app: FastifyInstance) {
   app.get('/admin/products/:id', { preHandler: verifyAdmin }, getAdminProductHandler);
   app.post('/admin/products', { preHandler: verifyAdmin }, createProductHandler);
   app.patch('/admin/products/:id', { preHandler: verifyAdmin }, updateProductHandler);
+  app.delete('/admin/products/:id', { preHandler: verifyAdmin }, deleteProductHandler);
   app.post('/admin/products/:id/variants', { preHandler: verifyAdmin }, addVariantHandler);
   app.patch('/admin/variants/:id', { preHandler: verifyAdmin }, updateVariantHandler);
 }
