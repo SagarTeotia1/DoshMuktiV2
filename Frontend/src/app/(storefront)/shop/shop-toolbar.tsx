@@ -55,7 +55,7 @@ export function ShopToolbar() {
             onClick={() => setParam('view', 'list')}
             aria-label="List view"
             className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors duration-150 ${
-              activeView === 'list' ? 'bg-gradient-to-r from-[#6B3D19] to-[#9C5A26] text-[#FBF1DF]' : 'text-[#8A7A63] hover:text-[#2B1B0C]'
+              activeView === 'list' ? 'bg-gradient-to-r from-[#6B3D19] to-[#9C5A26] text-[#E6D3AE]' : 'text-[#8A7A63] hover:text-[#2B1B0C]'
             }`}
           >
             <List className="w-3.5 h-3.5" />
@@ -65,7 +65,7 @@ export function ShopToolbar() {
             onClick={() => setParam('view', 'grid')}
             aria-label="Grid view"
             className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors duration-150 ${
-              activeView === 'grid' ? 'bg-gradient-to-r from-[#6B3D19] to-[#9C5A26] text-[#FBF1DF]' : 'text-[#8A7A63] hover:text-[#2B1B0C]'
+              activeView === 'grid' ? 'bg-gradient-to-r from-[#6B3D19] to-[#9C5A26] text-[#E6D3AE]' : 'text-[#8A7A63] hover:text-[#2B1B0C]'
             }`}
           >
             <LayoutGrid className="w-3.5 h-3.5" />

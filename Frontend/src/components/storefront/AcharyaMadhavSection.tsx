@@ -81,7 +81,7 @@ export function AcharyaMadhavSection() {
             <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#9C5A26] mb-3">
               Ancient Wisdom, On Demand
             </p>
-            <h2 className="font-display font-bold text-3xl sm:text-4xl md:text-5xl tracking-tight text-[#FBF1DF] leading-[1.05] mb-4">
+            <h2 className="font-display font-bold text-3xl sm:text-4xl md:text-5xl tracking-tight text-[#E6D3AE] leading-[1.05] mb-4">
               Acharya Madhav
             </h2>
 
@@ -94,7 +94,7 @@ export function AcharyaMadhavSection() {
               href={waLink("I'd like a personalized recommendation based on my Vedic astrology / numerology.")}
               target="_blank"
               rel="noopener noreferrer"
-              className="border border-[#2B1B0C] shadow-neo-gold-md inline-flex items-center gap-2 rounded-lg bg-[#9C5A26] text-[#FBF1DF] px-7 py-3 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#C9863F] transition-colors duration-200"
+              className="border border-[#2B1B0C] shadow-neo-gold-md inline-flex items-center gap-2 rounded-lg bg-[#9C5A26] text-[#E6D3AE] px-7 py-3 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#C9863F] transition-colors duration-200"
             >
               <MessageCircle className="w-3.5 h-3.5" />
               Chat with Acharya Madhav
@@ -111,12 +111,12 @@ export function AcharyaMadhavSection() {
                     href={waLink(d.question)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group flex flex-col items-center sm:items-start gap-3 rounded-xl border border-[#9C5A26]/20 bg-[#FBF1DF]/[0.03] p-4 sm:p-5 hover:border-[#9C5A26]/60 hover:bg-[#FBF1DF]/[0.06] hover:-translate-y-1 transition-all duration-300"
+                    className="group flex flex-col items-center sm:items-start gap-3 rounded-xl border border-[#9C5A26]/20 bg-[#E6D3AE]/[0.03] p-4 sm:p-5 hover:border-[#9C5A26]/60 hover:bg-[#E6D3AE]/[0.06] hover:-translate-y-1 transition-all duration-300"
                   >
                     <span className="w-10 h-10 rounded-full bg-[#9C5A26]/10 flex items-center justify-center group-hover:bg-[#9C5A26]/20 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                       <Icon className="w-[18px] h-[18px] text-[#C9863F]" strokeWidth={1.5} />
                     </span>
-                    <p className="hidden sm:block font-heading font-black text-[11px] sm:text-sm uppercase tracking-tight text-[#FBF1DF]">
+                    <p className="hidden sm:block font-heading font-black text-[11px] sm:text-sm uppercase tracking-tight text-[#E6D3AE]">
                       {d.label}
                     </p>
                     <p className="hidden sm:block font-body text-xs sm:text-sm text-[#B8A98A]/70 leading-snug">&ldquo;{d.prompt}&rdquo;</p>

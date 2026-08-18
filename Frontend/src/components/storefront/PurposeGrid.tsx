@@ -27,7 +27,7 @@ const GRADIENTS: Record<string, [string, string]> = {
 
 export function PurposeGrid() {
   return (
-    <section className="relative bg-[#FBF1DF] py-4 sm:py-5 overflow-hidden">
+    <section className="relative bg-[#E6D3AE] py-4 sm:py-5 overflow-hidden">
       <MandalaMotif className="pointer-events-none absolute -top-20 -right-20 w-64 h-64 sm:w-80 sm:h-80 text-[#9C5A26]/[0.05]" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">

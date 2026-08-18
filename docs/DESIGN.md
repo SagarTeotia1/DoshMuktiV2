@@ -21,7 +21,7 @@ Warm, soft, premium-spiritual. Rounded corners, glow shadows (not hard offsets),
 | Bronze Light | `#C9863F` | `brand-gold-light` | Hover fills, lighter accents |
 | Bronze Deep | `#6B3D19` | `brand-gold-dark` | Pressed states, deep accents |
 | Warm Ink | `#2B1B0C` | `brand-black` | Primary text, borders, button fill, footer bg |
-| Paper Cream | `#FBF1DF` | `brand-bg` | Page background |
+| Warm Beige | `#E6D3AE` | `brand-bg` | Page background |
 | Paper White | `#FFFDF8` | `brand-paper` | Card surfaces |
 | Muted Cream | `#F6E4C2` | `brand-cream` | Hover fills, inactive backgrounds |
 | Body Gray | `#6B5539` | `brand-gray` | Paragraph text |
@@ -121,7 +121,7 @@ transition-all duration-200
 ```
 grid grid-cols-2 md:grid-cols-3 rounded-2xl overflow-hidden border-t border-l border-[#2B1B0C]
 ```
-Each cell: `border-b border-r border-[#2B1B0C] bg-[#FBF1DF] p-4 sm:p-7 min-h-[150px] sm:min-h-[200px]`, per-purpose subtle hover tint via inline `backgroundColor` style, decorative low-opacity circles + large decorative index number in the corner.
+Each cell: `border-b border-r border-[#2B1B0C] bg-[#E6D3AE] p-4 sm:p-7 min-h-[150px] sm:min-h-[200px]`, per-purpose subtle hover tint via inline `backgroundColor` style, decorative low-opacity circles + large decorative index number in the corner.
 
 ---
 
@@ -136,7 +136,7 @@ placeholder:text-[#8A7A63]
 
 **Dark (footer newsletter):**
 ```
-bg-[#1A1A1A] border-0 rounded-full px-4 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm text-[#FBF1DF]
+bg-[#1A1A1A] border-0 rounded-full px-4 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm text-[#E6D3AE]
 focus:outline-none focus:ring-0
 placeholder:text-[#5A5A5A]
 ```
@@ -147,9 +147,9 @@ placeholder:text-[#5A5A5A]
 ## Navbar
 
 ```
-sticky top-0 z-50 border-b border-[#2B1B0C] bg-[#FBF1DF]/90 backdrop-blur-md transition-all duration-300
+sticky top-0 z-50 border-b border-[#2B1B0C] bg-[#E6D3AE]/90 backdrop-blur-md transition-all duration-300
 ```
-On scroll (`scrollY > 20`): `bg-[#FBF1DF]/96 backdrop-blur-lg shadow-neo-sm`
+On scroll (`scrollY > 20`): `bg-[#E6D3AE]/96 backdrop-blur-lg shadow-neo-sm`
 - Height: `h-14 sm:h-16`
 - Logo: `Gem` icon `text-[#9C5A26] group-hover:rotate-12`, wordmark `font-heading font-black tracking-tighter text-[#2B1B0C]`
 - Nav link (pill): `px-4 lg:px-5 py-2 rounded-full border transition-all duration-200`
@@ -163,7 +163,7 @@ On scroll (`scrollY > 20`): `bg-[#FBF1DF]/96 backdrop-blur-lg shadow-neo-sm`
 ## Footer
 
 ```
-bg-[#2B1B0C] text-[#FBF1DF]
+bg-[#2B1B0C] text-[#E6D3AE]
 ```
 Background image: `radial-gradient(circle at 85% 20%, rgba(156,90,38,0.12), transparent 35%), radial-gradient(circle at 12% 75%, rgba(157,138,236,0.12), transparent 34%)`
 Newsletter section: `border-b border-[#2A2A2A]`
@@ -177,7 +177,7 @@ Social icon: `w-9 h-9 rounded-full border border-[#3A3A3A] hover:border-[#9C5A26
 
 ```css
 body {
-  background-color: #FBF1DF;
+  background-color: #E6D3AE;
   background-image:
     radial-gradient(circle at 12% 8%,  rgba(156, 90, 38, 0.09), transparent 35%),
     radial-gradient(circle at 90% 85%, rgba(107, 61, 25, 0.07), transparent 35%);

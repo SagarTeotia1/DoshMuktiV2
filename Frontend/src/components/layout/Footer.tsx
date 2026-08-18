@@ -65,7 +65,7 @@ function NewsletterForm() {
             onChange={(e) => setPhone(e.target.value)}
             placeholder="Your WhatsApp number"
             required
-            className="flex-1 bg-[#1A1A1A] border-0 px-4 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm text-[#FBF1DF] focus:outline-none focus:ring-0 placeholder:text-[#5A5A5A] font-body"
+            className="flex-1 bg-[#1A1A1A] border-0 px-4 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm text-[#E6D3AE] focus:outline-none focus:ring-0 placeholder:text-[#5A5A5A] font-body"
           />
           <button
             type="submit"
@@ -85,7 +85,7 @@ function NewsletterForm() {
 export function Footer() {
   return (
     <footer
-      className="bg-[#2B1B0C] text-[#FBF1DF] relative"
+      className="bg-[#2B1B0C] text-[#E6D3AE] relative"
       style={{
         backgroundImage:
           'radial-gradient(circle at 85% 20%, rgba(156,90,38,0.12), transparent 35%), radial-gradient(circle at 12% 75%, rgba(156,90,38,0.18), transparent 30%)',
@@ -101,7 +101,7 @@ export function Footer() {
               <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#9C5A26] mb-2">
                 Stay Connected
               </p>
-              <h3 className="font-heading text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-[#FBF1DF]">
+              <h3 className="font-heading text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-[#E6D3AE]">
                 Good Energy,<br />Delivered Weekly
               </h3>
             </div>

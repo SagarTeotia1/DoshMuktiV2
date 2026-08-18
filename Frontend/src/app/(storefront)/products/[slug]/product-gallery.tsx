@@ -54,7 +54,7 @@ export function ProductGallery({
         )}
 
         {images.length > 1 && (
-          <span className="absolute top-3 right-3 bg-[#2B1B0C]/80 text-[#FBF1DF] px-2 py-1 text-[10px] font-bold tabular-nums rounded-lg z-10">
+          <span className="absolute top-3 right-3 bg-[#2B1B0C]/80 text-[#E6D3AE] px-2 py-1 text-[10px] font-bold tabular-nums rounded-lg z-10">
             {active + 1} / {images.length}
           </span>
         )}

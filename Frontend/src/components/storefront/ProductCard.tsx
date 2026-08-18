@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Tag, ShoppingBag, Eye } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { formatCurrency } from '@/lib/formatters';
+import { CardFrame } from './CardFrame';
 import type { Product } from '@/types/api.types';
 
 const MotionLink = motion.create(Link);
@@ -47,11 +48,12 @@ export function ProductCard({ product }: { product: Product }) {
       href={href}
       onMouseEnter={prefetch}
       onTouchStart={prefetch}
-      className="neo-card group block h-full rounded-2xl flex flex-col bg-[#FCEFE0] shadow-neo-sm pt-3 pl-3 pr-4 pb-4 sm:pt-4 sm:pl-4 sm:pr-5 sm:pb-5"
+      className="neo-card group relative block h-full rounded-2xl flex flex-col bg-[#C49A6C] border border-[#2B1B0C]/8 shadow-neo-sm pt-3 pl-3 pr-4 pb-4 sm:pt-4 sm:pl-4 sm:pr-5 sm:pb-5"
       whileHover={{ y: -5, x: -2 }}
       whileTap={{ scale: 0.97 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
+      <CardFrame />
       <div className="aspect-[4/5] bg-[#F6E4C2] rounded-xl relative overflow-hidden product-image-container border border-[#2B1B0C] shadow-[4px_4px_0_0_#2B1B0C]">
         {image ? (
           <>
@@ -99,7 +101,7 @@ export function ProductCard({ product }: { product: Product }) {
         {/* Bestseller/badge — an ink-stamp seal on the photo itself, like a real product stamp.
             Lives on the image, never touches the name/price text below. */}
         {product.badge && (
-          <span className="absolute bottom-2 right-2 z-10 -rotate-[8deg] px-2 py-1.5 rounded border-2 border-[#B23A2E]/80 bg-[#FBF1DF]/90 backdrop-blur-[1px] flex items-center justify-center shadow-[2px_3px_6px_rgba(43,27,12,0.35)]">
+          <span className="absolute bottom-2 right-2 z-10 -rotate-[8deg] px-2 py-1.5 rounded border-2 border-[#B23A2E]/80 bg-[#E6D3AE]/90 backdrop-blur-[1px] flex items-center justify-center shadow-[2px_3px_6px_rgba(43,27,12,0.35)]">
             <span className="absolute inset-[3px] rounded-sm border border-dashed border-[#B23A2E]/60" />
             <span className="relative text-[8px] sm:text-[9px] font-black font-body uppercase tracking-wide text-[#B23A2E]/90 text-center leading-[1.15] px-1">
               {product.badge}

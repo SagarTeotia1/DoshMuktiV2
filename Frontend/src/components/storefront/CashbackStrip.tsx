@@ -8,8 +8,8 @@ export function CashbackStrip() {
         style={{ background: 'linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.16) 50%, transparent 80%)' }}
       />
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 flex items-center justify-center gap-2">
-        <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FBF1DF] flex-shrink-0 animate-pulse" strokeWidth={2} />
-        <p className="font-body text-[11px] sm:text-xs font-bold uppercase tracking-wide text-[#FBF1DF] text-center">
+        <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#E6D3AE] flex-shrink-0 animate-pulse" strokeWidth={2} />
+        <p className="font-body text-[11px] sm:text-xs font-bold uppercase tracking-wide text-[#E6D3AE] text-center">
           100% Cashback in Wallet on Your First Order
         </p>
       </div>

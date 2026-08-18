@@ -11,7 +11,7 @@ export function AnnouncementBar() {
   const repeated = [...ITEMS, ...ITEMS];
 
   return (
-    <div className="bg-[#2B1B0C] text-[#FBF1DF] py-1.5 sm:py-2 overflow-hidden">
+    <div className="bg-[#2B1B0C] text-[#E6D3AE] py-1.5 sm:py-2 overflow-hidden">
       <div className="flex animate-marquee whitespace-nowrap">
         {repeated.map((item, i) => (
           <span key={i} className="flex items-center">

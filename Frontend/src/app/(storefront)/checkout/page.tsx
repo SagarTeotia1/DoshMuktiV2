@@ -20,7 +20,7 @@ import type { CheckoutInput, CheckoutResponse, CouponPreviewResponse } from '@/t
 import type { RazorpayResponse } from '@/hooks/use-razorpay';
 
 const inputClass =
-  'bg-[#FBF1DF] border border-[#2B1B0C]/25 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:border-[#9C5A26] focus:outline-none font-body placeholder:text-[#8A7A63] transition-colors';
+  'bg-white border border-[#2B1B0C]/40 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:border-[#9C5A26] focus:outline-none font-body placeholder:text-[#6B5539] transition-colors';
 
 const COUPON_ERROR_CODES = new Set([
   'COUPON_NOT_FOUND',
@@ -41,7 +41,7 @@ function normalizePhone(raw: string): string {
 function StepLabel({ n, title }: { n: number; title: string }) {
   return (
     <div className="flex items-center gap-2.5 mb-4">
-      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#2B1B0C] text-[#FBF1DF] font-heading font-bold text-[11px] flex items-center justify-center">
+      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#2B1B0C] text-[#E6D3AE] font-heading font-bold text-[11px] flex items-center justify-center">
         {n}
       </span>
       <h2 className="font-heading font-bold text-sm uppercase tracking-wide text-[#2B1B0C]">{title}</h2>

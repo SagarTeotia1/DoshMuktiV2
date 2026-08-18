@@ -60,7 +60,7 @@ export function Navbar() {
   return (
     <header
       className={`sticky top-0 z-50 border-b border-[#2B1B0C] transition-all duration-300 ${
-        scrolled ? 'bg-[#FBF1DF]/96 backdrop-blur-lg shadow-neo-sm' : 'bg-[#FBF1DF]/90 backdrop-blur-md'
+        scrolled ? 'bg-[#E6D3AE]/96 backdrop-blur-lg shadow-neo-sm' : 'bg-[#E6D3AE]/90 backdrop-blur-md'
       }`}
     >
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-12 flex items-center justify-between h-14 sm:h-16">
@@ -80,7 +80,7 @@ export function Navbar() {
               href={link.href}
               className={`flex items-center gap-1.5 whitespace-nowrap px-2.5 lg:px-5 py-2 rounded-full font-body text-xs font-bold uppercase tracking-[0.12em] lg:tracking-[0.15em] border transition-all duration-200 ${
                 isActive(link.href)
-                  ? 'bg-[#9C5A26] text-[#FBF1DF] border-[#2B1B0C] shadow-neo-md'
+                  ? 'bg-[#9C5A26] text-[#E6D3AE] border-[#2B1B0C] shadow-neo-md'
                   : 'border-transparent hover:border-[#2B1B0C] hover:shadow-neo-md hover:-translate-y-0.5'
               }`}
             >
@@ -153,7 +153,7 @@ export function Navbar() {
       </div>
 
       {searchOpen && (
-        <div className="border-t border-[#2B1B0C] bg-[#FBF1DF] animate-fade-in">
+        <div className="border-t border-[#2B1B0C] bg-[#E6D3AE] animate-fade-in">
           <form onSubmit={handleSearch} className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-12 py-3 flex gap-2">
             <input
               autoFocus
@@ -174,7 +174,7 @@ export function Navbar() {
       )}
 
       {menuOpen && (
-        <div className="md:hidden border-t border-[#2B1B0C] bg-[#FBF1DF] animate-fade-in">
+        <div className="md:hidden border-t border-[#2B1B0C] bg-[#E6D3AE] animate-fade-in">
           <nav className="flex flex-col">
             {NAV_LINKS.map((link) => (
               <Link
@@ -182,7 +182,7 @@ export function Navbar() {
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
                 className={`flex items-center gap-1.5 px-4 py-3 font-body text-xs font-bold uppercase tracking-[0.12em] border-b border-[#2B1B0C]/10 transition-all duration-200 ${
-                  isActive(link.href) ? 'bg-[#9C5A26] text-[#FBF1DF] border-b-[#2B1B0C]' : 'hover:bg-[#F6E4C2]'
+                  isActive(link.href) ? 'bg-[#9C5A26] text-[#E6D3AE] border-b-[#2B1B0C]' : 'hover:bg-[#F6E4C2]'
                 }`}
               >
                 {link.label}

@@ -9,20 +9,20 @@
 @layer base {
   :root {
     /* ── "Temple Warmth" — bronze/copper on peach-cream, from the Doshhmukti wordmark ── */
-    --background:           39 78% 93%;    /* #FBF1DF */
+    --background:           40 53% 79%;    /* #E6D3AE */
     --foreground:           29 56% 11%;    /* #2B1B0C */
     --card:                 43 100% 99%;   /* #FFFDF8 */
     --card-foreground:      29 56% 11%;    /* #2B1B0C */
     --popover:              43 100% 99%;
     --popover-foreground:   29 56% 11%;
     --primary:              26 62% 26%;    /* #6B3D19 — bronze-deep */
-    --primary-foreground:   39 78% 93%;
+    --primary-foreground:   40 53% 79%;
     --secondary:            31 56% 52%;    /* #C9863F — bronze-light */
     --secondary-foreground: 29 56% 11%;
     --muted:                39 74% 86%;    /* #F6E4C2 */
     --muted-foreground:     34 30% 32%;    /* #6B5539 */
     --accent:               26 61% 38%;    /* #9C5A26 — bronze */
-    --accent-foreground:    39 78% 93%;
+    --accent-foreground:    40 53% 79%;
     --destructive:           0 72% 51%;
     --destructive-foreground: 0 0% 98%;
     --border:               36 46% 72%;    /* #D9BF98 — warm bronze-tinted border */
@@ -32,7 +32,7 @@
 
     --brand-amber: #9C5A26;
     --brand-deep:  #2B1B0C;
-    --brand-paper: #FBF1DF;
+    --brand-paper: #E6D3AE;
   }
 }
 
@@ -44,7 +44,7 @@
 
   body {
     font-family: 'Satoshi', sans-serif;
-    background-color: #FBF1DF;
+    background-color: #E6D3AE;
     background-image:
       radial-gradient(circle at 12% 8%,  rgba(156, 90, 38, 0.09), transparent 35%),
       radial-gradient(circle at 90% 85%, rgba(107, 61, 25, 0.07), transparent 35%);
@@ -129,17 +129,17 @@
 
 /* Light-on-dark counterpart — for buttons on the dark bronze/ink sections. */
 .brutal-shadow-light {
-  box-shadow: 4px 4px 0 0 #FBF1DF;
+  box-shadow: 4px 4px 0 0 #E6D3AE;
   transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .brutal-shadow-light:hover {
-  box-shadow: 6px 6px 0 0 #FBF1DF;
+  box-shadow: 6px 6px 0 0 #E6D3AE;
   transform: translate(-2px, -2px);
 }
 
 .brutal-shadow-light:active {
-  box-shadow: 2px 2px 0 0 #FBF1DF;
+  box-shadow: 2px 2px 0 0 #E6D3AE;
   transform: translate(1px, 1px);
 }
 
@@ -229,7 +229,7 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #FBF1DF;
+  background: #E6D3AE;
 }
 
 ::-webkit-scrollbar-thumb {

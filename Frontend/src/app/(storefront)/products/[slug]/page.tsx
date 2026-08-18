@@ -246,7 +246,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               instead of leaving an empty half-slot next to it. */}
           {(() => {
             const cashbackBadge = !!product.cashbackPercent ? (
-              <div key="cashback" className="brutal-border flex items-center gap-2 bg-[#2B1B0C] text-[#FBF1DF] rounded-lg px-3 py-3 shadow-[2px_2px_0_0_#9C5A26]">
+              <div key="cashback" className="brutal-border flex items-center gap-2 bg-[#2B1B0C] text-[#E6D3AE] rounded-lg px-3 py-3 shadow-[2px_2px_0_0_#9C5A26]">
                 <Wallet className="w-4 h-4 text-[#C9863F] flex-shrink-0" />
                 <div className="leading-tight">
                   <p className="font-heading font-black text-[11px] uppercase tracking-wide">{product.cashbackPercent}% Cashback</p>
@@ -257,7 +257,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             const badges: ReactElement<{ className: string }>[] = [
               cashbackBadge,
               ...displayOffers.map((offer) => (
-                <div key={offer.id} className="brutal-border flex items-center gap-2 bg-[#2B1B0C] text-[#FBF1DF] rounded-lg px-3 py-3 shadow-[2px_2px_0_0_#9C5A26]">
+                <div key={offer.id} className="brutal-border flex items-center gap-2 bg-[#2B1B0C] text-[#E6D3AE] rounded-lg px-3 py-3 shadow-[2px_2px_0_0_#9C5A26]">
                   <Gift className="w-4 h-4 text-[#C9863F] flex-shrink-0" />
                   <p className="font-heading font-black text-[11px] uppercase tracking-wide leading-tight">{formatOfferBadgeText(offer)}</p>
                 </div>

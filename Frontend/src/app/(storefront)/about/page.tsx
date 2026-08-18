@@ -43,7 +43,7 @@ export default function AboutPage() {
           <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#9C5A26] mb-3">
             Our Story
           </p>
-          <h1 className="font-heading text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-[#FBF1DF] leading-[1.05] mb-5">
+          <h1 className="font-heading text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-[#E6D3AE] leading-[1.05] mb-5">
             Spiritual Tools, Sourced Honestly
           </h1>
           <p className="font-body text-sm sm:text-base text-[#B8A98A] leading-relaxed max-w-xl mx-auto">
@@ -94,7 +94,7 @@ export default function AboutPage() {
           </p>
           <Link
             href="/shop"
-            className="inline-flex items-center gap-2 rounded-full bg-[#9C5A26] text-[#FBF1DF] px-7 py-3 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#2B1B0C] transition-colors duration-200"
+            className="inline-flex items-center gap-2 rounded-full bg-[#9C5A26] text-[#E6D3AE] px-7 py-3 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#2B1B0C] transition-colors duration-200"
           >
             Shop The Collection
           </Link>

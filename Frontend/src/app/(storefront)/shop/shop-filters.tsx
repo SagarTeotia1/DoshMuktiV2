@@ -60,14 +60,14 @@ function FilterRow({
     >
       <span
         className={`relative w-8 h-8 flex-shrink-0 rounded-full overflow-hidden transition-all duration-200 ${
-          active ? 'ring-2 ring-[#FBF1DF] ring-offset-1 ring-offset-[#9C5A26]' : 'ring-1 ring-[#2B1B0C]/10 group-hover:ring-[#9C5A26]/50'
+          active ? 'ring-2 ring-[#E6D3AE] ring-offset-1 ring-offset-[#9C5A26]' : 'ring-1 ring-[#2B1B0C]/10 group-hover:ring-[#9C5A26]/50'
         }`}
       >
         {thumb}
       </span>
       <span
         className={`font-body text-[13px] font-medium text-left leading-tight ${
-          active ? 'text-[#FBF1DF]' : 'text-[#6B5539] group-hover:text-[#2B1B0C]'
+          active ? 'text-[#E6D3AE]' : 'text-[#6B5539] group-hover:text-[#2B1B0C]'
         }`}
       >
         {label}

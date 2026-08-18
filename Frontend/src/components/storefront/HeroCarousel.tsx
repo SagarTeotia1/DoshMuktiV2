@@ -154,7 +154,7 @@ export function HeroCarousel() {
             <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 animate-fade-in delay-300">
               <Link
                 href={slide.href}
-                className="inline-block rounded-lg bg-[#9C5A26] text-[#FBF1DF] border border-[#9C5A26] px-5 sm:px-8 py-2.5 sm:py-3.5 font-body font-bold uppercase tracking-widest text-xs active:scale-95 hover:bg-brand-paper hover:border-brand-paper hover:text-[#2B1B0C] hover:shadow-neo-lg hover:-translate-y-0.5 transition-all duration-200"
+                className="inline-block rounded-lg bg-[#9C5A26] text-[#E6D3AE] border border-[#9C5A26] px-5 sm:px-8 py-2.5 sm:py-3.5 font-body font-bold uppercase tracking-widest text-xs active:scale-95 hover:bg-brand-paper hover:border-brand-paper hover:text-[#2B1B0C] hover:shadow-neo-lg hover:-translate-y-0.5 transition-all duration-200"
               >
                 {slide.cta}
               </Link>

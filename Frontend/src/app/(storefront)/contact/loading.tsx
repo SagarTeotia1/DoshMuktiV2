@@ -14,15 +14,15 @@ export default function Loading() {
           <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 mb-12 sm:mb-16">
             {Array.from({ length: 4 }, (_, i) => (
               <div key={i} className="flex items-center gap-4 rounded-xl bg-white p-5 sm:p-6">
-                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-[#F6E4C2]" />
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-[#EBD8B4]" />
                 <div className="flex flex-col gap-2 flex-1">
-                  <div className="w-1/3 h-3 rounded bg-[#EADFC8]" />
-                  <div className="w-2/3 h-2.5 rounded bg-[#EADFC8]" />
+                  <div className="w-1/3 h-3 rounded bg-[#DCC89E]" />
+                  <div className="w-2/3 h-2.5 rounded bg-[#DCC89E]" />
                 </div>
               </div>
             ))}
           </div>
-          <div className="w-64 h-3 rounded bg-[#EADFC8] mx-auto" />
+          <div className="w-64 h-3 rounded bg-[#DCC89E] mx-auto" />
         </div>
       </section>
     </div>

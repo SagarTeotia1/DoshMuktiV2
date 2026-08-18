@@ -73,7 +73,7 @@ const config: Config = {
           black:  '#2B1B0C',   // warm ink, replaces pure black
           paper:  '#FFFDF8',
           cream:  '#F6E4C2',
-          bg:     '#FBF1DF',
+          bg:     '#EFE2C7',
           gray:   '#6B5539',
           muted:  '#8A7A63',
         },

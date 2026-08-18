@@ -70,7 +70,7 @@ function DirectVideoPlayer({ url }: { url: string }) {
           playing ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'
         }`}
       >
-        <div className="w-16 h-16 rounded-full bg-[#FBF1DF]/90 backdrop-blur-sm border border-[#2B1B0C]/20 flex items-center justify-center shadow-neo-md">
+        <div className="w-16 h-16 rounded-full bg-[#E6D3AE]/90 backdrop-blur-sm border border-[#2B1B0C]/20 flex items-center justify-center shadow-neo-md">
           {playing ? (
             <Pause className="w-6 h-6 text-[#2B1B0C]" fill="currentColor" />
           ) : (

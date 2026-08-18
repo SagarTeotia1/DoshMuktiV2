@@ -54,7 +54,7 @@ export default function ContactPage() {
           <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#9C5A26] mb-3">
             Get In Touch
           </p>
-          <h1 className="font-heading text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-[#FBF1DF] leading-[1.05] mb-4">
+          <h1 className="font-heading text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-[#E6D3AE] leading-[1.05] mb-4">
             We&apos;re Here To Help
           </h1>
           <p className="font-body text-sm sm:text-base text-[#B8A98A] leading-relaxed max-w-md mx-auto">

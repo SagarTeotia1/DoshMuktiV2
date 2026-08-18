@@ -39,7 +39,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (n: number) 
 }
 
 const inputClass =
-  'bg-[#FBF1DF] border border-[#2B1B0C]/25 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:border-[#9C5A26] focus:outline-none font-body placeholder:text-[#8A7A63] transition-colors w-full';
+  'bg-white border border-[#2B1B0C]/40 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:border-[#9C5A26] focus:outline-none font-body placeholder:text-[#6B5539] transition-colors w-full';
 
 function WriteReviewForm({ productId, onDone }: { productId: string; onDone: () => void }) {
   const qc = useQueryClient();

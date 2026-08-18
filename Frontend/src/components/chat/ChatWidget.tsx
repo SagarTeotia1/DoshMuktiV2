@@ -39,14 +39,14 @@ export function ChatWidget() {
     <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end gap-3">
       {/* Chat panel */}
       {open && (
-        <div className="w-[calc(100vw-2rem)] max-w-[360px] h-[500px] max-h-[70vh] bg-[#FBF1DF] rounded-2xl shadow-2xl border border-[#2B1B0C]/10 flex flex-col overflow-hidden animate-fade-in-up">
+        <div className="w-[calc(100vw-2rem)] max-w-[360px] h-[500px] max-h-[70vh] bg-white rounded-2xl shadow-2xl border border-[#2B1B0C]/20 flex flex-col overflow-hidden animate-fade-in-up">
           {/* Header */}
           <div className="flex items-center gap-2.5 px-4 py-3.5 bg-[#2B1B0C] flex-shrink-0">
             <div className="w-8 h-8 rounded-full border border-[#9C5A26]/50 bg-gradient-to-br from-[#C9863F] to-[#6B3D19] flex items-center justify-center flex-shrink-0">
-              <MoonStar className="w-4 h-4 text-[#FBF1DF]" strokeWidth={1.5} />
+              <MoonStar className="w-4 h-4 text-[#E6D3AE]" strokeWidth={1.5} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-heading font-bold text-xs text-[#FBF1DF] truncate">Acharya Madhav</p>
+              <p className="font-heading font-bold text-xs text-[#E6D3AE] truncate">Acharya Madhav</p>
               <p className="font-body text-[10px] text-[#9C5A26]">Vedic Astrologer · Online</p>
             </div>
             <button
@@ -54,7 +54,7 @@ export function ChatWidget() {
               className="p-1.5 rounded-full hover:bg-white/10 transition-colors flex-shrink-0"
               aria-label="Close chat"
             >
-              <X className="w-4 h-4 text-[#FBF1DF]" />
+              <X className="w-4 h-4 text-[#E6D3AE]" />
             </button>
           </div>
 

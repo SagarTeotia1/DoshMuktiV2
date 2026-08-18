@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Star, Tag } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
+import { CardFrame } from './CardFrame';
 import type { Product } from '@/types/api.types';
 
 export function ProductCardHorizontal({ product }: { product: Product }) {
@@ -27,8 +28,9 @@ export function ProductCardHorizontal({ product }: { product: Product }) {
       href={href}
       onMouseEnter={prefetch}
       onTouchStart={prefetch}
-      className="neo-card group flex items-stretch gap-4 rounded-2xl bg-[#FCEFE0] shadow-neo-sm pt-3 pl-3 pr-4 pb-4 sm:pt-4 sm:pl-4 sm:pr-5 sm:pb-5"
+      className="neo-card group relative flex items-stretch gap-4 rounded-2xl bg-[#C49A6C] border border-[#2B1B0C]/8 shadow-neo-sm pt-3 pl-3 pr-4 pb-4 sm:pt-4 sm:pl-4 sm:pr-5 sm:pb-5"
     >
+      <CardFrame />
       <div className="relative flex-shrink-0 w-28 h-28 sm:w-36 sm:h-36 rounded-xl overflow-hidden bg-[#F6E4C2] border border-[#2B1B0C] shadow-[4px_4px_0_0_#2B1B0C]">
         {image ? (
           <Image src={image} alt={product.name} fill className="object-cover" sizes="144px" />
@@ -48,7 +50,7 @@ export function ProductCardHorizontal({ product }: { product: Product }) {
         ) : null}
 
         {product.badge && (
-          <span className="absolute bottom-1 right-1 z-10 -rotate-[8deg] px-1.5 py-1 rounded border-2 border-[#B23A2E]/80 bg-[#FBF1DF]/90 backdrop-blur-[1px] flex items-center justify-center shadow-[2px_3px_6px_rgba(43,27,12,0.35)]">
+          <span className="absolute bottom-1 right-1 z-10 -rotate-[8deg] px-1.5 py-1 rounded border-2 border-[#B23A2E]/80 bg-[#E6D3AE]/90 backdrop-blur-[1px] flex items-center justify-center shadow-[2px_3px_6px_rgba(43,27,12,0.35)]">
             <span className="absolute inset-[2px] rounded-sm border border-dashed border-[#B23A2E]/60" />
             <span className="relative text-[7px] font-black font-body uppercase tracking-wide text-[#B23A2E]/90 text-center leading-[1.1] px-1">
               {product.badge}
