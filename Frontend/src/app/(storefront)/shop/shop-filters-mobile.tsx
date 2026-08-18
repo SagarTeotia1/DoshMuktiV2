@@ -98,7 +98,7 @@ export function ShopFiltersMobile({ categories }: { categories: CategoryThumb[] 
                 key={c.id}
                 label={c.label}
                 active={activeCategory === c.id}
-                onClick={() => setParam('category', activeCategory === c.id ? null : c.id)}
+                onClick={() => setParam('category', c.id)}
                 thumb={
                   c.image ? (
                     <Image src={c.image} alt="" fill className="object-cover" sizes="40px" />
