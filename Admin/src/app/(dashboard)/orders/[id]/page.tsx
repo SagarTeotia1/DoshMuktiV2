@@ -8,8 +8,19 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useOrder, useUpdateOrderStatus } from '@/hooks/use-orders';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { ORDER_STATUSES } from '@/lib/constants';
 import { ApiError } from '@/lib/api-client';
+
+// The real order lifecycle, one step at a time — replaces the old "every status
+// as a button" override grid, which let an admin skip steps or fat-finger the
+// wrong one. Cancel is handled separately below since it isn't a "next step."
+const NEXT_STEP: Partial<Record<string, { status: string; cta: string; successMsg: string }>> = {
+  PAID: { status: 'PROCESSING', cta: 'Start Packaging', successMsg: 'Order marked as packaging started' },
+  PROCESSING: { status: 'PACKED', cta: 'Mark Packaging Done', successMsg: 'Order marked as packed' },
+  PACKED: { status: 'SHIPPED', cta: 'Mark as Shipped', successMsg: 'Order marked as shipped' },
+  SHIPPED: { status: 'DELIVERED', cta: 'Mark as Delivered', successMsg: 'Order marked as delivered' },
+};
+
+const CANCELLABLE_STATUSES = new Set(['PENDING_PAYMENT', 'PAID', 'PROCESSING', 'PACKED', 'SHIPPED']);
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,21 +40,13 @@ export default function OrderDetailPage() {
     );
   }
 
-  function startPackaging() {
+  function advanceToNextStep() {
+    const next = order && NEXT_STEP[order.status];
+    if (!next) return;
     updateStatus.mutate(
-      { status: 'PROCESSING' },
+      { status: next.status },
       {
-        onSuccess: () => toast.success('Order marked as packaging started'),
-        onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to update status'),
-      }
-    );
-  }
-
-  function markPackagingDone() {
-    updateStatus.mutate(
-      { status: 'PACKED' },
-      {
-        onSuccess: () => toast.success('Order marked as packed'),
+        onSuccess: () => toast.success(next.successMsg),
         onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to update status'),
       }
     );
@@ -144,52 +147,41 @@ export default function OrderDetailPage() {
             </div>
           )}
 
-          {(order.status === 'PAID' || order.status === 'PROCESSING') && (
+          {NEXT_STEP[order.status] && (
             <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">
-              <h2 className="font-heading font-bold text-sm text-slate-900 mb-3">Packaging</h2>
-              {order.status === 'PAID' && (
-                <button
-                  onClick={startPackaging}
-                  disabled={updateStatus.isPending}
-                  className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#9C5A26] hover:bg-[#6B3D19] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  Start Packaging
-                </button>
-              )}
-              {order.status === 'PROCESSING' && (
-                <button
-                  onClick={markPackagingDone}
-                  disabled={updateStatus.isPending}
-                  className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#9C5A26] hover:bg-[#6B3D19] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  Mark Packaging Done
-                </button>
-              )}
+              <h2 className="font-heading font-bold text-sm text-slate-900 mb-3">Order Progress</h2>
+              <button
+                onClick={advanceToNextStep}
+                disabled={updateStatus.isPending}
+                className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#9C5A26] hover:bg-[#6B3D19] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {NEXT_STEP[order.status]!.cta}
+              </button>
             </div>
           )}
 
-          <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">
-            <h2 className="font-heading font-bold text-sm text-slate-900 mb-3">Override Status</h2>
-            <div className="flex flex-wrap gap-2">
-              {ORDER_STATUSES.map((s) => (
-                <button
-                  key={s}
-                  disabled={s === order.status}
-                  onClick={() => setPendingStatus(s)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  {s}
-                </button>
-              ))}
+          {CANCELLABLE_STATUSES.has(order.status) && (
+            <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">
+              <button
+                onClick={() => setPendingStatus('CANCELLED')}
+                disabled={updateStatus.isPending}
+                className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Cancel Order
+              </button>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
       <ConfirmDialog
         open={!!pendingStatus}
-        title="Change Order Status"
-        message={`Set this order's status to ${pendingStatus}? This writes to the order's status history.`}
+        title={pendingStatus === 'CANCELLED' ? 'Cancel Order' : 'Change Order Status'}
+        message={
+          pendingStatus === 'CANCELLED'
+            ? 'Cancel this order? This writes to the order\'s status history and cannot be undone from here.'
+            : `Set this order's status to ${pendingStatus}? This writes to the order's status history.`
+        }
         onConfirm={confirmStatusChange}
         onCancel={() => setPendingStatus(null)}
       />

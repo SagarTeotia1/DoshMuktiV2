@@ -22,6 +22,21 @@ export const ORDER_STATUS_LABELS: Record<string, string> = {
   REFUNDED: 'Refunded',
 };
 
+// Amazon/Flipkart-style status colouring — green once it's actually with the
+// customer, red/amber for anything that fell out of the happy path, bronze
+// (the brand accent) for everything still in flight.
+export const ORDER_STATUS_TONE: Record<string, string> = {
+  PENDING_PAYMENT: 'bg-[#F6E4C2] text-[#6B5539] border-[#2B1B0C]/20',
+  PAID: 'bg-[#9C5A26] text-white border-[#2B1B0C]',
+  PROCESSING: 'bg-[#9C5A26] text-white border-[#2B1B0C]',
+  PACKED: 'bg-[#9C5A26] text-white border-[#2B1B0C]',
+  SHIPPED: 'bg-[#2B6B4F] text-white border-[#2B1B0C]',
+  DELIVERED: 'bg-[#2B6B4F] text-white border-[#2B1B0C]',
+  CANCELLED: 'bg-brand-alert/10 text-brand-alert border-brand-alert/30',
+  RETURN_REQUESTED: 'bg-brand-alert/10 text-brand-alert border-brand-alert/30',
+  REFUNDED: 'bg-[#2B1B0C]/5 text-[#6B5539] border-[#2B1B0C]/15',
+};
+
 export const PURPOSES = [
   { id: 'love', label: 'Love & Relationships', description: 'Attract love, deepen bonds, open your heart' },
   { id: 'wealth', label: 'Wealth & Prosperity', description: 'Invite abundance, financial growth, good fortune' },

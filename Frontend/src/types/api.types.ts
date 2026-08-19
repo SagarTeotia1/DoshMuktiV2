@@ -165,6 +165,10 @@ export interface OrderTrackingResponse {
     variantSnapshot: { productName: string; sku: string; attributes?: Record<string, unknown> };
     quantity: number;
     priceAtPurchase: number;
+    // Present on every order-read endpoint (track/mine) — the variant's live product
+    // record, joined in purely to source a thumbnail. Not point-in-time like
+    // variantSnapshot: if the product's images change later, so does this thumbnail.
+    variant?: { product?: { images?: Array<{ thumb: string; card: string; full: string }> } };
   }>;
   shipment: {
     delhiveryWaybill: string | null;

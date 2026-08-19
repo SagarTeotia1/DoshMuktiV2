@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import Image from 'next/image';
 import { CheckCircle2, Package, Truck, Home, MapPin, Phone, Download, ExternalLink, Wallet, XCircle, RotateCcw } from 'lucide-react';
 import { api, invoiceUrl } from '@/lib/api-client';
 import { formatCurrency, formatDate } from '@/lib/formatters';
@@ -189,10 +190,16 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ ord
           <div className="bg-white border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
             <h2 className="font-heading font-bold text-sm uppercase tracking-wide text-[#2B1B0C] mb-4">Items</h2>
             <div className="flex flex-col gap-4">
-              {order.items.map((item, i) => (
+              {order.items.map((item, i) => {
+                const thumb = item.variant?.product?.images?.[0]?.thumb;
+                return (
                 <div key={i} className="flex items-start gap-3">
-                  <div className="w-11 h-11 rounded-lg bg-[#F6E4C2] flex items-center justify-center flex-shrink-0">
-                    <Package className="w-4 h-4 text-[#9C5A26]" />
+                  <div className="w-11 h-11 rounded-lg bg-[#F6E4C2] flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {thumb ? (
+                      <Image src={thumb} alt="" width={44} height={44} className="w-full h-full object-cover" />
+                    ) : (
+                      <Package className="w-4 h-4 text-[#9C5A26]" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-body text-sm font-semibold text-[#2B1B0C] truncate">
@@ -205,7 +212,8 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ ord
                     {formatCurrency(item.priceAtPurchase * item.quantity)}
                   </span>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

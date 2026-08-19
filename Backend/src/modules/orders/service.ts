@@ -1,10 +1,14 @@
 import { db } from '../../shared/db/client';
 import type { OrderStatus } from '@prisma/client';
 
+// Order/product images so the storefront's order pages can show real thumbnails
+// (Amazon/Flipkart-style) instead of a generic icon per line item.
+const itemsWithProductImage = { items: { include: { variant: { include: { product: true } } } } } as const;
+
 export async function getOrderByNumber(orderNumber: string) {
   return db.order.findUnique({
     where: { orderNumber },
-    include: { items: true, payment: true, shipment: true },
+    include: { ...itemsWithProductImage, payment: true, shipment: true },
   });
 }
 
@@ -12,7 +16,7 @@ export async function listOrdersForUser(userId: string) {
   return db.order.findMany({
     where: { userId },
     orderBy: { createdAt: 'desc' },
-    include: { items: true, payment: true, shipment: true },
+    include: { ...itemsWithProductImage, payment: true, shipment: true },
   });
 }
 
@@ -20,7 +24,7 @@ export async function listOrdersByPhone(phone: string) {
   return db.order.findMany({
     where: { customerPhone: phone },
     orderBy: { createdAt: 'desc' },
-    include: { items: true, payment: true, shipment: true },
+    include: { ...itemsWithProductImage, payment: true, shipment: true },
   });
 }
 
