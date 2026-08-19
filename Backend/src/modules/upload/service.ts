@@ -21,10 +21,13 @@ export async function uploadProductImage(buffer: Buffer, mimeType: string): Prom
   ]);
 
   const prefix = `products/${id}`;
+  // Keys are nanoid-based and never overwritten, so these are safe to cache forever —
+  // a new upload always gets a new key rather than mutating an existing one.
+  const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable';
   await Promise.all([
-    r2.send(new PutObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: `${prefix}/thumb.webp`, Body: thumb, ContentType: 'image/webp' })),
-    r2.send(new PutObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: `${prefix}/card.webp`, Body: card, ContentType: 'image/webp' })),
-    r2.send(new PutObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: `${prefix}/full.webp`, Body: full, ContentType: 'image/webp' })),
+    r2.send(new PutObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: `${prefix}/thumb.webp`, Body: thumb, ContentType: 'image/webp', CacheControl: IMMUTABLE_CACHE })),
+    r2.send(new PutObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: `${prefix}/card.webp`, Body: card, ContentType: 'image/webp', CacheControl: IMMUTABLE_CACHE })),
+    r2.send(new PutObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: `${prefix}/full.webp`, Body: full, ContentType: 'image/webp', CacheControl: IMMUTABLE_CACHE })),
   ]);
 
   return {

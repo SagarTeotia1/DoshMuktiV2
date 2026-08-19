@@ -154,9 +154,24 @@ export interface CheckoutResponse {
 export interface OrderTrackingResponse {
   orderNumber: string;
   status: string;
+  customerName: string;
+  customerPhone: string;
+  subtotal: number;
+  shippingFee: number;
+  discountAmount: number;
+  walletRedeemed: number;
   total: number;
-  items: Array<{ variantSnapshot: { productName: string; sku: string }; quantity: number; priceAtPurchase: number }>;
-  shipment: { delhiveryWaybill: string | null; status: string; trackingEvents: unknown[] } | null;
+  items: Array<{
+    variantSnapshot: { productName: string; sku: string; attributes?: Record<string, unknown> };
+    quantity: number;
+    priceAtPurchase: number;
+  }>;
+  shipment: {
+    delhiveryWaybill: string | null;
+    status: string;
+    estimatedDelivery: string | null;
+    trackingEvents: Array<{ timestamp: string; status: string; location?: string; description?: string }>;
+  } | null;
   // Mirrors the Backend's actual invoice-download gate exactly (payment.status === 'CAPTURED'
   // in Backend/src/modules/orders/controller.ts) — checking this instead of order.status keeps
   // the Frontend's "should we show the Download Invoice link" logic from ever drifting out of

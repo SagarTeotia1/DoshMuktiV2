@@ -53,16 +53,28 @@ export async function verifyCustomerOtp(
   dob: string | undefined
 ): Promise<User> {
   const phone = normalizePhone(rawPhone);
-  const record = await db.otpVerification.findFirst({
-    where: { phone, verified: false, expiresAt: { gt: new Date() } },
+
+  // The profile step (name/dob) resubmits the same phone+otp after the OTP was already
+  // verified and consumed on the first call — MSG91 OTPs are single-use, so re-checking
+  // with the provider here would always fail. If this phone already has a verified,
+  // unexpired record, treat it as still-authenticated instead of re-verifying.
+  const alreadyVerified = await db.otpVerification.findFirst({
+    where: { phone, verified: true, expiresAt: { gt: new Date() } },
     orderBy: { createdAt: 'desc' },
   });
-  if (!record) throw new InvalidOtpError();
 
-  const ok = await verifyOtp(phone, otp);
-  if (!ok) throw new InvalidOtpError();
+  if (!alreadyVerified) {
+    const record = await db.otpVerification.findFirst({
+      where: { phone, verified: false, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!record) throw new InvalidOtpError();
 
-  await db.otpVerification.update({ where: { id: record.id }, data: { verified: true } });
+    const ok = await verifyOtp(phone, otp);
+    if (!ok) throw new InvalidOtpError();
+
+    await db.otpVerification.update({ where: { id: record.id }, data: { verified: true } });
+  }
 
   const existing = await db.user.findUnique({ where: { phone } });
   if (existing) {

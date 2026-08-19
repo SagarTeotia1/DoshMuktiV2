@@ -30,9 +30,15 @@ export function useAuth() {
     try {
       const me = await api.get<CustomerUser>('/api/auth/me', { Authorization: `Bearer ${token}` }, 0);
       setUser(me);
-    } catch {
-      clearToken();
-      setUser(null);
+    } catch (err) {
+      // Only a real 401 means the token is actually invalid/expired — anything else
+      // (network blip, Backend restart, a transient 500) should leave the token alone
+      // so the next mount just retries, instead of forcing the user through phone+OTP
+      // again for a token that's still good for 180 days.
+      if (err instanceof ApiError && err.status === 401) {
+        clearToken();
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }

@@ -50,17 +50,21 @@ export function AddToCart({ product }: { product: Product }) {
   async function handleOrderNow() {
     if (!selected) return;
     if (authLoading) return;
-    if (!isAuthenticated) {
-      router.push(`/login?redirect=${encodeURIComponent('/checkout?mode=buyNow')}`);
-      return;
-    }
     setIsOrdering(true);
     try {
       // Buy Now uses an isolated pseudo-cart, never the real one — clear any
       // leftover item from a previous abandoned attempt, then add just this one.
+      // This must happen before the auth check below: the buy-now cart is
+      // session-keyed, not login-keyed, so it needs to be populated even when
+      // the user is about to be bounced to /login — otherwise they land back
+      // on /checkout with an empty cart and a permanently disabled Pay button.
       await buyNowClearCart();
       await buyNowAddItemAsync({ variantId: selected.id, quantity });
       track();
+      if (!isAuthenticated) {
+        router.push(`/login?redirect=${encodeURIComponent('/checkout?mode=buyNow')}`);
+        return;
+      }
       router.push('/checkout?mode=buyNow');
     } catch {
       toast.error('Could not start checkout — try again');

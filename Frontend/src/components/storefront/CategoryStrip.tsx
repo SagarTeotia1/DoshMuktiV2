@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
 
 export interface CategoryThumb {
   label: string;
@@ -14,9 +13,9 @@ export function CategoryStrip({ items }: { items: CategoryThumb[] }) {
 
   return (
     <section className="bg-[#E6D3AE] border-b border-transparent py-3 sm:py-2.5">
-      <StaggerGroup className="flex justify-start sm:justify-center flex-nowrap sm:flex-wrap gap-4 sm:gap-6 overflow-x-auto hide-scrollbar snap-x snap-mandatory max-w-7xl mx-auto pl-4 pr-4 sm:px-6 lg:px-12 pb-1 sm:pb-0 [scroll-padding-left:0.5rem]">
+      <div className="flex justify-start sm:justify-center flex-nowrap sm:flex-wrap gap-4 sm:gap-6 overflow-x-auto hide-scrollbar snap-x snap-mandatory max-w-7xl mx-auto pl-4 pr-4 sm:px-6 lg:px-12 pb-1 sm:pb-0 [scroll-padding-left:0.5rem]">
         {visible.map((item) => (
-          <StaggerItem key={item.category} className="flex-shrink-0 snap-start [scroll-margin-left:0.5rem]">
+          <div key={item.category} className="flex-shrink-0 snap-start [scroll-margin-left:0.5rem]">
             <Link
               href={`/shop?category=${encodeURIComponent(item.category)}`}
               className="group flex items-center gap-2"
@@ -28,9 +27,9 @@ export function CategoryStrip({ items }: { items: CategoryThumb[] }) {
                 {item.label}
               </span>
             </Link>
-          </StaggerItem>
+          </div>
         ))}
-      </StaggerGroup>
+      </div>
     </section>
   );
 }
