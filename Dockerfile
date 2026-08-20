@@ -13,7 +13,7 @@ RUN npm run build \
  && npm prune --omit=dev
 
 # ── Frontend build ───────────────────────────────────────────────────────────
-FROM node:20-alpine AS frontend-build
+FROM node:22-alpine AS frontend-build
 WORKDIR /app/frontend
 ARG NEXT_PUBLIC_BACKEND_URL=https://api.doshmukti.com
 ARG NEXT_PUBLIC_RAZORPAY_KEY_ID
@@ -41,7 +41,7 @@ COPY Frontend/ ./
 RUN npm run build
 
 # ── Admin build ───────────────────────────────────────────────────────────────
-FROM node:20-alpine AS admin-build
+FROM node:22-alpine AS admin-build
 WORKDIR /app/admin
 ARG NEXT_PUBLIC_BACKEND_URL=https://api.doshmukti.com
 ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
@@ -51,7 +51,7 @@ COPY Admin/ ./
 RUN npm run build
 
 # ── Final runtime image ────────────────────────────────────────────────────────
-FROM node:20-alpine
+FROM node:22-alpine
 RUN apk add --no-cache openssl libc6-compat nginx bash
 
 # Backend — compiled dist + pruned node_modules + prisma schema/migrations for `migrate deploy`
