@@ -50,7 +50,7 @@ const envSchema = z.object({
   MSG91_TEMPLATE_ID: z.string().default(''),
 
   GROQ_API_KEY: z.string().default(''),
-  GROQ_MODEL: z.string().default('llama-3.3-70b-versatile'),
+  GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
 
   CRON_SECRET: z.string().min(32),
 });
