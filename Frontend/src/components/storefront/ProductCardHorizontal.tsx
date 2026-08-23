@@ -90,7 +90,11 @@ export function ProductCardHorizontal({ product }: { product: Product }) {
           <p className="text-base sm:text-lg font-bold text-[#2B1B0C] font-heading tracking-tight tabular-nums">
             {formatCurrency(price)}
           </p>
-          {mrp && <p className="text-xs sm:text-sm text-[#8A7A63] line-through font-body tabular-nums">{formatCurrency(mrp)}</p>}
+          {mrp && (
+            <p className="text-xs sm:text-sm text-[#6B5539] line-through decoration-1 font-body tabular-nums">
+              {formatCurrency(mrp)}
+            </p>
+          )}
         </div>
 
         {product.excerpt && (
