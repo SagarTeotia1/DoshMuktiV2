@@ -424,20 +424,17 @@ enum WalletTransactionReason {
 // ─── Reviews ────────────────────────────────────────────────────────────────
 
 model Review {
-  id            String       @id @default(cuid())
-  productId     String
-  product       Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
-  orderId       String // verified-purchase link — review must come from a real order
-  customerName  String
-  customerPhone String // used only to verify the order match, never displayed
-  rating        Int // 1-5
-  title         String?
-  body          String       @db.Text
-  status        ReviewStatus @default(PENDING)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id           String       @id @default(cuid())
+  productId    String
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customerName String
+  rating       Int // 1-5
+  title        String?
+  body         String       @db.Text
+  status       ReviewStatus @default(PENDING)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
-  @@unique([orderId, productId])
   @@index([productId, status])
   @@index([status, createdAt])
 }

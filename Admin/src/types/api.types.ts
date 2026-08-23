@@ -238,7 +238,6 @@ export interface InventoryProduct {
 export interface Review {
   id: string;
   productId: string;
-  orderId: string;
   customerName: string;
   rating: number;
   title: string | null;

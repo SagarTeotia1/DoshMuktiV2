@@ -30,7 +30,6 @@ export function TestimonialsSection({ reviews }: { reviews: RecentReview[] }) {
   if (reviews.length === 0) return null;
 
   const quote = reviews[active] ?? reviews[0]!;
-  const quoteImage = productImage(quote);
 
   return (
     <section className="pt-6 sm:pt-8 pb-10 sm:pb-14 md:pb-20">
@@ -86,72 +85,68 @@ export function TestimonialsSection({ reviews }: { reviews: RecentReview[] }) {
       </StaggerGroup>
 
       {/* Big quote carousel */}
-      <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+      <Reveal className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-12">
         <h2 className="font-display font-bold tracking-tight leading-[1.05] text-3xl sm:text-4xl md:text-5xl text-[#2B1B0C] text-center mb-6 sm:mb-10">
           Testimonials
         </h2>
 
-        <div className="relative bg-[#F6E4C2]/40 border border-[#2B1B0C] rounded-2xl p-6 sm:p-10 md:p-14 shadow-neo-lg">
-          <div className="grid md:grid-cols-[1fr_auto] gap-8 md:gap-14 items-center">
-            <div>
-              <Quote className="w-8 h-8 sm:w-10 sm:h-10 text-[#9C5A26]/40 fill-[#9C5A26]/10 mb-4" />
-              <div className="flex items-center gap-0.5 mb-4">
-                {Array.from({ length: 5 }, (_, i) => (
-                  <Star
-                    key={i}
-                    className={`w-4 h-4 ${i < quote.rating ? 'fill-[#9C5A26] text-[#9C5A26]' : 'text-[#2B1B0C]/15'}`}
-                  />
-                ))}
-              </div>
-              <p className="font-body text-base sm:text-lg text-[#2B1B0C] leading-relaxed mb-6 max-w-xl">
-                {quote.body}
-              </p>
-              <p className="font-heading font-bold text-sm text-[#2B1B0C]">{quote.customerName}</p>
-              <p className="font-body text-xs text-[#8A7A63]">{quote.product.name}</p>
+        <div className="relative bg-[#FFFDF8] border border-[#2B1B0C] rounded-2xl p-6 sm:p-8 md:p-10 shadow-neo-lg overflow-hidden">
+          <Quote className="absolute -top-2 -right-2 w-28 h-28 sm:w-36 sm:h-36 text-[#9C5A26]/[0.06] fill-[#9C5A26]/[0.06]" />
+
+          <div className="relative">
+            <div className="flex items-center gap-0.5 mb-3">
+              {Array.from({ length: 5 }, (_, i) => (
+                <Star
+                  key={i}
+                  className={`w-4 h-4 ${i < quote.rating ? 'fill-[#9C5A26] text-[#9C5A26]' : 'text-[#2B1B0C]/15'}`}
+                />
+              ))}
             </div>
+            <p className="font-heading text-lg sm:text-xl md:text-2xl text-[#2B1B0C] leading-snug mb-5">
+              &ldquo;{quote.body}&rdquo;
+            </p>
 
-            {quoteImage && (
-              <div className="hidden md:block w-56 h-56 lg:w-64 lg:h-64 rounded-2xl overflow-hidden border border-[#2B1B0C]/10 relative flex-shrink-0">
-                <Image src={quoteImage} alt={quote.product.name} fill className="object-cover" sizes="256px" />
+            <div className="flex items-center gap-3">
+              <span className="w-10 h-10 rounded-full bg-[#9C5A26] flex items-center justify-center font-heading font-black text-sm text-white flex-shrink-0">
+                {quote.customerName.charAt(0).toUpperCase()}
+              </span>
+              <div className="min-w-0">
+                <p className="font-heading font-bold text-sm text-[#2B1B0C]">{quote.customerName}</p>
+                <p className="font-body text-xs text-[#8A7A63] truncate">{quote.product.name}</p>
               </div>
-            )}
+            </div>
           </div>
-
-          {reviews.length > 1 && (
-            <>
-              <button
-                onClick={() => setActive((a) => (a - 1 + reviews.length) % reviews.length)}
-                className="hidden sm:flex absolute -left-5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-brand-paper border border-[#2B1B0C] items-center justify-center hover:border-[#9C5A26] transition-colors shadow-neo-md"
-                aria-label="Previous testimonial"
-              >
-                <ChevronLeft className="w-4 h-4 text-[#2B1B0C]" />
-              </button>
-              <button
-                onClick={() => setActive((a) => (a + 1) % reviews.length)}
-                className="hidden sm:flex absolute -right-5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-brand-paper border border-[#2B1B0C] items-center justify-center hover:border-[#9C5A26] transition-colors shadow-neo-md"
-                aria-label="Next testimonial"
-              >
-                <ChevronRight className="w-4 h-4 text-[#2B1B0C]" />
-              </button>
-            </>
-          )}
         </div>
 
         {reviews.length > 1 && (
-          <div className="flex sm:hidden justify-center items-center gap-3 mt-4">
+          <div className="flex justify-center items-center gap-4 mt-6">
             <button
               onClick={() => setActive((a) => (a - 1 + reviews.length) % reviews.length)}
-              className="w-9 h-9 rounded-full bg-brand-paper border border-[#2B1B0C] flex items-center justify-center hover:border-[#9C5A26] transition-colors shadow-neo-md"
+              className="w-9 h-9 rounded-full bg-[#2B1B0C] flex items-center justify-center hover:bg-[#9C5A26] transition-colors shadow-neo-sm"
               aria-label="Previous testimonial"
             >
-              <ChevronLeft className="w-4 h-4 text-[#2B1B0C]" />
+              <ChevronLeft className="w-4 h-4 text-white" />
             </button>
+
+            <div className="flex items-center gap-2">
+              {reviews.map((r, i) => (
+                <button
+                  key={r.id}
+                  onClick={() => setActive(i)}
+                  aria-label={`Go to testimonial ${i + 1}`}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    i === active ? 'w-6 bg-[#9C5A26]' : 'w-1.5 bg-[#2B1B0C]/15 hover:bg-[#2B1B0C]/30'
+                  }`}
+                />
+              ))}
+            </div>
+
             <button
               onClick={() => setActive((a) => (a + 1) % reviews.length)}
-              className="w-9 h-9 rounded-full bg-brand-paper border border-[#2B1B0C] flex items-center justify-center hover:border-[#9C5A26] transition-colors shadow-neo-md"
+              className="w-9 h-9 rounded-full bg-[#2B1B0C] flex items-center justify-center hover:bg-[#9C5A26] transition-colors shadow-neo-sm"
               aria-label="Next testimonial"
             >
-              <ChevronRight className="w-4 h-4 text-[#2B1B0C]" />
+              <ChevronRight className="w-4 h-4 text-white" />
             </button>
           </div>
         )}

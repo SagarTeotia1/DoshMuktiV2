@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Star, MessageSquarePlus } from 'lucide-react';
+import { Star, MessageSquarePlus, Quote, Sparkles } from 'lucide-react';
 import { api, ApiError } from '@/lib/api-client';
 import { formatDate } from '@/lib/formatters';
 import type { ProductReviewsResponse, CreateReviewInput } from '@/types/api.types';
@@ -43,13 +43,13 @@ const inputClass =
 
 function WriteReviewForm({ productId, onDone }: { productId: string; onDone: () => void }) {
   const qc = useQueryClient();
-  const [form, setForm] = useState({ orderNumber: '', customerPhone: '', title: '', body: '' });
+  const [form, setForm] = useState({ customerName: '', body: '' });
   const [rating, setRating] = useState(5);
 
   const mutation = useMutation({
     mutationFn: (input: CreateReviewInput) => api.post('/api/reviews', input),
     onSuccess: () => {
-      toast.success('Review submitted — it will appear once approved.');
+      toast.success('Thanks for your review!');
       qc.invalidateQueries({ queryKey: ['product-reviews', productId] });
       onDone();
     },
@@ -60,11 +60,9 @@ function WriteReviewForm({ productId, onDone }: { productId: string; onDone: () 
     e.preventDefault();
     if (form.body.trim().length < 10) return toast.error('Review must be at least 10 characters');
     mutation.mutate({
-      orderNumber: form.orderNumber.trim(),
-      customerPhone: form.customerPhone.trim(),
+      customerName: form.customerName.trim(),
       productId,
       rating,
-      title: form.title.trim() || undefined,
       body: form.body.trim(),
     });
   }
@@ -72,33 +70,14 @@ function WriteReviewForm({ productId, onDone }: { productId: string; onDone: () 
   return (
     <form onSubmit={submit} className="bg-white border border-[#2B1B0C] rounded-2xl p-5 sm:p-6 flex flex-col gap-3 mb-8">
       <p className="font-heading font-bold text-sm text-[#2B1B0C]">Write a Review</p>
-      <p className="font-body text-xs text-[#8A7A63] -mt-1">
-        Verified purchases only — enter the order number and phone number used at checkout.
-      </p>
 
       <StarPicker value={rating} onChange={setRating} />
 
-      <div className="grid grid-cols-2 gap-3">
-        <input
-          required
-          placeholder="Order Number (DOSH-...)"
-          value={form.orderNumber}
-          onChange={(e) => setForm((f) => ({ ...f, orderNumber: e.target.value }))}
-          className={inputClass}
-        />
-        <input
-          required
-          type="tel"
-          placeholder="Phone used at checkout"
-          value={form.customerPhone}
-          onChange={(e) => setForm((f) => ({ ...f, customerPhone: e.target.value }))}
-          className={inputClass}
-        />
-      </div>
       <input
-        placeholder="Title (optional)"
-        value={form.title}
-        onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+        required
+        placeholder="Your name"
+        value={form.customerName}
+        onChange={(e) => setForm((f) => ({ ...f, customerName: e.target.value }))}
         className={inputClass}
       />
       <textarea
@@ -139,7 +118,7 @@ export function ReviewsSection({ productId, productSlug }: { productId: string; 
   });
 
   return (
-    <section className="mt-16 sm:mt-24 max-w-3xl">
+    <section className="mt-16 sm:mt-24 max-w-5xl">
       <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-[#9C5A26] mb-2">
@@ -148,10 +127,11 @@ export function ReviewsSection({ productId, productSlug }: { productId: string; 
           <div className="flex items-center gap-3">
             <h2 className="font-heading text-2xl sm:text-3xl font-black tracking-tighter uppercase text-[#2B1B0C]">Reviews</h2>
             {!!data?.totalReviews && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2 bg-[#F6E4C2]/50 border border-[#2B1B0C]/10 rounded-full pl-2.5 pr-3 py-1">
                 <Stars rating={Math.round(data.averageRating)} />
+                <span className="font-heading font-bold text-xs text-[#2B1B0C]">{data.averageRating.toFixed(1)}</span>
                 <span className="font-body text-xs text-[#8A7A63]">
-                  {data.averageRating.toFixed(1)} ({data.totalReviews})
+                  ({data.totalReviews} review{data.totalReviews === 1 ? '' : 's'})
                 </span>
               </div>
             )}
@@ -161,7 +141,7 @@ export function ReviewsSection({ productId, productSlug }: { productId: string; 
         {!showForm && (
           <button
             onClick={() => setShowForm(true)}
-            className="flex-shrink-0 inline-flex items-center gap-1.5 font-body text-xs font-bold uppercase tracking-widest text-[#9C5A26] hover:text-[#2B1B0C] transition-colors"
+            className="flex-shrink-0 inline-flex items-center gap-1.5 font-body text-xs font-bold uppercase tracking-widest text-white bg-[#2B1B0C] rounded-full px-4 py-2.5 hover:bg-[#9C5A26] transition-colors shadow-neo-sm"
           >
             <MessageSquarePlus className="w-4 h-4" />
             Write a Review
@@ -172,20 +152,46 @@ export function ReviewsSection({ productId, productSlug }: { productId: string; 
       {showForm && <WriteReviewForm productId={productId} onDone={() => setShowForm(false)} />}
 
       {isLoading ? (
-        <p className="font-body text-sm text-[#8A7A63]">Loading reviews...</p>
+        <div className="grid sm:grid-cols-2 gap-4">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-32 rounded-2xl bg-[#F6E4C2]/40 animate-pulse" />
+          ))}
+        </div>
       ) : !data || data.reviews.length === 0 ? (
-        <p className="font-body text-sm text-[#8A7A63]">No reviews yet — be the first to share your experience.</p>
+        <div className="flex flex-col items-center justify-center text-center gap-3 rounded-2xl border border-dashed border-[#2B1B0C]/25 bg-[#FFFDF8] py-14 px-6">
+          <div className="w-11 h-11 rounded-full bg-[#F6E4C2] flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-[#9C5A26]" />
+          </div>
+          <p className="font-heading font-bold text-sm text-[#2B1B0C]">No reviews yet</p>
+          <p className="font-body text-sm text-[#8A7A63] max-w-xs">
+            Be the first to share how this piece has worked for you.
+          </p>
+        </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="grid sm:grid-cols-2 gap-4">
           {data.reviews.map((review) => (
-            <div key={review.id} className="border-b border-[#2B1B0C]/10 pb-4">
-              <div className="flex items-center gap-2 mb-1.5">
-                <Stars rating={review.rating} />
-                <span className="font-heading font-bold text-xs text-[#2B1B0C]">{review.customerName}</span>
-                <span className="font-body text-[10px] text-[#8A7A63]">{formatDate(review.createdAt)}</span>
+            <div
+              key={review.id}
+              className="relative bg-[#FFFDF8] border border-[#2B1B0C]/10 rounded-2xl p-5 sm:p-6 shadow-neo-sm hover:shadow-neo-md transition-shadow duration-200"
+            >
+              <Quote className="absolute top-4 right-4 w-6 h-6 text-[#9C5A26]/15 fill-[#9C5A26]/10" />
+
+              <div className="flex items-center gap-2.5 mb-3">
+                <span className="w-8 h-8 rounded-full bg-[#9C5A26] flex items-center justify-center font-heading font-black text-xs text-white flex-shrink-0">
+                  {review.customerName.charAt(0).toUpperCase()}
+                </span>
+                <div className="min-w-0">
+                  <p className="font-heading font-bold text-xs text-[#2B1B0C] truncate">{review.customerName}</p>
+                  <p className="font-body text-[10px] text-[#8A7A63]">{formatDate(review.createdAt)}</p>
+                </div>
               </div>
-              {review.title && <p className="font-heading font-bold text-sm text-[#2B1B0C] mb-1">{review.title}</p>}
-              <p className="font-body text-sm text-[#6B5539] leading-relaxed">{review.body}</p>
+
+              <Stars rating={review.rating} />
+
+              {review.title && (
+                <p className="font-heading font-bold text-sm text-[#2B1B0C] mt-2.5 mb-1">{review.title}</p>
+              )}
+              <p className="font-body text-sm text-[#6B5539] leading-relaxed mt-1">{review.body}</p>
             </div>
           ))}
         </div>

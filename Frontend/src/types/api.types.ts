@@ -224,8 +224,7 @@ export interface ChatResponse {
 }
 
 export interface CreateReviewInput {
-  orderNumber: string;
-  customerPhone: string;
+  customerName: string;
   productId: string;
   rating: number;
   title?: string;

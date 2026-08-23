@@ -12,11 +12,7 @@ import {
   listRecentApproved,
   listForAdmin,
   moderateReview,
-  OrderNotFoundError,
-  PhoneMismatchError,
-  OrderNotEligibleError,
-  ProductNotInOrderError,
-  DuplicateReviewError,
+  ProductNotFoundError,
 } from './service';
 import { getProductBySlug } from '../products/service';
 
@@ -28,11 +24,7 @@ export async function createReviewHandler(req: FastifyRequest, reply: FastifyRep
     const review = await createReview(parsed.data);
     return reply.code(201).send({ id: review.id, status: review.status });
   } catch (err) {
-    if (err instanceof OrderNotFoundError) return reply.code(404).send({ error: err.message });
-    if (err instanceof PhoneMismatchError) return reply.code(403).send({ error: err.message });
-    if (err instanceof OrderNotEligibleError) return reply.code(409).send({ error: err.message });
-    if (err instanceof ProductNotInOrderError) return reply.code(409).send({ error: err.message });
-    if (err instanceof DuplicateReviewError) return reply.code(409).send({ error: err.message });
+    if (err instanceof ProductNotFoundError) return reply.code(404).send({ error: err.message });
     throw err;
   }
 }

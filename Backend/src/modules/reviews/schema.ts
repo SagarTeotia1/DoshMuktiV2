@@ -1,8 +1,7 @@
 import { z } from 'zod';
 
 export const createReviewSchema = z.object({
-  orderNumber: z.string().min(1).max(50),
-  customerPhone: z.string().regex(/^[6-9]\d{9}$/, 'Invalid Indian mobile number'),
+  customerName: z.string().min(1).max(100),
   productId: z.string().min(1),
   rating: z.number().int().min(1).max(5),
   title: z.string().max(120).optional(),
