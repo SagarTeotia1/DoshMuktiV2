@@ -1,8 +1,9 @@
 import Link from 'next/link';
-import { Gem, HandHeart, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowRight, Gem, HandHeart, ShieldCheck, Sparkles } from 'lucide-react';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { Reveal } from '@/components/motion/Reveal';
 import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
+import { TrustBar } from '@/components/storefront/TrustBar';
 
 const VALUES = [
   {
@@ -54,6 +55,8 @@ export default function AboutPage() {
         </Reveal>
       </section>
 
+      <TrustBar />
+
       <section className="py-14 sm:py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-12">
           <Reveal className="text-center mb-10 sm:mb-14">
@@ -68,9 +71,9 @@ export default function AboutPage() {
               return (
                 <StaggerItem
                   key={v.title}
-                  className="flex gap-4 rounded-xl border border-[#2B1B0C]/12 bg-white p-5 sm:p-6 hover:shadow-neo-md hover:-translate-y-0.5 transition-all duration-300"
+                  className="flex gap-4 rounded-xl border border-[#2B1B0C]/15 bg-white p-5 sm:p-6 shadow-neo-sm hover:shadow-neo-md hover:-translate-y-0.5 transition-all duration-300"
                 >
-                  <span className="flex-shrink-0 w-11 h-11 rounded-full bg-[#F6E4C2] flex items-center justify-center">
+                  <span className="flex-shrink-0 w-12 h-12 rounded-full bg-[#F6E4C2] border border-[#2B1B0C]/10 flex items-center justify-center">
                     <Icon className="w-5 h-5 text-[#9C5A26]" strokeWidth={1.75} />
                   </span>
                   <div>
@@ -84,20 +87,24 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="bg-[#F6E4C2]/50 py-12 sm:py-16">
-        <Reveal className="max-w-2xl mx-auto px-6 text-center">
-          <h2 className="font-display font-bold tracking-tight leading-tight text-2xl sm:text-3xl text-[#2B1B0C] mb-3">
-            Ready To Find What You Seek?
-          </h2>
-          <p className="font-body text-sm text-[#6B5539] leading-relaxed mb-6">
-            Browse the full collection, or talk to Acharya Madhav for a personalized recommendation.
-          </p>
-          <Link
-            href="/shop"
-            className="inline-flex items-center gap-2 rounded-full bg-[#9C5A26] text-[#E6D3AE] px-7 py-3 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#2B1B0C] transition-colors duration-200"
-          >
-            Shop The Collection
-          </Link>
+      <section className="pb-14 sm:pb-20 px-4 sm:px-6 lg:px-12">
+        <Reveal className="max-w-4xl mx-auto">
+          <div className="relative overflow-hidden text-center rounded-2xl border border-[#2B1B0C] bg-[#2B1B0C] px-6 py-12 sm:py-16 shadow-neo-lg">
+            <MandalaMotif className="pointer-events-none absolute -top-20 -left-20 w-64 h-64 text-[#C9863F]/[0.08]" />
+            <h2 className="relative font-display font-bold tracking-tight leading-tight text-2xl sm:text-3xl text-[#E6D3AE] mb-3">
+              Ready To Find What You Seek?
+            </h2>
+            <p className="relative font-body text-sm text-[#B8A98A] leading-relaxed mb-7 max-w-md mx-auto">
+              Browse the full collection, or talk to Acharya Madhav for a personalized recommendation.
+            </p>
+            <Link
+              href="/shop"
+              className="relative inline-flex items-center gap-2 rounded-full bg-[#9C5A26] text-[#E6D3AE] px-7 py-3 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#C9863F] hover:text-[#2B1B0C] transition-colors duration-200"
+            >
+              Shop The Collection
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </Reveal>
       </section>
     </>
