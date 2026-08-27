@@ -8,13 +8,21 @@ import { TestimonialsCarousel } from '@/components/storefront/TestimonialsCarous
 import { CategoryStrip, type CategoryThumb } from '@/components/storefront/CategoryStrip';
 import { SectionDivider } from '@/components/motion/SectionDivider';
 import { api } from '@/lib/api-client';
-import type { Product, PaginatedProducts } from '@/types/api.types';
+import type { Product, PaginatedProducts, Banner } from '@/types/api.types';
 
 async function getFeaturedProducts(): Promise<Product[]> {
   try {
     return await api.get<Product[]>('/api/products/featured');
   } catch {
     return []; // Backend down — degrade to an empty section, never a crashed landing page
+  }
+}
+
+async function getBanners(): Promise<Banner[]> {
+  try {
+    return await api.get<Banner[]>('/api/banners');
+  } catch {
+    return [];
   }
 }
 
@@ -29,7 +37,7 @@ async function getCategory(category: string, limit = 4): Promise<Product[]> {
 }
 
 export default async function LandingPage() {
-  const [featured, doshMuktiSpecial, rudraksha, bracelets, pyrite, attar, dhoop] = await Promise.all([
+  const [featured, doshMuktiSpecial, rudraksha, bracelets, pyrite, attar, dhoop, banners] = await Promise.all([
     getFeaturedProducts(),
     getCategory('Dosh Mukti Special', 10),
     getCategory('Rudraksha / Kada', 10),
@@ -37,6 +45,7 @@ export default async function LandingPage() {
     getCategory('Pyrite Items', 1),
     getCategory('Attar', 1),
     getCategory('Dhoop Sticks', 1),
+    getBanners(),
   ]);
 
   const categoryThumbs: CategoryThumb[] = [
@@ -51,7 +60,7 @@ export default async function LandingPage() {
   return (
     <>
       <CategoryStrip items={categoryThumbs} />
-      <HeroCarousel />
+      <HeroCarousel banners={banners} />
       <CashbackStrip />
       <PurposeGrid />
 

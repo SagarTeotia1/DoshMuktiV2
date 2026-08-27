@@ -88,6 +88,22 @@ export type Offer = {
   [R in OfferReward]: OfferBase & { reward: R; config: OfferConfigMap[R] };
 }[OfferReward];
 
+export interface ProductImage {
+  thumb: string;
+  card: string;
+  full: string;
+}
+
+export interface Banner {
+  id: string;
+  image: ProductImage;
+  link: string;
+  order: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PaginatedOffers {
   offers: Offer[];
   total: number;

@@ -37,25 +37,12 @@ async function getProducts(sp: ShopSearchParams) {
   }
 }
 
-async function getCategories(): Promise<string[]> {
+async function getCategoryThumbs(): Promise<Array<{ id: string; label: string; image: string | null }>> {
   try {
-    return await api.get<string[]>('/api/products/categories');
+    return await api.get<Array<{ id: string; label: string; image: string | null }>>('/api/products/category-thumbs');
   } catch {
     return [];
   }
-}
-
-async function getCategoryThumbs(categories: string[]): Promise<Array<{ id: string; label: string; image: string | null }>> {
-  return Promise.all(
-    categories.map(async (c) => {
-      try {
-        const res = await api.get<PaginatedProducts>(`/api/products?category=${encodeURIComponent(c)}&limit=1`);
-        return { id: c, label: c, image: res.products[0]?.images[0]?.card ?? null };
-      } catch {
-        return { id: c, label: c, image: null };
-      }
-    })
-  );
 }
 
 export default async function ShopPage({
@@ -64,8 +51,7 @@ export default async function ShopPage({
   searchParams: Promise<ShopSearchParams>;
 }) {
   const sp = await searchParams;
-  const [data, categories] = await Promise.all([getProducts(sp), getCategories()]);
-  const categoryThumbs = await getCategoryThumbs(categories);
+  const [data, categoryThumbs] = await Promise.all([getProducts(sp), getCategoryThumbs()]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-8 flex flex-col lg:flex-row gap-6 lg:gap-10">

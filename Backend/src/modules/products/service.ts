@@ -166,6 +166,33 @@ export async function getDistinctCategories(): Promise<string[]> {
   return categories;
 }
 
+export type CategoryThumb = { id: string; label: string; image: string | null };
+
+// Collapses what used to be N Frontend→Backend calls (one per category, each a full
+// listProducts query) into a single cached call — shop page was doing 1 + N round trips
+// per load just to get category tile thumbnails.
+export async function getCategoryThumbnails(): Promise<CategoryThumb[]> {
+  const key = cacheKeys.categoryThumbnails();
+  const cached = await redis.get<CategoryThumb[]>(key);
+  if (cached) return cached;
+
+  const categories = await getDistinctCategories();
+  const thumbs = await Promise.all(
+    categories.map(async (category): Promise<CategoryThumb> => {
+      const product = await db.product.findFirst({
+        where: { status: 'ACTIVE', category },
+        select: { images: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      const image = (Array.isArray(product?.images) && (product.images[0] as { card?: unknown } | undefined)?.card) || null;
+      return { id: category, label: category, image: image as string | null };
+    })
+  );
+
+  await redis.set(key, thumbs, { ex: CACHE_TTL.CATEGORY_THUMBS });
+  return thumbs;
+}
+
 // Admin needs categories from DRAFT products too (to reuse when adding a new draft
 // in the same category), so no status filter — and no cache, admin traffic is low.
 export async function getDistinctCategoriesForAdmin(): Promise<string[]> {

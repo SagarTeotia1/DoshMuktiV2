@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, Boxes, ShoppingBag, Gem, Star, Tag, Ticket } from 'lucide-react';
+import { LayoutDashboard, Package, Boxes, ShoppingBag, Gem, Star, Tag, Ticket, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/products', label: 'Products', icon: Package },
+  { href: '/banners', label: 'Banners', icon: ImageIcon },
   { href: '/offers', label: 'Offers', icon: Tag },
   { href: '/coupons', label: 'Coupons', icon: Ticket },
   { href: '/inventory', label: 'Inventory', icon: Boxes },
