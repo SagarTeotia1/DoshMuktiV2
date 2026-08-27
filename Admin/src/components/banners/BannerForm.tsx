@@ -18,11 +18,14 @@ export function BannerForm({
   banner?: Banner;
   submitLabel: string;
   submitting: boolean;
-  onSubmit: (values: { image: ProductImage; link: string; order: number; isActive: boolean }) => void;
+  onSubmit: (values: { image: ProductImage; mobileImage: ProductImage | null; link: string; order: number; isActive: boolean }) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const mobileInputRef = useRef<HTMLInputElement>(null);
   const [image, setImage] = useState<ProductImage | null>(banner?.image ?? null);
+  const [mobileImage, setMobileImage] = useState<ProductImage | null>(banner?.mobileImage ?? null);
   const [uploading, setUploading] = useState(false);
+  const [uploadingMobile, setUploadingMobile] = useState(false);
   const [link, setLink] = useState(banner?.link ?? '');
   const [order, setOrder] = useState(banner?.order ?? 0);
   const [isActive, setIsActive] = useState(banner?.isActive ?? true);
@@ -45,11 +48,29 @@ export function BannerForm({
     }
   }
 
+  async function handleMobileFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingMobile(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const uploaded = await api.upload<ProductImage>('/api/admin/upload', formData);
+      setMobileImage(uploaded);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.body.error : 'Upload failed');
+    } finally {
+      setUploadingMobile(false);
+      if (mobileInputRef.current) mobileInputRef.current.value = '';
+    }
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!image) return toast.error('Upload a banner image first');
     if (!link.trim()) return toast.error('Link is required');
-    onSubmit({ image, link: link.trim(), order, isActive });
+    onSubmit({ image, mobileImage, link: link.trim(), order, isActive });
   }
 
   return (
@@ -71,6 +92,38 @@ export function BannerForm({
           {uploading ? 'Uploading...' : image ? 'Replace image' : 'Upload image'}
         </button>
         <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+          Mobile Banner Image <span className="font-normal text-slate-400">(optional — falls back to banner image above on phones)</span>
+        </label>
+        {mobileImage ? (
+          <div className="relative w-40 aspect-[4/3] rounded-lg overflow-hidden border border-slate-200 mb-2">
+            <Image src={mobileImage.full} alt="" fill className="object-cover" />
+          </div>
+        ) : null}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => mobileInputRef.current?.click()}
+            disabled={uploadingMobile}
+            className="flex-1 flex items-center justify-center gap-2 border-2 border-dashed border-slate-300 rounded-lg py-3 text-sm text-slate-500 hover:border-[#9C5A26] transition-colors disabled:opacity-50"
+          >
+            <Upload className="w-4 h-4" />
+            {uploadingMobile ? 'Uploading...' : mobileImage ? 'Replace mobile image' : 'Upload mobile image'}
+          </button>
+          {mobileImage ? (
+            <button
+              type="button"
+              onClick={() => setMobileImage(null)}
+              className="px-3 rounded-lg border border-slate-300 text-sm text-slate-500 hover:border-red-400 hover:text-red-600 transition-colors"
+            >
+              Remove
+            </button>
+          ) : null}
+        </div>
+        <input ref={mobileInputRef} type="file" accept="image/*" className="hidden" onChange={handleMobileFile} />
       </div>
 
       <div>

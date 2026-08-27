@@ -41,7 +41,7 @@ export function PurposeGrid() {
           </span>
         </div>
 
-        <StaggerGroup className="grid grid-cols-3 justify-center sm:flex sm:justify-center sm:flex-wrap gap-y-4 gap-x-2 sm:gap-9 md:gap-11 sm:overflow-x-auto hide-scrollbar sm:snap-x sm:snap-mandatory px-1 py-1 place-items-center">
+        <StaggerGroup className="grid grid-cols-3 justify-center sm:flex sm:justify-center sm:flex-wrap gap-y-2 gap-x-1 sm:gap-9 md:gap-11 sm:overflow-x-auto hide-scrollbar sm:snap-x sm:snap-mandatory px-1 py-1 place-items-center">
           {PURPOSES.map((purpose) => {
             const Icon = ICONS[purpose.id as keyof typeof ICONS];
             const [light, base] = GRADIENTS[purpose.id] ?? ['#C9863F', '#9C5A26'];
@@ -52,16 +52,16 @@ export function PurposeGrid() {
                 key={purpose.id}
                 className={`snap-start ${isGifting ? 'hidden sm:block sm:flex-shrink-0' : 'flex-shrink-0'}`}
               >
-                <Link href={`/shop?purpose=${purpose.id}`} className="group flex flex-col items-center gap-2 w-20 sm:w-24">
-                  <span className="p-[3px] rounded-full border border-[#2B1B0C]/15 group-hover:border-[#9C5A26] transition-all duration-300 group-hover:-translate-y-1">
+                <Link href={`/shop?purpose=${purpose.id}`} className="group flex flex-col items-center gap-1.5 sm:gap-2 w-16 sm:w-24">
+                  <span className="p-[2px] sm:p-[3px] rounded-full border border-[#2B1B0C]/15 group-hover:border-[#9C5A26] transition-all duration-300 group-hover:-translate-y-1">
                     <span
-                      className="flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full shadow-[inset_0_-4px_10px_rgba(0,0,0,0.18)]"
+                      className="flex items-center justify-center w-12 h-12 sm:w-20 sm:h-20 rounded-full shadow-[inset_0_-4px_10px_rgba(0,0,0,0.18)]"
                       style={{ background: `radial-gradient(circle at 32% 28%, ${light}, ${base})` }}
                     >
-                      <Icon className="w-7 h-7 sm:w-8 sm:h-8 text-white/95" strokeWidth={1.5} />
+                      <Icon className="w-5 h-5 sm:w-8 sm:h-8 text-white/95" strokeWidth={1.5} />
                     </span>
                   </span>
-                  <span className="font-heading font-black text-[11px] sm:text-sm uppercase tracking-tight text-[#2B1B0C]/85 group-hover:text-[#9C5A26] transition-colors duration-300 text-center leading-tight">
+                  <span className="font-heading font-black text-[9px] sm:text-sm uppercase tracking-tight text-[#2B1B0C]/85 group-hover:text-[#9C5A26] transition-colors duration-300 text-center leading-tight">
                     {purpose.label.split(' & ')[0]}
                   </span>
                 </Link>

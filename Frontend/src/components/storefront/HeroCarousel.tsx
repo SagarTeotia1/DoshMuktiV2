@@ -24,13 +24,17 @@ export function HeroCarousel({ banners }: { banners: Banner[] }) {
 
   return (
     <section className="relative w-full" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
-      {/* Plain <img>, no `fill`/object-fit — height is the image's own natural ratio at
-          100% width, so nothing is ever cropped and there's no letterbox to fill. Only
-          the active banner renders (no absolute crossfade stack), since each banner can
-          have a different aspect ratio and stacking would force a shared fixed height. */}
+      {/* Desktop: plain <img>, no `fill`/object-fit — height is the image's own natural
+          ratio at 100% width, so nothing is ever cropped. Mobile: fixed-ratio crop via
+          object-cover — uses `mobileImage` when the admin uploaded one, else crops the
+          desktop image itself so a wide desktop banner never renders thin/flat on phones. */}
       <Link key={banner.id} href={banner.link} aria-label="View banner" className="block w-full">
+        <div className="relative w-full aspect-[4/3] overflow-hidden sm:hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={banner.mobileImage?.full ?? banner.image.full} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={banner.image.full} alt="" className="w-full h-auto block" />
+        <img src={banner.image.full} alt="" className="hidden sm:block w-full h-auto" />
       </Link>
 
       {banners.length > 1 && (

@@ -13,6 +13,7 @@ export function useBanners() {
 
 export interface CreateBannerInput {
   image: ProductImage;
+  mobileImage?: ProductImage | null;
   link: string;
   order?: number;
   isActive?: boolean;
@@ -28,6 +29,7 @@ export function useCreateBanner() {
 
 export interface UpdateBannerInput {
   image?: ProductImage;
+  mobileImage?: ProductImage | null;
   link?: string;
   order?: number;
   isActive?: boolean;

@@ -23,9 +23,11 @@ export const testimonialVideoSchema = z.object({
 export type TestimonialVideo = z.infer<typeof testimonialVideoSchema>;
 
 // Mirrors Backend/src/modules/banners/schema.ts's response shape.
+const bannerImageSchema = z.object({ thumb: z.string(), card: z.string(), full: z.string() });
 export const bannerSchema = z.object({
   id: z.string(),
-  image: z.object({ thumb: z.string(), card: z.string(), full: z.string() }),
+  image: bannerImageSchema,
+  mobileImage: bannerImageSchema.nullable().optional(),
   link: z.string(),
   order: z.number(),
   isActive: z.boolean(),

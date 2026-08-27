@@ -97,6 +97,7 @@ export interface ProductImage {
 export interface Banner {
   id: string;
   image: ProductImage;
+  mobileImage: ProductImage | null;
   link: string;
   order: number;
   isActive: boolean;

@@ -448,13 +448,14 @@ enum ReviewStatus {
 // ─── Banners ────────────────────────────────────────────────────────────────
 
 model Banner {
-  id        String   @id @default(cuid())
-  image     Json // {thumb, card, full} — same shape as Product.images, from /admin/upload
-  link      String // wherever the banner should navigate on click — internal path or full URL
-  order     Int      @default(0) // display order, ascending
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  image       Json // {thumb, card, full} — same shape as Product.images, from /admin/upload
+  mobileImage Json? // optional art-directed crop for narrow screens, same {thumb, card, full} shape — falls back to `image` when absent
+  link        String // wherever the banner should navigate on click — internal path or full URL
+  order       Int      @default(0) // display order, ascending
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([isActive, order])
 }
