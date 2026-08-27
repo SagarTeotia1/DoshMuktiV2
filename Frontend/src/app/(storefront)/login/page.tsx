@@ -27,7 +27,6 @@ function LoginForm() {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
-  const [dob, setDob] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   async function handlePhoneSubmit(e: React.FormEvent) {
@@ -71,7 +70,7 @@ function LoginForm() {
 
     setSubmitting(true);
     try {
-      await verifyOtp(phone, otp, name.trim(), dob || undefined);
+      await verifyOtp(phone, otp, name.trim());
       router.push(redirectTo);
     } catch {
       toast.error('Something went wrong — try again');
@@ -87,57 +86,59 @@ function LoginForm() {
         <p className="font-body text-[10px] font-bold uppercase tracking-[0.2em] text-[#9C5A26]">Secure Login</p>
       </div>
       <h1 className="font-heading font-black tracking-tight leading-tight text-2xl sm:text-3xl text-[#2B1B0C] mb-6">
-        {step === 'phone' && 'Log in with your phone'}
-        {step === 'otp' && 'Enter the OTP'}
-        {step === 'profile' && 'A few details'}
+        {step === 'profile' ? 'A few details' : 'Log in with your phone'}
       </h1>
 
-      {step === 'phone' && (
-        <form onSubmit={handlePhoneSubmit} className="flex flex-col gap-3">
+      {(step === 'phone' || step === 'otp') && (
+        <form onSubmit={step === 'phone' ? handlePhoneSubmit : handleOtpSubmit} className="flex flex-col gap-3">
           <input
             type="tel"
             inputMode="numeric"
-            autoFocus
+            autoFocus={step === 'phone'}
+            disabled={step === 'otp'}
             value={phone}
             onChange={(e) => setPhone(normalizePhone(e.target.value))}
             placeholder="10-digit mobile number"
-            className={inputClass}
+            className={`${inputClass} disabled:opacity-60 disabled:bg-[#2B1B0C]/5`}
           />
-          <button
-            type="submit"
-            disabled={submitting}
-            className="brutal-border bg-[#2B1B0C] text-white rounded-lg px-6 py-3.5 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200 disabled:opacity-50"
-          >
-            {submitting ? 'Sending...' : 'Send OTP'}
-          </button>
-        </form>
-      )}
 
-      {step === 'otp' && (
-        <form onSubmit={handleOtpSubmit} className="flex flex-col gap-3">
-          <p className="font-body text-xs text-[#8A7A63] -mt-2 mb-1">Sent to +91 {phone}</p>
-          <input
-            type="text"
-            inputMode="numeric"
-            autoFocus
-            value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-            placeholder="Enter OTP"
-            className={inputClass}
-          />
+          {step === 'otp' && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep('phone');
+                  setOtp('');
+                }}
+                className="font-body text-xs text-[#8A7A63] hover:text-[#2B1B0C] transition-colors self-start -mt-1"
+              >
+                Change phone number
+              </button>
+              <p className="font-body text-xs text-[#8A7A63] mb-1">OTP sent to +91 {phone}</p>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoFocus
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="Enter OTP"
+                className={inputClass}
+              />
+            </>
+          )}
+
           <button
             type="submit"
             disabled={submitting}
             className="brutal-border bg-[#2B1B0C] text-white rounded-lg px-6 py-3.5 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200 disabled:opacity-50"
           >
-            {submitting ? 'Verifying...' : 'Verify & Continue'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setStep('phone')}
-            className="font-body text-xs text-[#8A7A63] hover:text-[#2B1B0C] transition-colors self-center"
-          >
-            Change phone number
+            {step === 'phone'
+              ? submitting
+                ? 'Sending...'
+                : 'Send OTP'
+              : submitting
+                ? 'Verifying...'
+                : 'Verify & Continue'}
           </button>
         </form>
       )}
@@ -151,13 +152,6 @@ function LoginForm() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Full Name"
-            className={inputClass}
-          />
-          <input
-            type="date"
-            value={dob}
-            onChange={(e) => setDob(e.target.value)}
-            placeholder="Date of Birth (optional)"
             className={inputClass}
           />
           <button

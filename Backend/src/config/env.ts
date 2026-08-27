@@ -46,8 +46,7 @@ const envSchema = z.object({
   DELHIVERY_WAREHOUSE_PHONE: z.string().default(''),
   DELHIVERY_CLIENT_NAME: z.string().default('Doshhmukti'),
 
-  MSG91_AUTH_KEY: z.string().default(''),
-  MSG91_TEMPLATE_ID: z.string().default(''),
+  TWOFACTOR_API_KEY: z.string().default(''),
 
   GROQ_API_KEY: z.string().default(''),
   GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),

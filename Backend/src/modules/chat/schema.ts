@@ -12,13 +12,10 @@ export const chatRequestSchema = z.object({
 export type ChatRequestInput = z.infer<typeof chatRequestSchema>;
 
 // Profile collected across turns, persisted per session so a returning visitor in the
-// same browser isn't asked their DOB again. Every field nullable — filled in gradually
-// as the conversation progresses.
+// same browser isn't asked the same thing again. Every field nullable — filled in
+// gradually as the conversation progresses.
 export const chatProfileSchema = z.object({
   name: z.string().max(80).nullable(),
-  dob: z.string().nullable(), // ISO yyyy-mm-dd once known
-  birthTime: z.string().max(20).nullable(), // free-form as given ("7:30 AM", "don't know") — not parsed, just carried
-  placeOfBirth: z.string().max(120).nullable(),
   problem: z.string().max(300).nullable(),
   // model has asked "want a suggestion?" — gates readyForProducts to the NEXT turn's yes.
   // Nullable because the model emits null (not false) for "didn't touch this field" — same
@@ -29,9 +26,6 @@ export type ChatProfile = z.infer<typeof chatProfileSchema>;
 
 export const EMPTY_PROFILE: ChatProfile = {
   name: null,
-  dob: null,
-  birthTime: null,
-  placeOfBirth: null,
   problem: null,
   offeredSuggestion: false,
 };

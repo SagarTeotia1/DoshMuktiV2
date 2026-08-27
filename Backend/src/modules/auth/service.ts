@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { env } from '../../config/env';
 import { db } from '../../shared/db/client';
-import { sendOtp, verifyOtp } from '../../shared/integrations/msg91/client';
+import { sendOtp, verifyOtp } from '../../shared/integrations/twoFactor/client';
 import { normalizePhone } from '../../shared/utils/phone';
 import type { AdminLoginInput } from './schema';
 import type { User } from '@prisma/client';
@@ -49,13 +49,12 @@ export async function sendCustomerOtp(rawPhone: string): Promise<void> {
 export async function verifyCustomerOtp(
   rawPhone: string,
   otp: string,
-  name: string | undefined,
-  dob: string | undefined
+  name: string | undefined
 ): Promise<User> {
   const phone = normalizePhone(rawPhone);
 
-  // The profile step (name/dob) resubmits the same phone+otp after the OTP was already
-  // verified and consumed on the first call — MSG91 OTPs are single-use, so re-checking
+  // The profile step (name) resubmits the same phone+otp after the OTP was already
+  // verified and consumed on the first call — 2Factor OTPs are single-use, so re-checking
   // with the provider here would always fail. If this phone already has a verified,
   // unexpired record, treat it as still-authenticated instead of re-verifying.
   const alreadyVerified = await db.otpVerification.findFirst({
@@ -70,7 +69,7 @@ export async function verifyCustomerOtp(
     });
     if (!record) throw new InvalidOtpError();
 
-    const ok = await verifyOtp(phone, otp);
+    const ok = await verifyOtp(record.requestId, otp);
     if (!ok) throw new InvalidOtpError();
 
     await db.otpVerification.update({ where: { id: record.id }, data: { verified: true } });
@@ -78,13 +77,13 @@ export async function verifyCustomerOtp(
 
   const existing = await db.user.findUnique({ where: { phone } });
   if (existing) {
-    if (!name && !dob) return existing;
+    if (!name) return existing;
     return db.user.update({
       where: { id: existing.id },
-      data: { name: name ?? existing.name, dob: dob ? new Date(dob) : existing.dob },
+      data: { name },
     });
   }
 
   if (!name) throw new ProfileRequiredError();
-  return db.user.create({ data: { phone, name, dob: dob ? new Date(dob) : null } });
+  return db.user.create({ data: { phone, name } });
 }

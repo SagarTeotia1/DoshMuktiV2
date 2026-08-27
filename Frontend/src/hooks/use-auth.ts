@@ -52,8 +52,8 @@ export function useAuth() {
     await api.post('/api/auth/otp/send', { phone });
   }
 
-  async function verifyOtp(phone: string, otp: string, name?: string, dob?: string) {
-    const result = await api.post<VerifyOtpResponse>('/api/auth/otp/verify', { phone, otp, name, dob });
+  async function verifyOtp(phone: string, otp: string, name?: string) {
+    const result = await api.post<VerifyOtpResponse>('/api/auth/otp/verify', { phone, otp, name });
     setToken(result.token);
     setUser(result.user);
     return result.user;

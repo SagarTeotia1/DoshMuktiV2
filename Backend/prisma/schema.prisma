@@ -198,7 +198,7 @@ model User {
 model OtpVerification {
   id        String   @id @default(cuid())
   phone     String // normalized: +91XXXXXXXXXX
-  requestId String // MSG91 request ID returned on send
+  requestId String // 2Factor.in session ID returned on send
   verified  Boolean  @default(false)
   expiresAt DateTime // 10 min from creation
   createdAt DateTime @default(now())
@@ -443,6 +443,22 @@ enum ReviewStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+// ─── Chat / Book Grounding ────────────────────────────────────────────────────
+
+// One chunk (roughly a paragraph, ~500-1000 chars) of reference-book text used to ground
+// Acharya Madhav's chat replies. `source` is a human label (book title/filename) so
+// multiple books/sections can coexist later. Populated by scripts/ingest-book.ts — empty
+// until the owner provides book content; retrieval treats zero rows as "not ingested yet",
+// not an error.
+model BookChunk {
+  id        String   @id @default(cuid())
+  source    String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([source])
 }
 
 // ─── Banners ────────────────────────────────────────────────────────────────

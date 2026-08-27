@@ -98,14 +98,26 @@ On first boot the container runs `prisma migrate deploy` automatically (set `-e 
 
 ## 7. Deploying a new version
 
+Actual workflow used on the VM — builds straight from the checked-out repo on the VM itself (no Artifact Registry push/pull step):
+
 ```bash
-docker pull asia-south1-docker.pkg.dev/YOUR_PROJECT/doshmukti/app:latest
-docker stop doshmukti-app && docker rm doshmukti-app
-docker run -d --name doshmukti-app --restart unless-stopped \
+git pull
+
+docker build \
+  --build-arg NEXT_PUBLIC_BACKEND_URL=https://api.doshmukti.com \
+  --build-arg NEXT_PUBLIC_SITE_URL=https://doshmukti.com \
+  --build-arg NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_TKZZlF2dxCNDvi \
+  -t doshmukti:latest .
+
+docker stop dosh && docker rm dosh
+
+docker run -d --name dosh --restart unless-stopped \
   -p 80:80 -p 443:443 --env-file Backend/.env \
   -v /etc/letsencrypt:/etc/letsencrypt:ro \
-  asia-south1-docker.pkg.dev/YOUR_PROJECT/doshmukti/app:latest
+  doshmukti:latest
 ```
+
+Swap `NEXT_PUBLIC_RAZORPAY_KEY_ID` for the live key (`rzp_live_...`) once off test mode — it's baked in at build time like the other `NEXT_PUBLIC_*` vars, so it takes a rebuild to change, not just an env var edit.
 
 Brief downtime during the swap (single-container, single-VM — there's no rolling update here). For zero-downtime deploys later, this is the point to move to two VMs behind a load balancer, or to Cloud Run per-service.
 
