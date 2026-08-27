@@ -5,32 +5,22 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { MoonStar, X, Send, Sparkles, Mic } from 'lucide-react';
 import { useAcharyaChat } from '@/hooks/use-acharya-chat';
-
-// Minimal ambient shape for the Web Speech API — not in TS's default DOM lib, and only
-// a subset of browsers implement it (prefixed as webkitSpeechRecognition on most).
-interface SpeechRecognitionResultLike {
-  results: { [index: number]: { [index: number]: { transcript: string } } };
-}
-interface SpeechRecognitionLike extends EventTarget {
-  lang: string;
-  interimResults: boolean;
-  maxAlternatives: number;
-  start: () => void;
-  stop: () => void;
-  onresult: ((ev: SpeechRecognitionResultLike) => void) | null;
-  onend: (() => void) | null;
-  onerror: (() => void) | null;
-}
+import { useVoiceInput } from '@/hooks/use-voice-input';
 
 export function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [showPop, setShowPop] = useState(false);
   const [input, setInput] = useState('');
-  const [listening, setListening] = useState(false);
-  const [voiceSupported, setVoiceSupported] = useState(false);
   const { messages, sendMessage, isSending } = useAcharyaChat();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+
+  const handleVoiceResult = useCallback((transcript: string) => {
+    setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+  }, []);
+  const handleVoiceError = useCallback((error: string) => {
+    console.error('[voice input] speech recognition error:', error);
+  }, []);
+  const voice = useVoiceInput({ lang: 'hi-IN', onResult: handleVoiceResult, onError: handleVoiceError });
 
   useEffect(() => {
     const t = setTimeout(() => setShowPop(true), 2500);
@@ -40,43 +30,6 @@ export function ChatWidget() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, isSending]);
-
-  useEffect(() => {
-    const w = window as unknown as {
-      SpeechRecognition?: new () => SpeechRecognitionLike;
-      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-    };
-    setVoiceSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
-  }, []);
-
-  const handleMic = useCallback(() => {
-    if (listening) {
-      recognitionRef.current?.stop();
-      return;
-    }
-
-    const w = window as unknown as {
-      SpeechRecognition?: new () => SpeechRecognitionLike;
-      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-    };
-    const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
-    if (!Ctor) return;
-
-    const recognition = new Ctor();
-    recognition.lang = 'hi-IN';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    recognition.onresult = (ev) => {
-      const transcript = ev.results[0]?.[0]?.transcript;
-      if (transcript) setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
-    };
-    recognition.onend = () => setListening(false);
-    recognition.onerror = () => setListening(false);
-
-    recognitionRef.current = recognition;
-    setListening(true);
-    recognition.start();
-  }, [listening]);
 
   function handleOpen() {
     setOpen(true);
@@ -167,22 +120,22 @@ export function ChatWidget() {
 
           {/* Input */}
           <form onSubmit={handleSubmit} className="flex items-center gap-2 p-3 sm:p-4 border-t border-[#2B1B0C]/10 flex-shrink-0">
-            {voiceSupported && (
+            {voice.supported && (
               <button
                 type="button"
-                onClick={handleMic}
-                aria-label={listening ? 'Stop recording' : 'Speak instead of typing'}
+                onClick={voice.listening ? voice.stop : voice.start}
+                aria-label={voice.listening ? 'Stop recording' : 'Speak instead of typing'}
                 className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
-                  listening ? 'bg-red-500 animate-pulse' : 'bg-[#2B1B0C]/10 hover:bg-[#2B1B0C]/20'
+                  voice.listening ? 'bg-red-500 animate-pulse' : 'bg-[#2B1B0C]/10 hover:bg-[#2B1B0C]/20'
                 }`}
               >
-                <Mic className={`w-4 h-4 ${listening ? 'text-white' : 'text-[#2B1B0C]'}`} />
+                <Mic className={`w-4 h-4 ${voice.listening ? 'text-white' : 'text-[#2B1B0C]'}`} />
               </button>
             )}
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={listening ? 'Listening...' : 'Ask about love, money, career...'}
+              placeholder={voice.listening ? 'Listening...' : 'Ask about love, money, career...'}
               className="flex-1 bg-white border border-[#2B1B0C]/15 rounded-full px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none font-body placeholder:text-[#8A7A63]"
             />
             <button
