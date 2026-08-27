@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { ShieldCheck } from 'lucide-react';
@@ -17,6 +17,8 @@ function normalizePhone(raw: string): string {
 
 type Step = 'phone' | 'otp';
 
+const RESEND_COOLDOWN_SECONDS = 120;
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -28,15 +30,37 @@ function LoginForm() {
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const cooldownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function startResendCooldown() {
+    if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    cooldownIntervalRef.current = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }
+
+  useEffect(() => () => {
+    if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+  }, []);
 
   async function handlePhoneSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!/^\d{10}$/.test(phone)) return toast.error('Enter a valid 10-digit mobile number');
+    if (step === 'otp' && resendCooldown > 0) return;
 
     setSubmitting(true);
     try {
       await sendOtp(phone);
       setStep('otp');
+      startResendCooldown();
       toast.success('OTP sent');
     } catch {
       toast.error('Could not send OTP — try again');
@@ -116,6 +140,14 @@ function LoginForm() {
               placeholder="Enter OTP"
               className={inputClass}
             />
+            <button
+              type="button"
+              onClick={handlePhoneSubmit}
+              disabled={resendCooldown > 0 || submitting}
+              className="font-body text-xs text-[#8A7A63] hover:text-[#2B1B0C] transition-colors self-start disabled:opacity-50 disabled:hover:text-[#8A7A63]"
+            >
+              {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP'}
+            </button>
           </>
         )}
 
