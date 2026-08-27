@@ -19,12 +19,15 @@ import { env } from '../../../config/env';
 // on OTP1 until that's resolved — swap TEMPLATE_NAME back to 'OTP2' once confirmed.
 const TEMPLATE_NAME = 'OTP1';
 
-// Dev-only test number — always OTP 000000, never hits 2Factor, never burns a real SMS
-// credit. Gated on NODE_ENV so this can never become a live-prod backdoor.
+// Fixed test number — always OTP 000000, never hits 2Factor, never burns a real SMS
+// credit. Deliberately NOT gated on NODE_ENV (works in prod too, per explicit request)
+// — this is a real, narrow security tradeoff: anyone who knows this exact phone number
+// can log in as it without ever receiving an SMS. Scoped as tight as possible (one
+// hardcoded number, not a pattern) to limit the blast radius.
 const DEV_TEST_PHONE = '+918595951170';
 const DEV_TEST_OTP = '000000';
 const DEV_TEST_REQUEST_ID = 'dev_test_number';
-const isTestPhoneBypass = (phone: string) => env.NODE_ENV !== 'production' && phone === DEV_TEST_PHONE;
+const isTestPhoneBypass = (phone: string) => phone === DEV_TEST_PHONE;
 
 export async function sendOtp(phone: string): Promise<{ requestId: string }> {
   if (isTestPhoneBypass(phone)) {
@@ -51,7 +54,7 @@ export async function sendOtp(phone: string): Promise<{ requestId: string }> {
 }
 
 export async function verifyOtp(sessionId: string, otp: string): Promise<boolean> {
-  if (env.NODE_ENV !== 'production' && sessionId === DEV_TEST_REQUEST_ID) return otp === DEV_TEST_OTP;
+  if (sessionId === DEV_TEST_REQUEST_ID) return otp === DEV_TEST_OTP;
 
   if (!env.TWOFACTOR_API_KEY) return otp === '000000'; // dev-mode fixed OTP
 
