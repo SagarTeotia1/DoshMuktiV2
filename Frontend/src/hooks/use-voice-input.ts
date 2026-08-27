@@ -103,24 +103,36 @@ export function useVoiceInput({ lang = 'hi-IN', onResult, onError }: UseVoiceInp
     recognition.interimResults = true; // some Chrome builds never fire a final result at all — accumulate as we go instead of waiting for one
     recognition.maxAlternatives = 1;
     finalTranscriptRef.current = '';
+    let latestInterim = '';
+    let gotAnyResult = false;
 
     recognition.onresult = (ev) => {
+      gotAnyResult = true;
       clearStallTimer();
       stallTimerRef.current = setTimeout(() => recognition.stop(), STALL_TIMEOUT_MS);
 
       for (let i = ev.resultIndex; i < ev.results.length; i++) {
         const result = ev.results[i];
-        if (result?.isFinal) {
+        if (!result) continue;
+        if (result.isFinal) {
           finalTranscriptRef.current = `${finalTranscriptRef.current} ${result[0].transcript}`.trim();
+        } else {
+          latestInterim = result[0].transcript;
         }
       }
     };
 
     recognition.onend = () => {
-      // Fall back to whatever interim text we've accumulated if the API never marked
-      // anything "final" — better than silently discarding a transcript the user can see.
-      const transcript = finalTranscriptRef.current.trim();
-      if (transcript) onResult(transcript);
+      // Use whatever final text we got; if the API never finalized anything but did
+      // produce interim text, that's still a real transcript worth keeping. Only truly
+      // empty (zero onresult events at all — e.g. the speech service call itself was
+      // blocked/hung on the network) counts as a failure worth surfacing.
+      const transcript = (finalTranscriptRef.current || latestInterim).trim();
+      if (transcript) {
+        onResult(transcript);
+      } else if (!gotAnyResult) {
+        onError?.('no-speech-detected');
+      }
       teardown();
     };
 

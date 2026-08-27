@@ -3,9 +3,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { MoonStar, X, Send, Sparkles, Mic } from 'lucide-react';
 import { useAcharyaChat } from '@/hooks/use-acharya-chat';
 import { useVoiceInput } from '@/hooks/use-voice-input';
+
+const VOICE_ERROR_MESSAGES: Record<string, string> = {
+  'no-speech-detected': "Couldn't hear anything — check your mic, or your network may be blocking voice input.",
+  'not-allowed': 'Microphone access is blocked — allow it in your browser settings to use voice input.',
+  'service-not-allowed': 'Microphone access is blocked — allow it in your browser settings to use voice input.',
+  network: 'Voice input needs an internet connection to a speech service that may be blocked on this network.',
+  'no-speech': "Couldn't hear anything — try again a little closer to the mic.",
+};
 
 export function ChatWidget() {
   const [open, setOpen] = useState(false);
@@ -19,6 +28,7 @@ export function ChatWidget() {
   }, []);
   const handleVoiceError = useCallback((error: string) => {
     console.error('[voice input] speech recognition error:', error);
+    toast.error(VOICE_ERROR_MESSAGES[error] ?? 'Voice input failed — try typing instead.');
   }, []);
   const voice = useVoiceInput({ lang: 'hi-IN', onResult: handleVoiceResult, onError: handleVoiceError });
 
