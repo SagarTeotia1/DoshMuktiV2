@@ -119,7 +119,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
   const variants = await db.productVariant.findMany({
     where: { id: { in: variantIds }, isActive: true },
     include: {
-      product: { select: { name: true, basePrice: true, category: true } },
+      product: { select: { name: true, basePrice: true, category: true, gstRate: true } },
     },
   });
   if (variants.length !== input.items.length) {
@@ -242,6 +242,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
                       sku: v.sku,
                       attributes: v.attributes,
                       productName: v.product.name,
+                      gstRate: v.product.gstRate !== null ? Number(v.product.gstRate) : null,
                     },
                   };
                 }),
@@ -255,6 +256,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
                       sku: fv.sku,
                       attributes: fv.attributes,
                       isFreeGift: true,
+                      gstRate: null,
                     },
                   };
                 }),

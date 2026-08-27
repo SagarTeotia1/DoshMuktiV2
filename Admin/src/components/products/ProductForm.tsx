@@ -43,6 +43,7 @@ const productFormSchema = z.object({
   howToUseVideoUrl: z.string().optional(),
   sidhiPrice: z.coerce.number().min(0).default(0), // 0 = feature hidden, mapped to null on submit
   selfEnergizeInstructions: z.string().optional(),
+  gstRate: z.coerce.number().min(0).max(100).default(0), // 0 = not set, mapped to null on submit
   offerIds: z.array(z.string()).default([]),
 });
 
@@ -51,11 +52,12 @@ type FormShape = z.infer<typeof productFormSchema>;
 // howToWear is stored internally as {text}[] because react-hook-form's
 // useFieldArray requires array items to be objects — flattened to string[]
 // at the submit boundary so consumers/Backend only ever see string[].
-export type ProductFormValues = Omit<FormShape, 'howToWear' | 'cashbackPercent' | 'compareAtPrice' | 'sidhiPrice'> & {
+export type ProductFormValues = Omit<FormShape, 'howToWear' | 'cashbackPercent' | 'compareAtPrice' | 'sidhiPrice' | 'gstRate'> & {
   howToWear: string[];
   cashbackPercent: number | null;
   compareAtPrice: number | null;
   sidhiPrice: number | null;
+  gstRate: number | null;
 };
 
 const inputClass = 'w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none';
@@ -103,6 +105,7 @@ export function ProductForm({
       howToUseVideoUrl: defaultValues?.howToUseVideoUrl ?? '',
       sidhiPrice: defaultValues?.sidhiPrice ?? 0,
       selfEnergizeInstructions: defaultValues?.selfEnergizeInstructions ?? '',
+      gstRate: defaultValues?.gstRate ?? 0,
       offerIds: defaultValues?.offers?.map((o) => o.id) ?? [],
     },
   });
@@ -166,6 +169,7 @@ export function ProductForm({
       cashbackPercent: values.cashbackPercent > 0 ? values.cashbackPercent : null,
       compareAtPrice: values.compareAtPrice > 0 ? values.compareAtPrice : null,
       sidhiPrice: values.sidhiPrice > 0 ? values.sidhiPrice : null,
+      gstRate: values.gstRate > 0 ? values.gstRate : null,
     });
   }
 
@@ -355,6 +359,14 @@ export function ProductForm({
           </label>
           <input type="number" min={0} max={100} step={1} {...register('cashbackPercent')} className={`${inputClass} max-w-[140px]`} />
           {errors.cashbackPercent && <p className="text-xs text-red-600 mt-1">{errors.cashbackPercent.message}</p>}
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-slate-600 mb-1 block">
+            GST % <span className="text-slate-400 font-normal">(0 = not set; shown as an inclusive breakup on invoices, never added to the price)</span>
+          </label>
+          <input type="number" min={0} max={100} step={0.01} {...register('gstRate')} className={`${inputClass} max-w-[140px]`} />
+          {errors.gstRate && <p className="text-xs text-red-600 mt-1">{errors.gstRate.message}</p>}
         </div>
 
         {defaultValues && (

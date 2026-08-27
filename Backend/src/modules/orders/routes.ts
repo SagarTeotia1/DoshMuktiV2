@@ -8,6 +8,7 @@ import {
   listOrdersHandler,
   getOrderByIdHandler,
   updateOrderStatusHandler,
+  gstReportHandler,
 } from './controller';
 
 export async function orderRoutes(app: FastifyInstance) {
@@ -16,6 +17,7 @@ export async function orderRoutes(app: FastifyInstance) {
   app.get('/orders/:orderNumber', trackOrderHandler); // public — track by orderNumber
   app.get('/orders/:orderNumber/invoice', invoiceHandler); // public — PDF invoice, gated on payment.status === 'CAPTURED'
   app.get('/admin/orders', { preHandler: verifyAdmin }, listOrdersHandler);
+  app.get('/admin/orders/gst-report', { preHandler: verifyAdmin }, gstReportHandler);
   app.get('/admin/orders/:id', { preHandler: verifyAdmin }, getOrderByIdHandler);
   app.patch('/admin/orders/:id/status', { preHandler: verifyAdmin }, updateOrderStatusHandler);
 }

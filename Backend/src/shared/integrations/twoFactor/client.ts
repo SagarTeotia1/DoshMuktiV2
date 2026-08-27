@@ -1,8 +1,16 @@
+import { randomInt } from 'crypto';
 import { env } from '../../../config/env';
 
 // OTP-based phone verification — schema (OtpVerification) is already in place,
 // this client is the 2Factor.in wiring referenced by its `requestId` field
 // (which stores 2Factor's session id).
+//
+// Uses 2Factor's "Send OTP - Custom OTP" API with the DLT-approved `OTP1`
+// template (their default AUTOGEN template is unregistered and silently
+// fails to deliver under India's DLT SMS regulations). Because the Custom
+// OTP variant requires the caller to supply the OTP digits in the URL, the
+// OTP is generated locally here (not by 2Factor) and 2Factor is just used
+// to deliver it via the approved template.
 
 export async function sendOtp(phone: string): Promise<{ requestId: string }> {
   if (!env.TWOFACTOR_API_KEY) {
@@ -11,8 +19,10 @@ export async function sendOtp(phone: string): Promise<{ requestId: string }> {
     return { requestId: `dummy_${phone}` };
   }
 
+  const otp = randomInt(100000, 1000000); // 6-digit OTP, generated locally
+
   const res = await fetch(
-    `https://2factor.in/API/V1/${env.TWOFACTOR_API_KEY}/SMS/${phone}/AUTOGEN`
+    `https://2factor.in/API/V1/${env.TWOFACTOR_API_KEY}/SMS/${phone}/${otp}/OTP1`
   );
   const data = (await res.json()) as { Status: string; Details: string };
   if (data.Status !== 'Success') {

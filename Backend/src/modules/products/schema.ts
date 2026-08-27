@@ -65,6 +65,7 @@ export const createProductSchema = z.object({
   testimonialVideos: z.array(testimonialVideoSchema).default([]),
   sidhiPrice: z.number().int().positive().max(999999).nullable().optional(),
   selfEnergizeInstructions: z.string().max(5000).nullable().optional(),
+  gstRate: z.number().min(0).max(100).multipleOf(0.01).nullable().optional(),
   offerIds: z.array(z.string()).default([]),
 });
 

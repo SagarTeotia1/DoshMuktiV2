@@ -15,7 +15,7 @@ function normalizePhone(raw: string): string {
   return digits.slice(0, 10);
 }
 
-type Step = 'phone' | 'otp' | 'profile';
+type Step = 'phone' | 'otp';
 
 function LoginForm() {
   const router = useRouter();
@@ -51,29 +51,14 @@ function LoginForm() {
 
     setSubmitting(true);
     try {
-      await verifyOtp(phone, otp);
+      await verifyOtp(phone, otp, name.trim() || undefined);
       router.push(redirectTo);
     } catch (err) {
       if (isProfileRequired(err)) {
-        setStep('profile');
+        toast.error('New here — enter your name above and verify again');
       } else {
         toast.error('Invalid or expired OTP');
       }
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleProfileSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) return toast.error('Enter your name');
-
-    setSubmitting(true);
-    try {
-      await verifyOtp(phone, otp, name.trim());
-      router.push(redirectTo);
-    } catch {
-      toast.error('Something went wrong — try again');
     } finally {
       setSubmitting(false);
     }
@@ -86,83 +71,68 @@ function LoginForm() {
         <p className="font-body text-[10px] font-bold uppercase tracking-[0.2em] text-[#9C5A26]">Secure Login</p>
       </div>
       <h1 className="font-heading font-black tracking-tight leading-tight text-2xl sm:text-3xl text-[#2B1B0C] mb-6">
-        {step === 'profile' ? 'A few details' : 'Log in with your phone'}
+        Log in with your phone
       </h1>
 
-      {(step === 'phone' || step === 'otp') && (
-        <form onSubmit={step === 'phone' ? handlePhoneSubmit : handleOtpSubmit} className="flex flex-col gap-3">
-          <input
-            type="tel"
-            inputMode="numeric"
-            autoFocus={step === 'phone'}
-            disabled={step === 'otp'}
-            value={phone}
-            onChange={(e) => setPhone(normalizePhone(e.target.value))}
-            placeholder="10-digit mobile number"
-            className={`${inputClass} disabled:opacity-60 disabled:bg-[#2B1B0C]/5`}
-          />
+      <form onSubmit={step === 'phone' ? handlePhoneSubmit : handleOtpSubmit} className="flex flex-col gap-3">
+        <input
+          type="tel"
+          inputMode="numeric"
+          autoFocus={step === 'phone'}
+          disabled={step === 'otp'}
+          value={phone}
+          onChange={(e) => setPhone(normalizePhone(e.target.value))}
+          placeholder="10-digit mobile number"
+          className={`${inputClass} disabled:opacity-60 disabled:bg-[#2B1B0C]/5`}
+        />
 
-          {step === 'otp' && (
-            <>
-              <button
-                type="button"
-                onClick={() => {
-                  setStep('phone');
-                  setOtp('');
-                }}
-                className="font-body text-xs text-[#8A7A63] hover:text-[#2B1B0C] transition-colors self-start -mt-1"
-              >
-                Change phone number
-              </button>
-              <p className="font-body text-xs text-[#8A7A63] mb-1">OTP sent to +91 {phone}</p>
-              <input
-                type="text"
-                inputMode="numeric"
-                autoFocus
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="Enter OTP"
-                className={inputClass}
-              />
-            </>
-          )}
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Full Name (if you're new here)"
+          className={inputClass}
+        />
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="brutal-border bg-[#2B1B0C] text-white rounded-lg px-6 py-3.5 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200 disabled:opacity-50"
-          >
-            {step === 'phone'
-              ? submitting
-                ? 'Sending...'
-                : 'Send OTP'
-              : submitting
-                ? 'Verifying...'
-                : 'Verify & Continue'}
-          </button>
-        </form>
-      )}
+        {step === 'otp' && (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setStep('phone');
+                setOtp('');
+              }}
+              className="font-body text-xs text-[#8A7A63] hover:text-[#2B1B0C] transition-colors self-start -mt-1"
+            >
+              Change phone number
+            </button>
+            <p className="font-body text-xs text-[#8A7A63] mb-1">OTP sent to +91 {phone}</p>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoFocus
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="Enter OTP"
+              className={inputClass}
+            />
+          </>
+        )}
 
-      {step === 'profile' && (
-        <form onSubmit={handleProfileSubmit} className="flex flex-col gap-3">
-          <p className="font-body text-xs text-[#8A7A63] -mt-2 mb-1">New here — tell us your name</p>
-          <input
-            type="text"
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Full Name"
-            className={inputClass}
-          />
-          <button
-            type="submit"
-            disabled={submitting}
-            className="brutal-border bg-[#2B1B0C] text-white rounded-lg px-6 py-3.5 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200 disabled:opacity-50"
-          >
-            {submitting ? 'Creating account...' : 'Continue'}
-          </button>
-        </form>
-      )}
+        <button
+          type="submit"
+          disabled={submitting}
+          className="brutal-border bg-[#2B1B0C] text-white rounded-lg px-6 py-3.5 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200 disabled:opacity-50"
+        >
+          {step === 'phone'
+            ? submitting
+              ? 'Sending...'
+              : 'Send OTP'
+            : submitting
+              ? 'Verifying...'
+              : 'Verify & Login'}
+        </button>
+      </form>
     </div>
   );
 }

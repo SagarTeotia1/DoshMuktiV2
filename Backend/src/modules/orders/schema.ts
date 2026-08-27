@@ -20,3 +20,10 @@ export const updateOrderStatusSchema = z.object({
   status: z.enum(['PENDING_PAYMENT', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'REFUNDED', 'PACKED']),
   note: z.string().max(500).optional(),
 });
+
+export const gstReportQuerySchema = z.object({
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'from must be YYYY-MM-DD'),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'to must be YYYY-MM-DD'),
+  format: z.enum(['json', 'csv']).default('json'),
+});
+export type GstReportQuery = z.infer<typeof gstReportQuerySchema>;

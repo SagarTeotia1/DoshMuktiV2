@@ -1,5 +1,5 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { orderNumberParamSchema, phoneQuerySchema, listOrdersQuerySchema, updateOrderStatusSchema, idParamSchema } from './schema';
+import { orderNumberParamSchema, phoneQuerySchema, listOrdersQuerySchema, updateOrderStatusSchema, idParamSchema, gstReportQuerySchema } from './schema';
 import {
   getOrderByNumber,
   listOrdersByPhone,
@@ -7,6 +7,8 @@ import {
   getOrderById,
   listOrdersForAdmin,
   updateOrderStatus,
+  getGstReport,
+  type GstReportOrderRow,
 } from './service';
 import { generateInvoicePdf } from './invoice';
 
@@ -66,6 +68,48 @@ export async function getOrderByIdHandler(req: FastifyRequest, reply: FastifyRep
   if (!order) return reply.code(404).send({ error: 'Order not found' });
 
   return reply.send(order);
+}
+
+function rowsToCsv(rows: GstReportOrderRow[]): string {
+  const header = ['Order Number', 'Order Date', 'SKU', 'Product', 'Qty', 'GST Rate %', 'Line Total', 'Taxable Value', 'GST Amount'];
+  const lines = [header.join(',')];
+  const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+
+  for (const order of rows) {
+    for (const item of order.items) {
+      lines.push(
+        [
+          esc(order.orderNumber),
+          esc(order.orderDate),
+          esc(item.sku),
+          esc(item.productName),
+          String(item.quantity),
+          item.gstRate.toFixed(2),
+          item.lineTotal.toFixed(2),
+          item.taxableValue.toFixed(2),
+          item.gstAmount.toFixed(2),
+        ].join(',')
+      );
+    }
+  }
+  return lines.join('\n');
+}
+
+export async function gstReportHandler(req: FastifyRequest, reply: FastifyReply) {
+  const parsed = gstReportQuerySchema.safeParse(req.query);
+  if (!parsed.success) return reply.code(400).send({ error: 'Invalid query', details: parsed.error.flatten().fieldErrors });
+
+  const report = await getGstReport(parsed.data.from, parsed.data.to);
+
+  if (parsed.data.format === 'csv') {
+    const csv = rowsToCsv(report.orders);
+    return reply
+      .header('Content-Type', 'text/csv')
+      .header('Content-Disposition', `attachment; filename="gst-report-${report.from}_to_${report.to}.csv"`)
+      .send(csv);
+  }
+
+  return reply.send(report);
 }
 
 export async function updateOrderStatusHandler(req: FastifyRequest, reply: FastifyReply) {

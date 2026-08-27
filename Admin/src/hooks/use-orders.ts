@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
-import type { PaginatedOrders, Order } from '@/types/api.types';
+import type { PaginatedOrders, Order, GstReport } from '@/types/api.types';
 
 export function useOrders(status?: string) {
   return useQuery({
@@ -16,6 +16,14 @@ export function useOrder(id: string) {
     queryKey: ['admin-order', id],
     queryFn: () => api.get<Order>(`/api/admin/orders/${id}`),
     enabled: !!id,
+  });
+}
+
+export function useGstReport(from: string, to: string) {
+  return useQuery({
+    queryKey: ['admin-gst-report', from, to],
+    queryFn: () => api.get<GstReport>(`/api/admin/orders/gst-report?from=${from}&to=${to}`),
+    enabled: !!from && !!to,
   });
 }
 

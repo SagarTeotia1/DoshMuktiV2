@@ -19,7 +19,16 @@ type VariantSnapshot = {
   productName: string;
   sku: string;
   attributes?: Record<string, unknown>;
+  gstRate?: number | null;
 };
+
+// GST is an inclusive breakup of the existing line total, never an added charge —
+// taxableValue + gstAmount always sum back to lineTotal. Purely a display/reporting
+// computation; does not touch checkout's actual pricing/stock/total logic.
+function computeItemGst(lineTotal: number, gstRate: number): { taxableValue: number; gstAmount: number } {
+  const taxableValue = lineTotal / (1 + gstRate / 100);
+  return { taxableValue, gstAmount: lineTotal - taxableValue };
+}
 
 const formatCurrency = (value: unknown): string => {
   const num = typeof value === 'object' && value !== null && 'toNumber' in value
@@ -97,15 +106,27 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
       doc.moveTo(colProduct, lineY).lineTo(545, lineY).strokeColor('#cccccc').stroke();
       doc.moveDown(0.3);
 
+      let totalTaxableValue = 0;
+      let totalGstAmount = 0;
+
       for (const item of order.items) {
         const snapshot = item.variantSnapshot as unknown as VariantSnapshot;
         const price = Number(item.priceAtPurchase);
         const lineTotal = price * item.quantity;
         const rowY = doc.y;
+        const gstRate = typeof snapshot.gstRate === 'number' ? snapshot.gstRate : null;
+
+        if (gstRate !== null) {
+          const { taxableValue, gstAmount } = computeItemGst(lineTotal, gstRate);
+          totalTaxableValue += taxableValue;
+          totalGstAmount += gstAmount;
+        }
+
+        const skuLabel = gstRate !== null ? `${snapshot.sku ?? '-'} (GST ${gstRate}%)` : (snapshot.sku ?? '-');
 
         doc.fontSize(9);
         doc.text(snapshot.productName ?? '-', colProduct, rowY, { width: colSku - colProduct - 10 });
-        doc.text(snapshot.sku ?? '-', colSku, rowY, { width: colQty - colSku - 10 });
+        doc.text(skuLabel, colSku, rowY, { width: colQty - colSku - 10 });
         doc.text(String(item.quantity), colQty, rowY, { width: colPrice - colQty - 10 });
         doc.text(formatCurrency(item.priceAtPurchase), colPrice, rowY, { width: colTotal - colPrice - 10 });
         doc.text(formatCurrency(lineTotal), colTotal, rowY);
@@ -137,6 +158,14 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
 
       const walletRedeemed = Number(order.walletRedeemed);
       if (walletRedeemed > 0) writeTotalRow('Wallet Redeemed', `- ${formatCurrency(order.walletRedeemed)}`);
+
+      // GST is an inclusive breakup of amounts already counted in Subtotal above — these
+      // two rows are informational only and never change the Total. Omitted entirely when
+      // no item on the order has a gstRate set (showing "GST: Rs. 0.00" would be misleading).
+      if (totalGstAmount > 0) {
+        writeTotalRow('Taxable Value', formatCurrency(totalTaxableValue));
+        writeTotalRow('GST', formatCurrency(totalGstAmount));
+      }
 
       doc.moveDown(0.3);
       writeTotalRow('Total', formatCurrency(order.total), true);

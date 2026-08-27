@@ -187,6 +187,7 @@ export interface Product {
   testimonialVideos: TestimonialVideo[];
   sidhiPrice: number | null;
   selfEnergizeInstructions: string | null;
+  gstRate: number | null;
   offers: Offer[];
   variants: ProductVariant[];
   createdAt: string;
@@ -262,6 +263,32 @@ export interface Review {
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   createdAt: string;
   product: { name: string; slug: string };
+}
+
+export interface GstReportItemRow {
+  sku: string;
+  productName: string;
+  quantity: number;
+  gstRate: number;
+  lineTotal: number;
+  taxableValue: number;
+  gstAmount: number;
+}
+
+export interface GstReportOrderRow {
+  orderNumber: string;
+  orderDate: string;
+  items: GstReportItemRow[];
+  orderTaxableValue: number;
+  orderGstAmount: number;
+}
+
+export interface GstReport {
+  from: string;
+  to: string;
+  orders: GstReportOrderRow[];
+  totalTaxableValue: number;
+  totalGstAmount: number;
 }
 
 export interface PaginatedReviews {

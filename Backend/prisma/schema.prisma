@@ -33,6 +33,7 @@ model Product {
   testimonialVideos        Json             @default("[]") // TestimonialVideo[] — [{id, videoUrl, posterUrl, caption, views}], shown as "Loved by X customers" row on PDP
   sidhiPrice               Int? // ₹ price for the Sidhi/Energizing service add-on; null = feature hidden. Syncs to a "-SIDHI" ProductVariant — see products/service.ts
   selfEnergizeInstructions String?          @db.Text // DIY energizing steps, shown as the "Energize It Yourself" tab
+  gstRate                  Decimal?         @db.Decimal(5, 2) // GST %, e.g. 18.00; admin-set per product, null = no GST line on invoice. Snapshotted into OrderItem.variantSnapshot.gstRate at checkout — see checkout/service.ts
   offers                   Offer[]          @relation("OfferProducts") // universal, admin-managed offers enabled on this product — see Offer model
   variants                 ProductVariant[]
   reviews                  Review[]
@@ -453,10 +454,16 @@ enum ReviewStatus {
 // until the owner provides book content; retrieval treats zero rows as "not ingested yet",
 // not an error.
 model BookChunk {
-  id        String   @id @default(cuid())
+  id        String                    @id @default(cuid())
   source    String
-  content   String   @db.Text
-  createdAt DateTime @default(now())
+  content   String                    @db.Text
+  // 384-dim vector from Xenova/multilingual-e5-small (Transformers.js, in-process, free).
+  // Prisma has no native vector type — Unsupported() opts this column out of the generated
+  // client's normal read/write API; all access goes through $queryRaw/$executeRaw in
+  // ingest-book.ts and bookRetrieval.ts. Nullable: rows ingested before embeddings existed
+  // (or if the embedding pipeline fails at ingest time) keep working via keyword fallback.
+  embedding Unsupported("vector(384)")?
+  createdAt DateTime                  @default(now())
 
   @@index([source])
 }

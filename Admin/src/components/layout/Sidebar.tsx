@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, Boxes, ShoppingBag, Gem, Star, Tag, Ticket, Image as ImageIcon } from 'lucide-react';
+import { LayoutDashboard, Package, Boxes, ShoppingBag, Gem, Star, Tag, Ticket, Image as ImageIcon, Receipt } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV = [
@@ -13,6 +13,7 @@ const NAV = [
   { href: '/coupons', label: 'Coupons', icon: Ticket },
   { href: '/inventory', label: 'Inventory', icon: Boxes },
   { href: '/orders', label: 'Orders', icon: ShoppingBag },
+  { href: '/gst-report', label: 'GST Report', icon: Receipt },
   { href: '/reviews', label: 'Reviews', icon: Star },
 ];
 
