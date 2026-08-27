@@ -11,6 +11,13 @@ import { env } from '../../../config/env';
 // OTP variant requires the caller to supply the OTP digits in the URL, the
 // OTP is generated locally here (not by 2Factor) and 2Factor is just used
 // to deliver it via the approved template.
+//
+// NOTE: a second template, OTP2 (proper DLT-registered, sender id DOSHHM),
+// exists and is DLT-APPROVED but currently delivers via voice call instead
+// of SMS for reasons still unconfirmed with 2Factor support (likely the PE
+// ID not yet linked to this account — see 2Factor's approval email). Stuck
+// on OTP1 until that's resolved — swap TEMPLATE_NAME back to 'OTP2' once confirmed.
+const TEMPLATE_NAME = 'OTP1';
 
 export async function sendOtp(phone: string): Promise<{ requestId: string }> {
   if (!env.TWOFACTOR_API_KEY) {
@@ -22,7 +29,7 @@ export async function sendOtp(phone: string): Promise<{ requestId: string }> {
   const otp = randomInt(100000, 1000000); // 6-digit OTP, generated locally
 
   const res = await fetch(
-    `https://2factor.in/API/V1/${env.TWOFACTOR_API_KEY}/SMS/${phone}/${otp}/OTP1`
+    `https://2factor.in/API/V1/${env.TWOFACTOR_API_KEY}/SMS/${phone}/${otp}/${TEMPLATE_NAME}`
   );
   const data = (await res.json()) as { Status: string; Details: string };
   if (data.Status !== 'Success') {

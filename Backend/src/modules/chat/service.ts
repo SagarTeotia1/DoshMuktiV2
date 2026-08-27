@@ -30,6 +30,23 @@ function mergeProfile(existing: ChatProfile, incoming: Partial<ChatProfile>): Ch
   };
 }
 
+// OCR'd book text occasionally contains control characters or unpaired UTF-16 surrogates
+// (Tesseract misreads on Devanagari conjuncts) — these survive JSON.stringify but produce
+// invalid UTF-8 bytes over the wire, which Groq's API rejects as "invalid json" on the
+// request body. Strip them before any book passage reaches the outgoing prompt.
+const CONTROL_CHARS = new RegExp(
+  '[' + String.fromCharCode(0) + '-' + String.fromCharCode(8) +
+  String.fromCharCode(11) + String.fromCharCode(12) +
+  String.fromCharCode(14) + '-' + String.fromCharCode(31) +
+  String.fromCharCode(127) + ']',
+  'g'
+);
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?:[^\uD800-\uDBFF]|^)[\uDC00-\uDFFF]/g;
+
+function sanitizeForPrompt(text: string): string {
+  return text.replace(CONTROL_CHARS, '').replace(LONE_SURROGATE, '').trim();
+}
+
 function buildSystemPrompt(profile: ChatProfile, bookChunks: RetrievedChunk[]): string {
   const knownLines = [
     profile.name ? `Name: ${profile.name}` : null,
@@ -44,7 +61,7 @@ function buildSystemPrompt(profile: ChatProfile, bookChunks: RetrievedChunk[]): 
 
   const bookContext =
     bookChunks.length > 0
-      ? `\n\nRelevant passages from your reference text:\n${bookChunks.map((c) => `- ${c.content}`).join('\n')}\n\nGround your reading in these passages where relevant — paraphrase them naturally in your own voice, never quote verbatim or robotically, never mention "passages" or "reference text" to the user.`
+      ? `\n\nRelevant passages from your reference text:\n${bookChunks.map((c) => `- ${sanitizeForPrompt(c.content)}`).join('\n')}\n\nGround your reading in these passages where relevant — paraphrase them naturally in your own voice, never quote verbatim or robotically, never mention "passages" or "reference text" to the user.`
       : '';
 
   const stageInstructions: Record<typeof flowStage, string> = {
@@ -105,10 +122,13 @@ export async function sendMessage(input: ChatRequestInput, sessionId: string | n
   try {
     raw = await chatCompletion(messages, { jsonMode: true });
   } catch (err) {
+    // Never surface a raw provider failure (rate limit, malformed-request, transient
+    // 5xx) to the user — degrade to the in-character fallback line instead.
     if (err instanceof GroqNotConfiguredError) {
       return { reply: FALLBACK_REPLY, recommendedProducts: [], recommendationReason: null };
     }
-    throw err;
+    console.error('[chat] Groq call failed', err);
+    return { reply: FALLBACK_REPLY, recommendedProducts: [], recommendationReason: null };
   }
 
   const parsed = llmTurnSchema.safeParse(unwrapDoubleEncoded(safeJsonParse(raw)));
