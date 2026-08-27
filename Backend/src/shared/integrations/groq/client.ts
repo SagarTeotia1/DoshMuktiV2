@@ -31,8 +31,8 @@ export async function chatCompletion(
     body: JSON.stringify({
       model: env.GROQ_MODEL,
       messages,
-      temperature: 0.8,
-      max_tokens: 500,
+      temperature: 0.7,
+      max_tokens: 1000,
       ...(opts?.jsonMode ? { response_format: { type: 'json_object' } } : {}),
     }),
   });
