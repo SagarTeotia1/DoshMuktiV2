@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import { Tag, ShoppingBag, Eye } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { formatCurrency } from '@/lib/formatters';
-import { CardFrame } from './CardFrame';
 import type { Product } from '@/types/api.types';
 
 const MotionLink = motion.create(Link);
@@ -48,13 +47,12 @@ export function ProductCard({ product }: { product: Product }) {
       href={href}
       onMouseEnter={prefetch}
       onTouchStart={prefetch}
-      className="neo-card group relative block h-full rounded-2xl flex flex-col bg-[#C49A6C] border border-[#2B1B0C]/8 shadow-neo-sm pt-3 pl-3 pr-4 pb-4 sm:pt-4 sm:pl-4 sm:pr-5 sm:pb-5"
+      className="neo-card group relative block h-full rounded-2xl flex flex-col bg-[#F3EBDC] shadow-neo-sm pt-3 pl-3 pr-4 pb-4 sm:pt-4 sm:pl-4 sm:pr-5 sm:pb-5"
       whileHover={{ y: -5, x: -2 }}
       whileTap={{ scale: 0.97 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
-      <CardFrame />
-      <div className="aspect-[4/5] bg-[#F6E4C2] rounded-xl relative overflow-hidden product-image-container border border-[#2B1B0C] shadow-[4px_4px_0_0_#2B1B0C]">
+      <div className="aspect-[4/5] bg-[#F6E4C2] rounded-xl relative overflow-hidden product-image-container">
         {image ? (
           <>
             <Image

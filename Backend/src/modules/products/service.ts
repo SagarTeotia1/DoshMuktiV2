@@ -131,17 +131,37 @@ export async function getRelatedProducts(productId: string, purpose: string[], l
   return attachRatings(withOffersApplied);
 }
 
+// Category (substring, case-insensitive) to push to the front of the list for a given
+// purpose — the astrologer persona's go-to remedy stone/item per problem area.
+const PRIORITY_CATEGORY_BY_PURPOSE: Record<string, string> = {
+  wealth: 'pyrite',
+  health: 'rudraksh',
+  love: 'rose quartz',
+};
+
 // Used by the Acharya chat bot to recommend real products for a purpose without ever
 // exposing price in the chat turn — deliberately narrow select, no offers/ratings, this
 // isn't a storefront listing.
 export async function getProductsForChatRecommendation(purpose: string, limit = 3) {
+  const priorityCategory = PRIORITY_CATEGORY_BY_PURPOSE[purpose];
+
   const products = await db.product.findMany({
     where: { status: 'ACTIVE', purpose: { has: purpose } },
-    select: { id: true, name: true, slug: true, images: true },
+    select: { id: true, name: true, slug: true, images: true, category: true, featured: true },
     orderBy: { featured: 'desc' },
-    take: limit,
+    take: Math.max(limit * 4, 20),
   });
-  return products.map((p) => ({
+
+  const sorted = priorityCategory
+    ? [...products].sort((a, b) => {
+        const aPriority = a.category.toLowerCase().includes(priorityCategory) ? 1 : 0;
+        const bPriority = b.category.toLowerCase().includes(priorityCategory) ? 1 : 0;
+        if (aPriority !== bPriority) return bPriority - aPriority;
+        return Number(b.featured) - Number(a.featured);
+      })
+    : products;
+
+  return sorted.slice(0, limit).map((p) => ({
     id: p.id,
     name: p.name,
     slug: p.slug,
