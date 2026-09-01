@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Product } from '@/types/api.types';
@@ -26,9 +26,35 @@ export function ProductGallery({
     setActive((i) => (i + 1) % images.length);
   }
 
+  const dragStartX = useRef<number | null>(null);
+  const dragDeltaX = useRef(0);
+  const SWIPE_THRESHOLD = 40;
+
+  function onPointerDown(e: React.PointerEvent) {
+    dragStartX.current = e.clientX;
+    dragDeltaX.current = 0;
+  }
+  function onPointerMove(e: React.PointerEvent) {
+    if (dragStartX.current === null) return;
+    dragDeltaX.current = e.clientX - dragStartX.current;
+  }
+  function onPointerUp() {
+    if (dragStartX.current === null) return;
+    if (dragDeltaX.current <= -SWIPE_THRESHOLD) next();
+    else if (dragDeltaX.current >= SWIPE_THRESHOLD) prev();
+    dragStartX.current = null;
+    dragDeltaX.current = 0;
+  }
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="border border-[#2B1B0C] aspect-square bg-[#F6E4C2] rounded-2xl relative overflow-hidden shadow-neo-lg">
+      <div
+        className="border border-[#2B1B0C] aspect-square bg-[#F6E4C2] rounded-2xl relative overflow-hidden shadow-neo-lg touch-pan-y select-none"
+        onPointerDown={images.length > 1 ? onPointerDown : undefined}
+        onPointerMove={images.length > 1 ? onPointerMove : undefined}
+        onPointerUp={images.length > 1 ? onPointerUp : undefined}
+        onPointerCancel={images.length > 1 ? onPointerUp : undefined}
+      >
         {images.map((img, i) => (
           <Image
             key={img.full}

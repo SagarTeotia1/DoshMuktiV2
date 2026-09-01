@@ -14,7 +14,7 @@ export function HeroCarousel({ banners }: { banners: Banner[] }) {
 
   useEffect(() => {
     if (paused || banners.length <= 1) return;
-    const t = setTimeout(next, 5500);
+    const t = setTimeout(next, 5000);
     return () => clearTimeout(t);
   }, [active, paused, next, banners.length]);
 
