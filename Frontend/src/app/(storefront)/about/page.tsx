@@ -1,9 +1,11 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, Gem, HandHeart, ShieldCheck, Sparkles } from 'lucide-react';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { Reveal } from '@/components/motion/Reveal';
 import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
 import { TrustBar } from '@/components/storefront/TrustBar';
+import { SITE_URL } from '@/lib/constants';
 
 const VALUES = [
   {
@@ -28,11 +30,31 @@ const VALUES = [
   },
 ];
 
-export const metadata = { title: 'About — Doshhmukti' };
+const TITLE = 'About Doshhmukti — Authentic Astrology-Guided Gemstones';
+const DESCRIPTION =
+  'Doshhmukti sources authentic, ritually-energized gemstones and rudraksha directly from verified artisans, with Vedic-astrology guidance from Acharya Madhav for every purchase.';
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: '/about' },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: `${SITE_URL}/about`, type: 'website' },
+};
+
+const personJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: 'Acharya Madhav',
+  jobTitle: 'Vedic Astrologer',
+  worksFor: { '@type': 'Organization', name: 'Doshhmukti' },
+  description:
+    'Acharya Madhav is Doshhmukti\'s in-house Vedic astrologer, recommending gemstones and remedies based on birth-chart (kundli) and numerology readings for love, wealth, health, career, and protection.',
+};
 
 export default function AboutPage() {
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }} />
       <section className="relative bg-[#2B1B0C] overflow-hidden py-16 sm:py-24">
         <div
           className="absolute inset-0 opacity-60"
@@ -45,12 +67,14 @@ export default function AboutPage() {
             Our Story
           </p>
           <h1 className="font-heading text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-[#E6D3AE] leading-[1.05] mb-5">
-            Spiritual Tools, Sourced Honestly
+            Authentic Gemstones, Astrology-Backed Guidance
           </h1>
           <p className="font-body text-sm sm:text-base text-[#B8A98A] leading-relaxed max-w-xl mx-auto">
-            Doshhmukti started with a simple frustration — most &ldquo;spiritual&rdquo; products online are
-            mass-produced, unenergized, and sold with fake urgency. We built the store we wished existed: authentic
-            rudraksha, gemstones, and malas, sourced with care and backed by real guidance.
+            Doshhmukti is an Indian spiritual ecommerce store selling authentic, ritually-energized gemstones,
+            rudraksha malas and bracelets for love, wealth, health, success, protection and clarity. Every product is
+            sourced directly from verified artisans — never a mass-produced imitation — and paired with Vedic
+            astrology guidance from Acharya Madhav so you buy the stone that actually fits your birth chart, not just
+            the one that&apos;s trending.
           </p>
         </Reveal>
       </section>

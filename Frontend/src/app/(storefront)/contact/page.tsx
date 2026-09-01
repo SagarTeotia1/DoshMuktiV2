@@ -1,8 +1,10 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MessageCircle, Mail, Instagram, Youtube, Clock } from 'lucide-react';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { Reveal } from '@/components/motion/Reveal';
 import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
+import { SITE_URL } from '@/lib/constants';
 
 const WHATSAPP_NUMBER = '919999999999';
 const SUPPORT_EMAIL = 'support@doshhmukti.com';
@@ -38,7 +40,16 @@ const CHANNELS = [
   },
 ];
 
-export const metadata = { title: 'Contact — Doshhmukti' };
+const TITLE = 'Contact Doshhmukti — WhatsApp Astrology Guidance';
+const DESCRIPTION =
+  'Reach Doshhmukti support or chat with Acharya Madhav for personalized gemstone and astrology-remedy guidance via WhatsApp, email, Instagram or YouTube.';
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: '/contact' },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: `${SITE_URL}/contact`, type: 'website' },
+};
 
 export default function ContactPage() {
   return (

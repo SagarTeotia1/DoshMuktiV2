@@ -33,7 +33,7 @@ export function ProductGallery({
           <Image
             key={img.full}
             src={img.full}
-            alt={i === active ? name : ''}
+            alt={`${name} — photo ${i + 1}`}
             fill
             className={`object-cover transition-opacity duration-300 ${i === active ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             sizes="(max-width: 1024px) 100vw, 50vw"

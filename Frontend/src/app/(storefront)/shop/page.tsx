@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import type { Metadata } from 'next';
 import { SearchX } from 'lucide-react';
 import Link from 'next/link';
 import { ProductCard } from '@/components/storefront/ProductCard';
@@ -8,6 +9,7 @@ import { ShopFiltersMobile } from './shop-filters-mobile';
 import { ShopToolbar } from './shop-toolbar';
 import { ShopPagination } from './shop-pagination';
 import { api } from '@/lib/api-client';
+import { PURPOSES, SITE_URL, type PurposeId } from '@/lib/constants';
 import type { PaginatedProducts } from '@/types/api.types';
 
 type ShopSearchParams = {
@@ -19,6 +21,31 @@ type ShopSearchParams = {
   page?: string;
   view?: string;
 };
+
+// Purpose-filtered shop URLs are the highest-intent SEO/AEO surface on the site
+// ("gemstones for wealth", "bracelet for love") — give each one its own title/
+// description instead of every /shop?purpose=X sharing the generic catalog copy.
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<ShopSearchParams>;
+}): Promise<Metadata> {
+  const { purpose } = await searchParams;
+  const match = PURPOSES.find((p) => p.id === (purpose as PurposeId));
+
+  const title = match ? `${match.label} — Gemstones & Remedies` : 'Shop All Products';
+  const description = match
+    ? `${match.description}. Authentic, energized gemstones, rudraksha and bracelets chosen with Vedic astrology guidance — shop the full ${match.label.toLowerCase()} collection.`
+    : 'Browse the full Doshhmukti collection — gemstones, rudraksha malas, bracelets and pooja accessories for love, wealth, health, success, protection and clarity.';
+  const canonical = match ? `/shop?purpose=${match.id}` : '/shop';
+
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: { title, description, url: `${SITE_URL}${canonical}`, type: 'website' },
+  };
+}
 
 async function getProducts(sp: ShopSearchParams) {
   const params = new URLSearchParams();

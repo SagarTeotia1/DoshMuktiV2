@@ -1,4 +1,5 @@
 import { cloneElement, type ReactElement } from 'react';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Gem, Truck, ShieldCheck, RotateCcw, Sparkles, Wallet, Star, Gift } from 'lucide-react';
@@ -14,6 +15,7 @@ import { RelatedProductsRail } from './related-products-rail';
 import { ExclusiveOffers } from '@/components/storefront/ExclusiveOffers';
 import { api } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
+import { SITE_URL } from '@/lib/constants';
 import type { Product } from '@/types/api.types';
 
 type Offer = Product['offers'][number];
@@ -103,6 +105,44 @@ async function getProduct(slug: string): Promise<ProductDetailResponse | null> {
   }
 }
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const data = await getProduct(slug);
+  if (!data) return {};
+
+  const { product } = data;
+  const purposeText = product.purpose.map((p) => PURPOSE_LABELS[p] ?? p).join(', ');
+  const title = purposeText ? `${product.name} — For ${purposeText}` : product.name;
+  const description =
+    product.excerpt ||
+    `${product.name} — authentic, ritually energized ${product.category.toLowerCase()}${purposeText ? ` for ${purposeText.toLowerCase()}` : ''}. Vedic astrology guidance included. Free shipping over ₹999.`;
+  const canonical = `/products/${product.slug}`;
+  const image = product.images[0]?.card;
+
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      url: `${SITE_URL}${canonical}`,
+      type: 'website',
+      images: image ? [{ url: image }] : undefined,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
+}
+
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const data = await getProduct(slug);
@@ -166,8 +206,41 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   ];
   const detailSections = rawDetailSections.filter((s): s is DetailSection => !!s);
 
+  const productJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    description: product.excerpt || product.name,
+    image: product.images.map((img) => img.full),
+    sku: product.variants[0]?.sku,
+    brand: { '@type': 'Brand', name: 'Doshhmukti' },
+    aggregateRating:
+      product.rating.count > 0
+        ? { '@type': 'AggregateRating', ratingValue: product.rating.average, reviewCount: product.rating.count }
+        : undefined,
+    offers: {
+      '@type': 'Offer',
+      url: `${SITE_URL}/products/${product.slug}`,
+      priceCurrency: 'INR',
+      price,
+      availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+    },
+  };
+
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Shop', item: `${SITE_URL}/shop` },
+      { '@type': 'ListItem', position: 3, name: product.name, item: `${SITE_URL}/products/${product.slug}` },
+    ],
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 font-body text-[11px] text-[#8A7A63] mb-6 sm:mb-8">
         <Link href="/" className="hover:text-[#9C5A26] transition-colors">Home</Link>
@@ -329,7 +402,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                   // squeezed into a guessed width/height box.
                   <div key={i} className="w-full rounded-lg overflow-hidden border border-[#2B1B0C]/15">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={block.full} alt="" className="w-full h-auto block" />
+                    <img src={block.full} alt={product.name} className="w-full h-auto block" />
                   </div>
                 )
               )}

@@ -23,9 +23,9 @@ const COLS = [
   {
     heading: 'Help',
     links: [
-      { label: 'Track Order', href: '/track' },
-      { label: 'Returns & Exchanges', href: '/returns' },
-      { label: 'Shipping Policy', href: '/shipping' },
+      { label: 'Track Order', href: '/orders' },
+      { label: 'Returns & Exchanges', href: '/faq#returns' },
+      { label: 'Shipping Policy', href: '/faq#shipping' },
       { label: 'FAQ', href: '/faq' },
       { label: 'Contact Us', href: '/contact' },
     ],
@@ -34,7 +34,6 @@ const COLS = [
     heading: 'Company',
     links: [
       { label: 'About Doshhmukti', href: '/about' },
-      { label: 'Our Story', href: '/story' },
       { label: 'Privacy Policy', href: '/privacy' },
       { label: 'Terms of Service', href: '/terms' },
     ],

@@ -13,15 +13,26 @@ const outfit = Outfit({
   display: 'swap',
 });
 
-const TITLE_DEFAULT = 'Doshhmukti — Sacred Products for Every Intention';
+const TITLE_DEFAULT = 'Doshhmukti — Gemstones & Astrology Remedies for Love, Wealth & Protection';
 const DESCRIPTION =
-  'Authentic rings, bracelets, crystals and pooja accessories — each curated for love, wealth, health, success, protection and clarity.';
+  'Authentic, energized gemstones, rudraksha malas and bracelets — chosen for you with Vedic astrology guidance. Shop remedies for love, wealth, health, success, protection and clarity.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: TITLE_DEFAULT, template: '%s — Doshhmukti' },
   description: DESCRIPTION,
-  keywords: ['spiritual products', 'vastu', 'pooja', 'crystal', 'bracelet', 'ring', 'lucky charm'],
+  keywords: [
+    'gemstones for wealth',
+    'gemstones for love',
+    'astrology remedies',
+    'how to increase wealth astrology',
+    'rudraksha mala',
+    'energized bracelet',
+    'vastu products',
+    'pooja accessories',
+    'vedic astrology jewellery',
+    'numerology remedies',
+  ],
   alternates: { canonical: '/' },
   robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
   openGraph: {
@@ -41,6 +52,8 @@ const organizationJsonLd = {
   name: 'Doshhmukti',
   url: SITE_URL,
   logo: `${SITE_URL}/icon`,
+  description:
+    'Doshhmukti sells authentic, ritually-energized gemstones, rudraksha malas and pooja accessories, chosen for the customer using Vedic astrology and numerology, for goals spanning love, wealth, health, success, protection and clarity.',
   sameAs: [SOCIAL_LINKS.instagram, SOCIAL_LINKS.youtube],
 };
 
