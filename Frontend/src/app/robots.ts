@@ -18,6 +18,8 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: 'Claude-User', allow: '/', disallow },
       { userAgent: 'Google-Extended', allow: '/', disallow },
       { userAgent: 'anthropic-ai', allow: '/', disallow },
+      { userAgent: 'Applebot-Extended', allow: '/', disallow },
+      { userAgent: 'meta-externalagent', allow: '/', disallow },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
     host: SITE_URL,
