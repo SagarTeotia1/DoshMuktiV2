@@ -73,11 +73,11 @@ export default function PrivacyPage() {
           {/* Body */}
           <article className="max-w-3xl font-body text-sm text-[#6B5539] leading-relaxed space-y-10">
             <p>
-              This Privacy Policy explains how Doshhmukti (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;)
-              collects, uses, shares, and protects information when you visit doshhmukti.com or place an order
-              (together, the &ldquo;Site&rdquo;). We built the Site on a guest-checkout model — you never need to
-              create an account or hand us a password to buy something — and this policy is written around that
-              fact.
+              This Privacy Policy explains how Digital Kalakaar Videos Private Limited, trading as Doshhmukti
+              (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;) collects, uses, shares, and protects
+              information when you visit doshhmukti.com or place an order (together, the &ldquo;Site&rdquo;). We
+              built the Site on a guest-checkout model — you never need to create an account or hand us a password
+              to buy something — and this policy is written around that fact.
             </p>
 
             <Section id="scope" title="1. Scope of This Policy">
@@ -253,7 +253,7 @@ export default function PrivacyPage() {
             <Section id="contact" title="15. Contact Us">
               <p>Questions about this Privacy Policy or your data can be sent to:</p>
               <p>
-                <strong className="text-[#2B1B0C]">Doshhmukti</strong>
+                <strong className="text-[#2B1B0C]">Digital Kalakaar Videos Private Limited</strong> (Doshhmukti)
                 <br />
                 Email:{' '}
                 <a href="mailto:support@doshhmukti.com" className="text-[#9C5A26] font-semibold hover:underline">

@@ -80,9 +80,10 @@ export default function TermsPage() {
             <p>
               These Terms &amp; Conditions (&ldquo;Terms&rdquo;) govern your access to and use of the website
               located at doshhmukti.com (the &ldquo;Site&rdquo;) and any purchase of products made through it,
-              operated by Doshhmukti (&ldquo;Doshhmukti&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;).
-              By browsing the Site or placing an order, you (&ldquo;you&rdquo;, &ldquo;user&rdquo;, &ldquo;customer&rdquo;)
-              agree to be bound by these Terms. If you do not agree, do not use the Site.
+              operated by Digital Kalakaar Videos Private Limited, trading as Doshhmukti (&ldquo;Doshhmukti&rdquo;,
+              &ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;). By browsing the Site or placing an order, you
+              (&ldquo;you&rdquo;, &ldquo;user&rdquo;, &ldquo;customer&rdquo;) agree to be bound by these Terms. If
+              you do not agree, do not use the Site.
             </p>
 
             <Section id="acceptance" title="1. Acceptance of Terms">
@@ -303,7 +304,7 @@ export default function TermsPage() {
             <Section id="contact" title="20. Contact Us">
               <p>Questions about these Terms can be sent to:</p>
               <p>
-                <strong className="text-[#2B1B0C]">Doshhmukti</strong>
+                <strong className="text-[#2B1B0C]">Digital Kalakaar Videos Private Limited</strong> (Doshhmukti)
                 <br />
                 Email:{' '}
                 <a href="mailto:support@doshhmukti.com" className="text-[#9C5A26] font-semibold hover:underline">

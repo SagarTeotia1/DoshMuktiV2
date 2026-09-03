@@ -70,11 +70,11 @@ export default function AboutPage() {
             Authentic Gemstones, Astrology-Backed Guidance
           </h1>
           <p className="font-body text-sm sm:text-base text-[#B8A98A] leading-relaxed max-w-xl mx-auto">
-            Doshhmukti is an Indian spiritual ecommerce store selling authentic, ritually-energized gemstones,
-            rudraksha malas and bracelets for love, wealth, health, success, protection and clarity. Every product is
-            sourced directly from verified artisans — never a mass-produced imitation — and paired with Vedic
-            astrology guidance from Acharya Madhav so you buy the stone that actually fits your birth chart, not just
-            the one that&apos;s trending.
+            Doshhmukti is an Indian spiritual ecommerce store, operated by Digital Kalakaar Videos Private Limited,
+            selling authentic, ritually-energized gemstones, rudraksha malas and bracelets for love, wealth, health,
+            success, protection and clarity. Every product is sourced directly from verified artisans — never a
+            mass-produced imitation — and paired with Vedic astrology guidance from Acharya Madhav so you buy the
+            stone that actually fits your birth chart, not just the one that&apos;s trending.
           </p>
         </Reveal>
       </section>
