@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { Reveal } from '@/components/motion/Reveal';
-import { SITE_URL } from '@/lib/constants';
+import { SITE_URL, RETURN_ELIGIBLE_ABOVE } from '@/lib/constants';
 
 const TITLE = 'FAQ — Gemstones, Astrology Remedies & Wealth Jewellery';
 const DESCRIPTION =
@@ -57,7 +57,7 @@ const FAQS = [
   },
   {
     q: 'What is the return policy?',
-    a: 'Damaged or incorrect items can be reported within 48 hours of delivery for a free replacement. See each product page for item-specific return notes.',
+    a: `Damaged or incorrect items can be reported within 48 hours of delivery for a free replacement. Eligible items priced ₹${RETURN_ELIGIBLE_ABOVE} and above also come with a 7-day change-of-mind return window; items priced below ₹${RETURN_ELIGIBLE_ABOVE} are final sale. See each product page for item-specific return notes.`,
   },
 ] as const;
 

@@ -5,7 +5,7 @@ import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { Reveal } from '@/components/motion/Reveal';
 import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
 import { TrustBar } from '@/components/storefront/TrustBar';
-import { SITE_URL } from '@/lib/constants';
+import { SITE_URL, RETURN_ELIGIBLE_ABOVE } from '@/lib/constants';
 
 const VALUES = [
   {
@@ -26,7 +26,7 @@ const VALUES = [
   {
     icon: ShieldCheck,
     title: 'Honest, No Gimmicks',
-    body: 'Transparent pricing, real reviews, and a straightforward 7-day return policy. No fine print tricks.',
+    body: `Transparent pricing, real reviews, and a straightforward 7-day return policy on orders ₹${RETURN_ELIGIBLE_ABOVE}+. No fine print tricks.`,
   },
 ];
 

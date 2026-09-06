@@ -2,7 +2,7 @@ import { cloneElement, type ReactElement } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Gem, Truck, ShieldCheck, RotateCcw, Sparkles, Star, Gift } from 'lucide-react';
+import { Gem, Truck, ShieldCheck, RotateCcw, Ban, Sparkles, Star, Gift } from 'lucide-react';
 import { Accordion } from '@/components/storefront/Accordion';
 import Image from 'next/image';
 import { AddToCart } from './add-to-cart';
@@ -15,7 +15,7 @@ import { RelatedProductsRail } from './related-products-rail';
 import { ExclusiveOffers } from '@/components/storefront/ExclusiveOffers';
 import { api } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
-import { SITE_URL } from '@/lib/constants';
+import { SITE_URL, RETURN_ELIGIBLE_ABOVE } from '@/lib/constants';
 import type { Product } from '@/types/api.types';
 
 type Offer = Product['offers'][number];
@@ -54,32 +54,42 @@ const PURPOSE_LABELS: Record<string, string> = {
   gifting: 'Gifting',
 };
 
-const TRUST_ITEMS = [
-  { icon: Gem, label: 'Authentic & Energized' },
-  { icon: Truck, label: 'Free Shipping ₹999+' },
-  { icon: ShieldCheck, label: 'Secure Payments' },
-  { icon: RotateCcw, label: '7-Day Returns' },
-];
+// Items priced below RETURN_ELIGIBLE_ABOVE aren't worth a reverse pickup — see
+// Terms & Conditions § 9. Both the trust strip and the policy accordion below
+// need to know this, so it's computed once per product in the page component
+// and threaded through rather than hardcoded per-list.
+function getTrustItems(eligibleForReturn: boolean) {
+  return [
+    { icon: Gem, label: 'Authentic & Energized' },
+    { icon: Truck, label: 'Free Shipping ₹999+' },
+    { icon: ShieldCheck, label: 'Secure Payments' },
+    eligibleForReturn ? { icon: RotateCcw, label: '7-Day Returns' } : { icon: Ban, label: 'Non-Returnable' },
+  ];
+}
 
-const POLICY_SECTIONS = [
-  {
-    title: 'Delivery & Shipping',
-    content: 'Orders are dispatched within 24-48 hours and typically arrive within 5-7 business days across India.',
-  },
-  {
-    title: 'Returns & Replacement',
-    content: 'Damaged or incorrect items can be reported within 48 hours of delivery for a free replacement.',
-  },
-  {
-    title: 'Need Help?',
-    content: 'Chat with us Mon to Sat, 10 AM to 5 PM, via the support widget or WhatsApp.',
-  },
-];
+function getPolicySections(eligibleForReturn: boolean) {
+  return [
+    {
+      title: 'Delivery & Shipping',
+      content: 'Orders are dispatched within 24-48 hours and typically arrive within 5-7 business days across India.',
+    },
+    {
+      title: 'Returns & Replacement',
+      content: eligibleForReturn
+        ? `Damaged or incorrect items can be reported within 48 hours of delivery for a free replacement. This item also qualifies for a 7-day change-of-mind return from the date of delivery.`
+        : `Damaged or incorrect items can be reported within 48 hours of delivery for a free replacement. Items priced below ₹${RETURN_ELIGIBLE_ABOVE} are final sale and not eligible for a change-of-mind return.`,
+    },
+    {
+      title: 'Need Help?',
+      content: 'Chat with us Mon to Sat, 10 AM to 5 PM, via the support widget or WhatsApp.',
+    },
+  ];
+}
 
-function TrustStrip() {
+function TrustStrip({ eligibleForReturn }: { eligibleForReturn: boolean }) {
   return (
     <div className="grid grid-cols-2 gap-3">
-      {TRUST_ITEMS.map((item) => {
+      {getTrustItems(eligibleForReturn).map((item) => {
         const Icon = item.icon;
         return (
           <div key={item.label} className="flex items-center gap-2">
@@ -152,6 +162,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const inStock = activeVariants.some((v) => v.stockQuantity > 0);
   const mrp = product.compareAtPrice && product.compareAtPrice > price ? product.compareAtPrice : null;
   const discountPct = mrp ? Math.round(((mrp - price) / mrp) * 100) : null;
+  const eligibleForReturn = price >= RETURN_ELIGIBLE_ABOVE;
+  const policySections = getPolicySections(eligibleForReturn);
 
   // COUPON_BASED offers live exclusively in the Exclusive Offers card section below (they need
   // the code + copy button, which doesn't fit this compact badge), so this row only carries
@@ -250,7 +262,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           {/* Policy accordion — desktop only, sits directly under the gallery.
               Mobile keeps its own copy further down, in the details column. */}
           <div className="hidden lg:block border-t border-[#2B1B0C]/10 pt-2">
-            <Accordion sections={POLICY_SECTIONS} />
+            <Accordion sections={policySections} />
           </div>
         </div>
 
@@ -343,7 +355,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
           {/* Trust signals sit right after the CTA — reassurance belongs next to the decision, not in another column */}
           <div className="mb-6">
-            <TrustStrip />
+            <TrustStrip eligibleForReturn={eligibleForReturn} />
           </div>
 
           {/* Exclusive offers — its own card section, distinct from the compact badge row above the CTA */}
@@ -402,7 +414,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           {/* Policy accordion — mobile only, desktop copy sits under the gallery instead.
               No extra border-t here: the accordion above already closes with its own border-b. */}
           <div className="lg:hidden">
-            <Accordion sections={POLICY_SECTIONS} />
+            <Accordion sections={policySections} />
           </div>
         </div>
       </div>

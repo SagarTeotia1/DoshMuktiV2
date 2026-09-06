@@ -1,7 +1,9 @@
+import { RETURN_ELIGIBLE_ABOVE } from '@/lib/constants';
+
 const ITEMS = [
   'Free Shipping Above ₹999',
   'Authentic & Energized Products',
-  '7-Day Easy Returns',
+  `7-Day Easy Returns on Orders Above ₹${RETURN_ELIGIBLE_ABOVE}`,
   'Pay via UPI · Cards · EMI',
   'Pan-India Delivery',
   'Handpicked with Intention',

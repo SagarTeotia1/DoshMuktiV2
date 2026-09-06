@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { Reveal } from '@/components/motion/Reveal';
+import { RETURN_ELIGIBLE_ABOVE } from '@/lib/constants';
 
 export const metadata = {
   title: 'Terms & Conditions — Doshhmukti',
@@ -8,7 +9,7 @@ export const metadata = {
   alternates: { canonical: '/terms' },
 };
 
-const LAST_UPDATED = 'August 26, 2026';
+const LAST_UPDATED = 'September 6, 2026';
 
 const SECTIONS = [
   { id: 'acceptance', title: '1. Acceptance of Terms' },
@@ -176,11 +177,15 @@ export default function TermsPage() {
 
             <Section id="returns" title="9. Returns, Exchanges & Refunds">
               <p>
-                We offer a 7-day return window from the date of delivery for eligible products. To be eligible,
-                an item must be unused, in its original packaging, and accompanied by proof of purchase (order
-                number). The following are not eligible for return: items reported as used or altered, energized
-                items that have been worn/handled beyond inspection, and items damaged after delivery due to
-                misuse.
+                We offer a 7-day return window from the date of delivery for eligible products priced at ₹
+                {RETURN_ELIGIBLE_ABOVE} or above. Items priced below ₹{RETURN_ELIGIBLE_ABOVE} are final sale and
+                not eligible for a change-of-mind return — the reverse-pickup cost alone exceeds the item's
+                value. This does not affect your right to a free replacement for a damaged, defective, or
+                incorrect item under our 48-hour replacement policy, regardless of price. To be eligible for a
+                return, an item must be unused, in its original packaging, and accompanied by proof of purchase
+                (order number). The following are not eligible for return: items reported as used or altered,
+                energized items that have been worn/handled beyond inspection, and items damaged after delivery
+                due to misuse.
               </p>
               <p>
                 To initiate a return, contact us via WhatsApp or email within 7 days of delivery with your order
