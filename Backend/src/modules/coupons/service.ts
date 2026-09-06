@@ -322,11 +322,11 @@ export async function resolveCouponRewardsForCheckout(
     };
   }
 
-  const uniqueProducts = new Map<string, { id: string; category: string }>();
+  const uniqueProducts = new Map<string, { id: string; categories: string[] }>();
   for (const item of items)
     uniqueProducts.set(item.productId, {
       id: item.productId,
-      category: item.category,
+      categories: item.categories,
     });
 
   const offersByProduct = await attachApplicableOffers(
@@ -409,7 +409,7 @@ export async function resolveLineItemsForPreview(
   const variantIds = items.map((i) => i.variantId);
   const variants = await db.productVariant.findMany({
     where: { id: { in: variantIds }, isActive: true },
-    include: { product: { select: { basePrice: true, category: true } } },
+    include: { product: { select: { basePrice: true, categories: true } } },
   });
   if (variants.length !== items.length) {
     const missing = variantIds.find(
@@ -423,7 +423,7 @@ export async function resolveLineItemsForPreview(
     return {
       variantId: item.variantId,
       productId: v.productId,
-      category: v.product.category,
+      categories: v.product.categories,
       quantity: item.quantity,
       itemSubtotal:
         Number(v.priceOverride ?? v.product.basePrice) * item.quantity,

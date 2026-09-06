@@ -28,7 +28,7 @@ function withExcerpt<T extends { description: unknown }>(products: T[]): Array<T
 // attachApplicableOffers on top, keyed by product id. Response shape is unchanged —
 // callers still see `product.offers: Offer[]`, now widened to OfferWithCoupon[] so a
 // COUPON_BASED offer's `coupon.code` and any set `minOrderValue` reach the storefront.
-async function withOffers<T extends { id: string; category: string }>(products: T[]): Promise<Array<T & { offers: OfferWithCoupon[] }>> {
+async function withOffers<T extends { id: string; categories: string[] }>(products: T[]): Promise<Array<T & { offers: OfferWithCoupon[] }>> {
   if (products.length === 0) return [];
   const byProduct = await attachApplicableOffers(products);
   return products.map((p) => ({ ...p, offers: byProduct.get(p.id) ?? [] }));
@@ -66,17 +66,13 @@ export async function listProducts(query: ListProductsQuery) {
     status: 'ACTIVE' as const,
     ...(query.purpose ? { purpose: { has: query.purpose } } : {}),
     ...(query.featured !== undefined ? { featured: query.featured } : {}),
-    ...(query.category ? { category: { equals: query.category, mode: 'insensitive' } } : {}),
+    ...(query.category ? { categories: { has: query.category } } : {}),
     // `description` is now a structured Json block array, not free text — Prisma's
-    // string `contains` filter no longer applies to it, so search is name/category only.
-    ...(query.q
-      ? {
-          OR: [
-            { name: { contains: query.q, mode: 'insensitive' } },
-            { category: { contains: query.q, mode: 'insensitive' } },
-          ],
-        }
-      : {}),
+    // string `contains` filter no longer applies to it, so search is name only. Category
+    // substring matching isn't reintroduced here now that categories is an array (Prisma's
+    // `has`/`hasSome` need an exact value, not a substring) — in practice this catalog's
+    // product names already embed the category word (e.g. "5 Mukhi Rudraksha Bracelet").
+    ...(query.q ? { name: { contains: query.q, mode: 'insensitive' } } : {}),
   };
   const orderBy =
     query.sort === 'price_asc' ? { basePrice: 'asc' as const }
@@ -147,15 +143,18 @@ export async function getProductsForChatRecommendation(purpose: string, limit = 
 
   const products = await db.product.findMany({
     where: { status: 'ACTIVE', purpose: { has: purpose } },
-    select: { id: true, name: true, slug: true, images: true, category: true, featured: true },
+    select: { id: true, name: true, slug: true, images: true, categories: true, featured: true },
     orderBy: { featured: 'desc' },
     take: Math.max(limit * 4, 20),
   });
 
+  const matchesPriorityCategory = (categories: string[]) =>
+    categories.some((c) => c.toLowerCase().includes(priorityCategory ?? ''));
+
   const sorted = priorityCategory
     ? [...products].sort((a, b) => {
-        const aPriority = a.category.toLowerCase().includes(priorityCategory) ? 1 : 0;
-        const bPriority = b.category.toLowerCase().includes(priorityCategory) ? 1 : 0;
+        const aPriority = matchesPriorityCategory(a.categories) ? 1 : 0;
+        const bPriority = matchesPriorityCategory(b.categories) ? 1 : 0;
         if (aPriority !== bPriority) return bPriority - aPriority;
         return Number(b.featured) - Number(a.featured);
       })
@@ -169,6 +168,10 @@ export async function getProductsForChatRecommendation(purpose: string, limit = 
   })) as Array<{ id: string; name: string; slug: string; thumb: string | null }>;
 }
 
+// `distinct` can't dedupe an array column the way it does a scalar one (each row's
+// array is its own distinct value) — so this pulls every product's categories and
+// flattens/dedupes in JS. Fine at this catalog's scale (tens to hundreds of products);
+// revisit with a raw `SELECT DISTINCT unnest(categories)` query if that ever changes.
 export async function getDistinctCategories(): Promise<string[]> {
   const key = cacheKeys.productCategories();
   const cached = await redis.get<string[]>(key);
@@ -176,11 +179,9 @@ export async function getDistinctCategories(): Promise<string[]> {
 
   const rows = await db.product.findMany({
     where: { status: 'ACTIVE' },
-    select: { category: true },
-    distinct: ['category'],
-    orderBy: { category: 'asc' },
+    select: { categories: true },
   });
-  const categories = rows.map((r) => r.category);
+  const categories = [...new Set(rows.flatMap((r) => r.categories))].sort();
 
   await redis.set(key, categories, { ex: CACHE_TTL.CATEGORIES });
   return categories;
@@ -200,7 +201,7 @@ export async function getCategoryThumbnails(): Promise<CategoryThumb[]> {
   const thumbs = await Promise.all(
     categories.map(async (category): Promise<CategoryThumb> => {
       const product = await db.product.findFirst({
-        where: { status: 'ACTIVE', category },
+        where: { status: 'ACTIVE', categories: { has: category } },
         select: { images: true },
         orderBy: { createdAt: 'desc' },
       });
@@ -215,13 +216,12 @@ export async function getCategoryThumbnails(): Promise<CategoryThumb[]> {
 
 // Admin needs categories from DRAFT products too (to reuse when adding a new draft
 // in the same category), so no status filter — and no cache, admin traffic is low.
+// Same flatten-in-JS approach as getDistinctCategories — see its comment.
 export async function getDistinctCategoriesForAdmin(): Promise<string[]> {
   const rows = await db.product.findMany({
-    select: { category: true },
-    distinct: ['category'],
-    orderBy: { category: 'asc' },
+    select: { categories: true },
   });
-  return rows.map((r) => r.category);
+  return [...new Set(rows.flatMap((r) => r.categories))].sort();
 }
 
 export async function getFeaturedProducts(limit = 4) {
@@ -268,7 +268,7 @@ import type { ListAdminProductsQuery, CreateProductInput, UpdateProductInput, Cr
 // reads above) — an admin editing a product should see every offer that would apply to
 // it, archived ones included — same scope-aware resolution via attachApplicableOffers,
 // just with includeInactive so nothing routes around the shared function.
-async function withAllOffers<T extends { id: string; category: string }>(products: T[]): Promise<Array<T & { offers: OfferWithCoupon[] }>> {
+async function withAllOffers<T extends { id: string; categories: string[] }>(products: T[]): Promise<Array<T & { offers: OfferWithCoupon[] }>> {
   if (products.length === 0) return [];
   const byProduct = await attachApplicableOffers(products, { includeInactive: true });
   return products.map((p) => ({ ...p, offers: byProduct.get(p.id) ?? [] }));
@@ -288,7 +288,6 @@ export async function listProductsForAdmin(query: ListAdminProductsQuery) {
       ? {
           OR: [
             { name: { contains: query.q, mode: 'insensitive' } },
-            { category: { contains: query.q, mode: 'insensitive' } },
             { variants: { some: { sku: { contains: query.q, mode: 'insensitive' } } } },
           ],
         }

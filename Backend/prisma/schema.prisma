@@ -15,7 +15,7 @@ model Product {
   name                     String
   slug                     String           @unique
   description              Json             @default("[]") // DescriptionBlock[] — ordered [{type:'text',content} | {type:'image',thumb,card,full}], admin-composed, see products/schema.ts
-  category                 String
+  categories               String[]         @default([]) // ["Bracelets","Pyrite Items",...] — a product can be shared across multiple categories, first entry treated as primary wherever a single category is needed (breadcrumbs, GST/chat grouping)
   basePrice                Decimal          @db.Decimal(10, 2)
   compareAtPrice           Decimal?         @db.Decimal(10, 2) // strikethrough "MRP" — null = no discount shown
   images                   Json             @default("[]") // [{thumb,card,full}]
@@ -39,7 +39,7 @@ model Product {
   createdAt                DateTime         @default(now())
   updatedAt                DateTime         @updatedAt
 
-  @@index([status, category])
+  @@index([status])
   @@index([status, featured])
   @@index([slug])
 }

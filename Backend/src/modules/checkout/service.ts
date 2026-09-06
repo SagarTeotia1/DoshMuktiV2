@@ -118,7 +118,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
   const variants = await db.productVariant.findMany({
     where: { id: { in: variantIds }, isActive: true },
     include: {
-      product: { select: { name: true, basePrice: true, category: true, gstRate: true } },
+      product: { select: { name: true, basePrice: true, categories: true, gstRate: true } },
     },
   });
   if (variants.length !== input.items.length) {
@@ -133,7 +133,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
     return {
       variantId: item.variantId,
       productId: v.productId,
-      category: v.product.category,
+      categories: v.product.categories,
       quantity: item.quantity,
       itemSubtotal:
         Number(v.priceOverride ?? v.product.basePrice) * item.quantity,

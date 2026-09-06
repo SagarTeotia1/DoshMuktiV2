@@ -51,7 +51,7 @@ export const productSchema = z.object({
   // Short plain-text teaser derived server-side from the first text block —
   // used for card excerpts/meta copy where a full block array can't render.
   excerpt: z.string().default(''),
-  category: z.string(),
+  categories: z.array(z.string()),
   basePrice: z.number(),
   compareAtPrice: z.number().nullable(),
   images: z.array(z.object({ thumb: z.string(), card: z.string(), full: z.string() })),

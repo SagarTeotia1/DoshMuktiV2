@@ -9,6 +9,9 @@ const db = new PrismaClient();
 interface SeedProduct {
   name: string;
   category: string;
+  // A product can be shared across more than one category — most seed products don't
+  // need this and just fall back to [category]; set it explicitly to demo the feature.
+  extraCategories?: string[];
   price: number;
   purpose: string[];
   description: string;
@@ -141,6 +144,7 @@ const PRODUCTS: SeedProduct[] = [
   {
     name: 'Vastu Tree (Pyrite, Rose Quartz, Seven Chakras)',
     category: 'Dosh Mukti Special',
+    extraCategories: ['Pyrite Items'],
     price: 799,
     purpose: ['wealth', 'love', 'clarity', 'gifting'],
     description: 'A handcrafted Vastu tree combining Pyrite, Rose Quartz and Seven Chakra stones — a multi-purpose energy piece for home or workspace.',
@@ -250,6 +254,7 @@ const PRODUCTS: SeedProduct[] = [
   {
     name: '5 Mukhi Rudraksha Bracelet',
     category: 'Rudraksha / Kada',
+    extraCategories: ['Bracelets'],
     price: 499,
     purpose: ['clarity', 'health'],
     description: 'A wrist-friendly bracelet of 5 Mukhi rudraksha beads — a lighter, everyday way to carry its calming influence.',
@@ -473,7 +478,7 @@ async function main() {
         name: p.name,
         slug,
         description: [{ type: 'text', content: p.description }],
-        category: p.category,
+        categories: [p.category, ...(p.extraCategories ?? [])],
         basePrice: p.price,
         compareAtPrice,
         images: placeholderImages(slug, p.category),

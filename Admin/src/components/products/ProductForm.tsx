@@ -13,8 +13,6 @@ import { StagedImageUploader } from './StagedImageUploader';
 import { DescriptionEditor } from './DescriptionEditor';
 import { ProductPreview } from './ProductPreview';
 
-const NEW_CATEGORY = '__new__';
-
 const imageSchema = z.object({ thumb: z.string(), card: z.string(), full: z.string() });
 
 const descriptionBlockSchema = z.discriminatedUnion('type', [
@@ -26,7 +24,7 @@ const productFormSchema = z.object({
   name: z.string().min(1, 'Required'),
   slug: z.string().min(2, 'Required').regex(/^[a-z0-9-]+$/, 'Lowercase, numbers, hyphens only'),
   description: z.array(descriptionBlockSchema).min(1, 'Add at least one block'),
-  category: z.string().min(1, 'Required'),
+  categories: z.array(z.string().min(1)).min(1, 'Pick at least one category'),
   basePrice: z.coerce.number().positive('Must be positive'),
   compareAtPrice: z.coerce.number().min(0).default(0), // 0 = no strikethrough MRP, mapped to null on submit
   purpose: z.array(z.enum(PURPOSE_IDS)).default([]),
@@ -86,7 +84,7 @@ export function ProductForm({
       name: defaultValues?.name ?? '',
       slug: defaultValues?.slug ?? '',
       description: defaultValues?.description ?? [],
-      category: defaultValues?.category ?? '',
+      categories: defaultValues?.categories ?? [],
       basePrice: defaultValues?.basePrice ?? 0,
       compareAtPrice: defaultValues?.compareAtPrice ?? 0,
       purpose: (defaultValues?.purpose as (typeof PURPOSE_IDS)[number][]) ?? [],
@@ -117,7 +115,7 @@ export function ProductForm({
   const selectedPurposes = watch('purpose');
   const selectedTags = watch('tags');
   const selectedOfferIds = watch('offerIds');
-  const selectedCategory = watch('category');
+  const selectedCategories = watch('categories');
   const previewValues = watch();
 
   // CATEGORY/ALL_PRODUCTS offers apply automatically based on scope — there's
@@ -126,16 +124,37 @@ export function ProductForm({
   const specificProductOffers = (offers ?? []).filter((o) => o.scope === 'SPECIFIC_PRODUCTS');
   // Read-only: which CATEGORY/ALL_PRODUCTS offers apply to *this* product
   // automatically, so admins understand why an applicable offer isn't in
-  // their toggle list above.
+  // their toggle list above — a CATEGORY offer matches if its category is any
+  // one of this product's (now possibly several) categories.
   const autoAppliedOffers = (offers ?? []).filter(
-    (o) => o.isActive && (o.scope === 'ALL_PRODUCTS' || (o.scope === 'CATEGORY' && o.category === selectedCategory))
+    (o) =>
+      o.isActive &&
+      (o.scope === 'ALL_PRODUCTS' || (o.scope === 'CATEGORY' && o.category && (selectedCategories ?? []).includes(o.category)))
   );
   const [tagInput, setTagInput] = useState('');
-  const [addingCategory, setAddingCategory] = useState(false);
+  const [categoryInput, setCategoryInput] = useState('');
 
   function togglePurpose(id: (typeof PURPOSE_IDS)[number]) {
     const current = selectedPurposes ?? [];
     setValue('purpose', current.includes(id) ? current.filter((p) => p !== id) : [...current, id]);
+  }
+
+  function toggleCategory(cat: string) {
+    const current = selectedCategories ?? [];
+    setValue('categories', current.includes(cat) ? current.filter((c) => c !== cat) : [...current, cat]);
+  }
+
+  function addCategory() {
+    const value = categoryInput.trim();
+    if (!value) return;
+    const current = selectedCategories ?? [];
+    if (current.includes(value)) return;
+    setValue('categories', [...current, value]);
+    setCategoryInput('');
+  }
+
+  function removeCategory(cat: string) {
+    setValue('categories', (selectedCategories ?? []).filter((c) => c !== cat));
   }
 
   function addTag() {
@@ -184,7 +203,7 @@ export function ProductForm({
         <ProductPreview
           data={{
             name: previewValues.name,
-            category: previewValues.category,
+            categories: previewValues.categories ?? [],
             basePrice: previewValues.basePrice,
             purpose: previewValues.purpose ?? [],
             description: previewValues.description ?? [],
@@ -220,54 +239,67 @@ export function ProductForm({
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1 block">Category</label>
-            {addingCategory ? (
-              <div className="flex gap-2">
-                <input {...register('category')} placeholder="New category name" className={inputClass} autoFocus />
-                {(categories?.length ?? 0) > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAddingCategory(false);
-                      setValue('category', categories![0]!);
-                    }}
-                    className="flex-shrink-0 px-3 rounded-lg border border-slate-300 text-xs font-semibold text-slate-600 hover:border-slate-400 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                )}
-              </div>
-            ) : (
-              <select
-                value={selectedCategory}
-                onChange={(e) => {
-                  if (e.target.value === NEW_CATEGORY) {
-                    setAddingCategory(true);
-                    setValue('category', '');
-                  } else {
-                    setValue('category', e.target.value);
-                  }
-                }}
-                className={inputClass}
+        <div>
+          <label className="text-xs font-semibold text-slate-600 mb-2 block">
+            Categories <span className="text-slate-400 font-normal">(a product can belong to more than one — it'll show up under each)</span>
+          </label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {(selectedCategories ?? []).map((cat) => (
+              <span
+                key={cat}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#9C5A26]/10 text-[#6B3D19] text-xs font-semibold"
               >
-                {!selectedCategory && <option value="">Select category...</option>}
-                {categories?.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
+                {cat}
+                <button type="button" onClick={() => removeCategory(cat)} className="hover:text-red-600 transition-colors">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+          {(categories?.length ?? 0) > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {categories!
+                .filter((c) => !(selectedCategories ?? []).includes(c))
+                .map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => toggleCategory(c)}
+                    className="px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-300 text-slate-600 hover:border-slate-400 transition-colors"
+                  >
+                    + {c}
+                  </button>
                 ))}
-                <option value={NEW_CATEGORY}>+ Add new category</option>
-              </select>
-            )}
-            {errors.category && <p className="text-xs text-red-600 mt-1">{errors.category.message}</p>}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <input
+              value={categoryInput}
+              onChange={(e) => setCategoryInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addCategory();
+                }
+              }}
+              placeholder="Add a new category..."
+              className={inputClass}
+            />
+            <button
+              type="button"
+              onClick={addCategory}
+              className="flex-shrink-0 px-4 rounded-lg border border-slate-300 text-sm font-semibold text-slate-600 hover:border-slate-400 transition-colors"
+            >
+              Add
+            </button>
           </div>
-          <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1 block">Base Price (₹)</label>
-            <input type="number" step="0.01" {...register('basePrice')} className={inputClass} />
-            {errors.basePrice && <p className="text-xs text-red-600 mt-1">{errors.basePrice.message}</p>}
-          </div>
+          {errors.categories && <p className="text-xs text-red-600 mt-1">{errors.categories.message}</p>}
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-slate-600 mb-1 block">Base Price (₹)</label>
+          <input type="number" step="0.01" {...register('basePrice')} className={`${inputClass} max-w-[220px]`} />
+          {errors.basePrice && <p className="text-xs text-red-600 mt-1">{errors.basePrice.message}</p>}
         </div>
 
         <div>

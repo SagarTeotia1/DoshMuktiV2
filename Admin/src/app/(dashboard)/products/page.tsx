@@ -53,7 +53,7 @@ export default function ProductsPage() {
   const columns = useMemo<ColumnDef<Product, unknown>[]>(
     () => [
       { accessorKey: 'name', header: 'Name' },
-      { accessorKey: 'category', header: 'Category' },
+      { id: 'categories', header: 'Categories', cell: ({ row }) => row.original.categories.join(', ') },
       { accessorKey: 'basePrice', header: 'Price', cell: ({ row }) => formatCurrency(row.original.basePrice) },
       { id: 'variants', header: 'Variants', cell: ({ row }) => row.original.variants.length },
       { id: 'status', header: 'Status', cell: ({ row }) => <ProductStatusBadge status={row.original.status} /> },
@@ -104,7 +104,7 @@ export default function ProductsPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name, category, or SKU..."
+                placeholder="Search by name or SKU..."
                 className="w-72 pl-9 pr-8 py-1.5 rounded-lg text-sm border border-slate-200 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#9C5A26]/30 focus:border-[#9C5A26]"
               />
               {search && (

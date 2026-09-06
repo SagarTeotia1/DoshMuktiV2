@@ -56,7 +56,7 @@ async function assertCouponExists(couponId: string) {
 // distinct-category existence semantics of getDistinctCategoriesForAdmin (no status
 // filter, so a CATEGORY offer can be attached to a DRAFT-only category too).
 async function assertCategoryExists(category: string) {
-  const product = await db.product.findFirst({ where: { category }, select: { id: true } });
+  const product = await db.product.findFirst({ where: { categories: { has: category } }, select: { id: true } });
   if (!product) throw new CategoryNotFoundError(category);
 }
 
@@ -77,8 +77,10 @@ function withProductCount<T extends { _count: { products: number }; products: { 
 // productCount is a static link only for SPECIFIC_PRODUCTS (the M:N relation). CATEGORY
 // and ALL_PRODUCTS have no such link, so their "count" is a live query reflecting
 // whatever currently matches — computed here in as few queries as possible regardless
-// of how many offers are in the batch (one groupBy for every CATEGORY offer's category,
-// one count for every ALL_PRODUCTS offer, shared across the whole batch).
+// of how many offers are in the batch (one count per distinct CATEGORY offer's category,
+// one count for every ALL_PRODUCTS offer, shared across the whole batch). Can't use
+// groupBy(['categories']) here — a product can now sit in more than one category, so a
+// single row would need to contribute to more than one bucket, which groupBy can't do.
 async function computeProductCounts(
   offers: Array<{ id: string; scope: OfferScope; category: string | null; _count: { products: number } }>
 ): Promise<Map<string, number>> {
@@ -90,16 +92,14 @@ async function computeProductCounts(
   }
 
   const [categoryCounts, allProductsCount] = await Promise.all([
-    categoriesNeeded.size > 0
-      ? db.product.groupBy({
-          by: ['category'],
-          where: { category: { in: [...categoriesNeeded] }, status: 'ACTIVE' },
-          _count: true,
-        })
-      : Promise.resolve([] as Array<{ category: string; _count: number }>),
+    Promise.all(
+      [...categoriesNeeded].map(
+        async (category) => [category, await db.product.count({ where: { categories: { has: category }, status: 'ACTIVE' } })] as const
+      )
+    ),
     needsAllProductsCount ? db.product.count({ where: { status: 'ACTIVE' } }) : Promise.resolve(0),
   ]);
-  const categoryCountByName = new Map(categoryCounts.map((c) => [c.category, c._count]));
+  const categoryCountByName = new Map(categoryCounts);
 
   const result = new Map<string, number>();
   for (const o of offers) {
@@ -166,7 +166,7 @@ function scopeFilterWhere(opts?: ApplicableOffersOptions): Prisma.OfferWhereInpu
 }
 
 export async function getApplicableOffersForProduct(
-  product: { id: string; category: string },
+  product: { id: string; categories: string[] },
   opts?: ApplicableOffersOptions
 ): Promise<OfferWithCoupon[]> {
   return db.offer.findMany({
@@ -174,7 +174,7 @@ export async function getApplicableOffersForProduct(
       ...scopeFilterWhere(opts),
       OR: [
         { scope: 'ALL_PRODUCTS' },
-        { scope: 'CATEGORY', category: product.category },
+        { scope: 'CATEGORY', category: { in: product.categories } },
         { scope: 'SPECIFIC_PRODUCTS', products: { some: { id: product.id } } },
       ],
     },
@@ -182,7 +182,7 @@ export async function getApplicableOffersForProduct(
   });
 }
 
-export async function attachApplicableOffers<T extends { id: string; category: string }>(
+export async function attachApplicableOffers<T extends { id: string; categories: string[] }>(
   products: T[],
   opts?: ApplicableOffersOptions
 ): Promise<Map<string, OfferWithCoupon[]>> {
@@ -190,7 +190,7 @@ export async function attachApplicableOffers<T extends { id: string; category: s
   if (products.length === 0) return result;
   for (const p of products) result.set(p.id, []);
 
-  const categories = [...new Set(products.map((p) => p.category))];
+  const categories = [...new Set(products.flatMap((p) => p.categories))];
   const productIds = products.map((p) => p.id);
 
   const [broadOffers, specificOffers] = await Promise.all([
@@ -229,7 +229,7 @@ export async function attachApplicableOffers<T extends { id: string; category: s
   for (const p of products) {
     const applicable = result.get(p.id)!;
     for (const o of categoryOffers) {
-      if (o.category === p.category) applicable.push(o);
+      if (o.category && p.categories.includes(o.category)) applicable.push(o);
     }
     applicable.push(...allProductsOffers);
   }
@@ -400,7 +400,7 @@ export async function duplicateOffer(id: string) {
 export interface CheckoutLineItem {
   variantId: string;
   productId: string;
-  category: string;
+  categories: string[];
   quantity: number;
   itemSubtotal: number; // price * quantity for this line item
 }
@@ -431,8 +431,8 @@ export async function resolveAutoAppliedRewardsForCheckout(items: CheckoutLineIt
   const meetsMinOrderValue = (offer: OfferWithCoupon) =>
     offer.minOrderValue == null || subtotal >= Number(offer.minOrderValue);
 
-  const uniqueProducts = new Map<string, { id: string; category: string }>();
-  for (const item of items) uniqueProducts.set(item.productId, { id: item.productId, category: item.category });
+  const uniqueProducts = new Map<string, { id: string; categories: string[] }>();
+  for (const item of items) uniqueProducts.set(item.productId, { id: item.productId, categories: item.categories });
 
   const offersByProduct = await attachApplicableOffers([...uniqueProducts.values()], {
     behaviorIn: ['AUTO_APPLIED'],

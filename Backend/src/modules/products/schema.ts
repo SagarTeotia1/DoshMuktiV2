@@ -48,7 +48,7 @@ export const createProductSchema = z.object({
   name: z.string().min(1).max(200),
   slug: z.string().min(2).max(200).regex(/^[a-z0-9-]+$/),
   description: z.array(descriptionBlockSchema).min(1),
-  category: z.string().min(1).max(100),
+  categories: z.array(z.string().min(1).max(100)).min(1, 'At least one category is required').max(5),
   basePrice: z.number().positive().multipleOf(0.01).max(999999),
   compareAtPrice: z.number().positive().multipleOf(0.01).max(999999).nullable().optional(),
   images: z.array(imageObjSchema).default([]),

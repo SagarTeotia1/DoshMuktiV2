@@ -122,9 +122,10 @@ export async function generateMetadata({
   const { product } = data;
   const purposeText = product.purpose.map((p) => PURPOSE_LABELS[p] ?? p).join(', ');
   const title = purposeText ? `${product.name} — For ${purposeText}` : product.name;
+  const primaryCategory = product.categories[0] ?? '';
   const description =
     product.excerpt ||
-    `${product.name} — authentic, ritually energized ${product.category.toLowerCase()}${purposeText ? ` for ${purposeText.toLowerCase()}` : ''}. Vedic astrology guidance included. Free shipping over ₹999.`;
+    `${product.name} — authentic, ritually energized ${primaryCategory.toLowerCase()}${purposeText ? ` for ${purposeText.toLowerCase()}` : ''}. Vedic astrology guidance included. Free shipping over ₹999.`;
   const canonical = `/products/${product.slug}`;
   const image = product.images[0]?.card;
 

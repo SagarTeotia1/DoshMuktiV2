@@ -163,7 +163,7 @@ export interface Product {
   name: string;
   slug: string;
   description: DescriptionBlock[];
-  category: string;
+  categories: string[];
   basePrice: number;
   compareAtPrice: number | null;
   images: Array<{ thumb: string; card: string; full: string }>;

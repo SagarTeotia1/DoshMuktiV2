@@ -177,7 +177,7 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
   // would treat it, not silently keep contributing to eligibility from a stale cart entry.
   const variants = await db.productVariant.findMany({
     where: { id: { in: cart.items.map((i) => i.variantId) }, isActive: true },
-    include: { product: { select: { category: true } } },
+    include: { product: { select: { categories: true } } },
   });
 
   // A cart item can point at a variant that's since gone inactive/deleted (Redis-cached,
@@ -191,7 +191,7 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
       {
         variantId: item.variantId,
         productId: v.productId,
-        category: v.product.category,
+        categories: v.product.categories,
         quantity: item.quantity,
         itemSubtotal: item.price * item.quantity,
       },

@@ -6,7 +6,7 @@ import type { DescriptionBlock } from '@/types/api.types';
 
 interface PreviewData {
   name: string;
-  category: string;
+  categories: string[];
   basePrice: number;
   purpose: string[];
   description: DescriptionBlock[];
@@ -36,7 +36,7 @@ export function ProductPreview({ data }: { data: PreviewData }) {
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9C5A26]">{data.category || 'Category'}</span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9C5A26]">{data.categories.join(' · ') || 'Category'}</span>
           <h3 className="font-heading text-lg font-black text-[#2B1B0C]">{data.name || 'Product Name'}</h3>
 
           {data.purpose.length > 0 && (
