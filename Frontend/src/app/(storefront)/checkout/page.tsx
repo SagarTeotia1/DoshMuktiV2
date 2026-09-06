@@ -4,10 +4,9 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ShieldCheck, Wallet } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { useCart, type CartScope } from '@/hooks/use-cart';
 import { usePincodeCheck } from '@/hooks/use-pincode-check';
-import { useWalletBalance } from '@/hooks/use-wallet-balance';
 import { useRazorpay } from '@/hooks/use-razorpay';
 import { useAuth } from '@/hooks/use-auth';
 import { api, ApiError } from '@/lib/api-client';
@@ -92,8 +91,6 @@ function CheckoutPageContent() {
   }, [user]);
 
   const { isChecking, serviceable } = usePincodeCheck(form.pincode);
-  const { balance: walletBalance } = useWalletBalance(form.customerPhone);
-  const [useWallet, setUseWallet] = useState(false);
 
   const [couponInput, setCouponInput] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
@@ -110,11 +107,9 @@ function CheckoutPageContent() {
   // move before paying, which is exactly the "total isn't going down" gap this closes.
   const shippingFee = cart?.shippingFee ?? (subtotal >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE);
   const autoAppliedDiscount = cart?.autoAppliedDiscount ?? 0;
-  const preRedeemTotal = subtotal + shippingFee - autoAppliedDiscount;
-  // Razorpay requires a non-zero payable amount — never let wallet cover the full total.
-  const walletRedeem = useWallet && walletBalance ? Math.min(walletBalance, Math.max(preRedeemTotal - 1, 0)) : 0;
+  const preDiscountTotal = subtotal + shippingFee - autoAppliedDiscount;
   const couponDiscount = appliedCoupon?.discountAmount ?? 0;
-  const total = Math.max(preRedeemTotal - walletRedeem - couponDiscount, 0);
+  const total = Math.max(preDiscountTotal - couponDiscount, 0);
 
   async function handleApplyCoupon() {
     const code = couponInput.trim();
@@ -171,7 +166,6 @@ function CheckoutPageContent() {
           pincode: form.pincode,
         },
         items: checkoutItems,
-        walletRedeem,
         ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
       };
 
@@ -363,27 +357,6 @@ function CheckoutPageContent() {
             <div className="flex justify-between font-body text-sm text-[#9C5A26] font-semibold">
               <span>Offer Discount</span>
               <span>−{formatCurrency(autoAppliedDiscount)}</span>
-            </div>
-          )}
-
-          {!!walletBalance && walletBalance > 0 && (
-            <label className="flex items-center justify-between gap-2 py-2 border-t border-[#2B1B0C]/10 cursor-pointer">
-              <span className="flex items-center gap-2 font-body text-sm text-[#6B5539]">
-                <Wallet className="w-4 h-4 text-[#9C5A26]" />
-                Use wallet balance ({formatCurrency(walletBalance)})
-              </span>
-              <input
-                type="checkbox"
-                checked={useWallet}
-                onChange={(e) => setUseWallet(e.target.checked)}
-                className="w-4 h-4 accent-[#9C5A26]"
-              />
-            </label>
-          )}
-          {walletRedeem > 0 && (
-            <div className="flex justify-between font-body text-sm text-[#9C5A26] font-semibold">
-              <span>Wallet Redeemed</span>
-              <span>−{formatCurrency(walletRedeem)}</span>
             </div>
           )}
 

@@ -63,7 +63,6 @@ export const productSchema = z.object({
   careInstructions: z.string().nullable(),
   socialProofText: z.string().nullable(),
   tags: z.array(z.string()).default([]),
-  cashbackPercent: z.number().nullable(),
   howToUseVideoUrl: z.string().nullable(),
   testimonialVideos: z.array(testimonialVideoSchema).default([]),
   sidhiPrice: z.number().nullable(),
@@ -78,7 +77,6 @@ export const productSchema = z.object({
           'DISPLAY_MESSAGE',
           'PERCENTAGE_DISCOUNT',
           'FLAT_DISCOUNT',
-          'CASHBACK',
           'FREE_GIFT',
           'BUY_X_GET_Y',
           'FREE_SHIPPING',
@@ -138,7 +136,6 @@ export interface CheckoutInput {
   customerEmail?: string;
   shippingAddress: { line1: string; line2?: string; city: string; state: string; pincode: string; country?: string };
   items: Array<{ variantId: string; quantity: number }>;
-  walletRedeem?: number;
   couponCode?: string;
 }
 
@@ -171,7 +168,6 @@ export interface OrderTrackingResponse {
   subtotal: number;
   shippingFee: number;
   discountAmount: number;
-  walletRedeemed: number;
   total: number;
   items: Array<{
     variantSnapshot: { productName: string; sku: string; attributes?: Record<string, unknown> };
@@ -196,10 +192,6 @@ export interface OrderTrackingResponse {
   payment: { status: string } | null;
   shippingAddress: { line1: string; line2?: string; city: string; state: string; pincode: string; country?: string };
   createdAt: string;
-}
-
-export interface WalletBalanceResponse {
-  balance: number;
 }
 
 export interface Review {

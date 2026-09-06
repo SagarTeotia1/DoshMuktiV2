@@ -7,8 +7,8 @@ export function normalizePhone(phone: string): string {
   return `+91${digits}`;
 }
 
-/** SHA-256(normalized phone) — the identity key for CustomerAddress/RewardPoint/
- * WalletTransaction. Never store the raw phone number in these ledgers. */
+/** SHA-256(normalized phone) — the identity key for CustomerAddress/RewardPoint.
+ * Never store the raw phone number in these ledgers. */
 export function hashPhone(phone: string): string {
   return crypto.createHash('sha256').update(normalizePhone(phone)).digest('hex');
 }

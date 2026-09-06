@@ -124,8 +124,8 @@ const listInclude = {
 // getApplicableOffersForProduct(product, opts?) → OfferWithCoupon[]
 //   Active offers where scope=ALL_PRODUCTS, OR scope=CATEGORY && category matches, OR
 //   scope=SPECIFIC_PRODUCTS && product is linked. Optional server-side behavior/reward
-//   filtering (checkout wants AUTO_APPLIED+non-CASHBACK, wallet wants CASHBACK, the
-//   storefront wants everything active). Coupon relation is joined unconditionally (see
+//   filtering (checkout wants AUTO_APPLIED, the storefront wants everything active).
+//   Coupon relation is joined unconditionally (see
 //   OfferWithCoupon below) so a COUPON_BASED offer carries its coupon's code.
 //
 // attachApplicableOffers(products, opts?) → Map<productId, OfferWithCoupon[]>
@@ -138,7 +138,7 @@ const listInclude = {
 // COUPON_BASED offer's actual code instead of a bare, unusable couponId. Joined
 // unconditionally rather than behind an opt-in flag: Coupon is a small table keyed by
 // an indexed PK, so the extra join is cheap, and both callers of these functions
-// (checkout/wallet resolution included) tolerate an unused extra field just fine — not
+// (checkout resolution included) tolerate an unused extra field just fine — not
 // worth a second code path to shave one join off the checkout hot path.
 export type OfferWithCoupon = Offer & { coupon: { code: string } | null };
 
@@ -410,8 +410,7 @@ export interface AutoAppliedRewardsResult {
   freeItems: Array<{ variantId: string; quantity: number }>;
 }
 
-// Replaces the old inline DISCOUNT/FREE_ITEM loops in checkout/service.ts. CASHBACK is
-// excluded — it stays wallet-only, resolved post-payment via wallet/service.ts. Preserves
+// Replaces the old inline DISCOUNT/FREE_ITEM loops in checkout/service.ts. Preserves
 // exact prior semantics: first-matching-discount-offer-per-item (no stacking across
 // multiple discount offers on one product), one free unit per matching FREE_GIFT offer
 // per order. Eligible-offer-per-item is now resolved through attachApplicableOffers
@@ -437,7 +436,6 @@ export async function resolveAutoAppliedRewardsForCheckout(items: CheckoutLineIt
 
   const offersByProduct = await attachApplicableOffers([...uniqueProducts.values()], {
     behaviorIn: ['AUTO_APPLIED'],
-    excludeReward: ['CASHBACK'],
   });
 
   const isDiscount = (reward: OfferReward) => reward === 'PERCENTAGE_DISCOUNT' || reward === 'FLAT_DISCOUNT';

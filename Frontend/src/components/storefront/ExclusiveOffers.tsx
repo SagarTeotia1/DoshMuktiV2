@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Percent, Tag, Gift, ShoppingBag, Truck, Sparkles, Wallet, Copy, Check } from 'lucide-react';
+import { Percent, Tag, Gift, ShoppingBag, Truck, Sparkles, Copy, Check } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
 import type { Product } from '@/types/api.types';
@@ -14,7 +14,6 @@ const OFFER_ICONS: Record<Offer['reward'], LucideIcon> = {
   DISPLAY_MESSAGE: Sparkles,
   PERCENTAGE_DISCOUNT: Percent,
   FLAT_DISCOUNT: Tag,
-  CASHBACK: Wallet, // filtered out before render — kept for Record exhaustiveness
   FREE_GIFT: Gift,
   BUY_X_GET_Y: ShoppingBag,
   FREE_SHIPPING: Truck,
@@ -50,7 +49,6 @@ const OFFER_CONDITION_FORMATTERS: Record<Offer['reward'], (offer: Offer) => stri
     if (typeof offer.config.amount !== 'number') return null;
     return `${formatCurrency(offer.config.amount)} off your order${minOrderClause(offer.minOrderValue)}`;
   },
-  CASHBACK: () => null,
   FREE_GIFT: (offer) => `Free gift with your order${minOrderClause(offer.minOrderValue)}`,
   BUY_X_GET_Y: (offer) => {
     if (typeof offer.config.buyQuantity !== 'number' || typeof offer.config.getQuantity !== 'number') return null;
@@ -117,13 +115,11 @@ function CouponCode({ code }: { code: string }) {
 }
 
 export function ExclusiveOffers({ offers }: { offers: Product['offers'] }) {
-  // Cashback already has its own dedicated badge elsewhere on the page — showing it a
-  // third time here would just be redundant/contradictory, same reasoning as the badge row.
   // DISPLAY_ONLY and AUTO_APPLIED offers both stay in the badge row above (DISPLAY_ONLY is a
   // lightweight marketing tag, AUTO_APPLIED needs no customer action) — this section is
   // exclusively for offers a customer must actively redeem via a coupon code, and every offer
   // shown here is one not already shown up top, so nothing repeats on the page.
-  const shownOffers = offers.filter((o) => o.reward !== 'CASHBACK' && o.behavior === 'COUPON_BASED');
+  const shownOffers = offers.filter((o) => o.behavior === 'COUPON_BASED');
   if (shownOffers.length === 0) return null;
 
   return (

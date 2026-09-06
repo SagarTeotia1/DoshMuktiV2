@@ -16,7 +16,6 @@ export const checkoutSchema = z.object({
     variantId: z.string().min(1),
     quantity: z.number().int().min(1).max(99),
   })).min(1),
-  walletRedeem: z.number().min(0).max(999999).default(0),
   couponCode: z.string().optional(),
   // Purely to make BIRTHDAY-type coupons functional — no Frontend UI collects this yet,
   // so in practice BIRTHDAY coupons fail findValidatedCoupon's eligibility check unless

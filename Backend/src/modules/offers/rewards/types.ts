@@ -3,12 +3,12 @@ import type { ZodType } from 'zod';
 
 // Uniform interface every reward processor implements — adding a new reward means
 // adding one new file in this directory + one line in registry.ts, never editing a
-// switch statement in checkout/wallet. See CLAUDE.md "no giant switch statements".
+// switch statement in checkout. See CLAUDE.md "no giant switch statements".
 
 export interface RewardContext {
   offer: { id: string; config: unknown };
   // Both optional: FREE_GIFT resolves its own product from config and doesn't need
-  // the cart line item; PERCENTAGE_DISCOUNT/FLAT_DISCOUNT/CASHBACK need itemSubtotal.
+  // the cart line item; PERCENTAGE_DISCOUNT/FLAT_DISCOUNT need itemSubtotal.
   productId?: string;
   itemSubtotal?: number; // price * quantity for the matching line item, when relevant
 }
@@ -16,7 +16,6 @@ export interface RewardContext {
 export interface RewardResult {
   discountAmount?: number;
   freeItems?: Array<{ variantId: string; quantity: number }>;
-  cashbackAmount?: number;
 }
 
 export interface RewardDefinition<TConfig> {

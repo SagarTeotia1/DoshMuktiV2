@@ -27,8 +27,7 @@ model Product {
   howToWear                Json             @default("[]") // ["step 1", "step 2", ...]
   careInstructions         String?          @db.Text
   socialProofText          String? // "Loved by 15 lakh+ customers"
-  tags                     String[]         @default([]) // ["100% Cashback in Wallet", "New", ...] — admin-managed display tags
-  cashbackPercent          Int? // % of paid price credited to wallet when order is marked PAID; null = no cashback
+  tags                     String[]         @default([]) // ["Bestseller", "New", ...] — admin-managed display tags
   howToUseVideoUrl         String? // YouTube/Vimeo/mp4 URL, shown in the "How to Use" section
   testimonialVideos        Json             @default("[]") // TestimonialVideo[] — [{id, videoUrl, posterUrl, caption, views}], shown as "Loved by X customers" row on PDP
   sidhiPrice               Int? // ₹ price for the Sidhi/Energizing service add-on; null = feature hidden. Syncs to a "-SIDHI" ProductVariant — see products/service.ts
@@ -55,7 +54,6 @@ enum OfferReward {
   DISPLAY_MESSAGE // banner-only, no monetary effect
   PERCENTAGE_DISCOUNT
   FLAT_DISCOUNT
-  CASHBACK
   FREE_GIFT
   BUY_X_GET_Y
   FREE_SHIPPING
@@ -67,7 +65,7 @@ enum OfferScope {
   ALL_PRODUCTS // applies store-wide to every product, no explicit links needed
 }
 
-// Universal, reusable offers (e.g. "100% Cashback on First Order") — created once, then
+// Universal, reusable offers (e.g. "Buy 2 Get 1 Free") — created once, then
 // either linked to specific products, matched against a whole Product.category, or applied
 // store-wide, per `scope`. Never delete, only isActive:false.
 // `behavior` decides WHEN the reward activates, `reward` decides WHAT the customer gets —
@@ -77,7 +75,7 @@ enum OfferScope {
 // Adding a new reward is a new file in rewards/, never a new column here.
 // Which offers actually apply to a given product is NOT just `products.some(...)` once scope
 // exists — see offers/service.ts's getApplicableOffersForProduct, the single source of truth
-// every read path (storefront, checkout, wallet, admin) must go through.
+// every read path (storefront, checkout, admin) must go through.
 model Offer {
   id       String        @id @default(cuid())
   title    String
@@ -229,7 +227,6 @@ model Order {
   subtotal             Decimal          @db.Decimal(10, 2)
   shippingFee          Decimal          @db.Decimal(10, 2)
   discountAmount       Decimal          @default(0) @db.Decimal(10, 2)
-  walletRedeemed       Decimal          @default(0) @db.Decimal(10, 2)
   total                Decimal          @db.Decimal(10, 2)
   couponId             String?
   coupon               Coupon?          @relation(fields: [couponId], references: [id])
@@ -393,33 +390,6 @@ enum RewardPointReason {
   MANUAL_GRANT // admin grant
   MANUAL_DEDUCT // admin correction
   EXPIRED // -points on expiry
-}
-
-// ─── Wallet ───────────────────────────────────────────────────────────────────
-
-// Append-only ledger — never UPDATE or DELETE. Rupee-denominated cashback wallet,
-// separate from the points-based RewardPoint above. Keyed on SHA-256(phone), same
-// identity model as CustomerAddress/RewardPoint — no customer accounts exist yet.
-model WalletTransaction {
-  id        String                  @id @default(cuid())
-  phoneHash String // SHA-256 of normalized phone (+91XXXXXXXXXX)
-  orderId   String? // order that earned/spent this — null for manual grants
-  change    Decimal                 @db.Decimal(10, 2) // positive = credited, negative = redeemed/expired
-  balance   Decimal                 @db.Decimal(10, 2) // running total after this entry (denormalized)
-  reason    WalletTransactionReason
-  note      String?
-  createdAt DateTime                @default(now())
-
-  @@index([phoneHash, createdAt])
-  @@index([orderId])
-}
-
-enum WalletTransactionReason {
-  CASHBACK_EARNED // +credited when an order's items with cashbackPercent are marked PAID
-  REDEEMED // -spent against an order total at checkout
-  REDEMPTION_REVERSED // +order cancelled/refunded after redemption — reverses the spend
-  MANUAL_GRANT // admin grant
-  MANUAL_DEDUCT // admin correction
 }
 
 // ─── Reviews ────────────────────────────────────────────────────────────────

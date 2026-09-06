@@ -6,7 +6,6 @@ export const offerRewardSchema = z.enum([
   'DISPLAY_MESSAGE',
   'PERCENTAGE_DISCOUNT',
   'FLAT_DISCOUNT',
-  'CASHBACK',
   'FREE_GIFT',
   'BUY_X_GET_Y',
   'FREE_SHIPPING',

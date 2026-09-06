@@ -5,19 +5,17 @@ import type { RewardContext, RewardDefinition, RewardResult } from './types';
 import { displayMessageReward } from './display-message';
 import { percentageDiscountReward } from './percentage-discount';
 import { flatDiscountReward } from './flat-discount';
-import { cashbackReward } from './cashback';
 import { freeGiftReward } from './free-gift';
 import { buyXGetYReward } from './buy-x-get-y';
 import { freeShippingReward } from './free-shipping';
 
 // The strategy pattern registry — the only place that knows every reward type exists.
 // Adding a new reward: one new file above + one new line here. Nothing else in the
-// codebase (checkout, wallet, offers/schema.ts) should ever switch on OfferReward.
+// codebase (checkout, offers/schema.ts) should ever switch on OfferReward.
 const rewardRegistry: Record<OfferReward, RewardDefinition<any>> = {
   DISPLAY_MESSAGE: displayMessageReward,
   PERCENTAGE_DISCOUNT: percentageDiscountReward,
   FLAT_DISCOUNT: flatDiscountReward,
-  CASHBACK: cashbackReward,
   FREE_GIFT: freeGiftReward,
   BUY_X_GET_Y: buyXGetYReward,
   FREE_SHIPPING: freeShippingReward,

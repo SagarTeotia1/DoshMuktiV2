@@ -79,7 +79,7 @@ export function OfferForm({
     <form onSubmit={handleSubmit(submit)} className="flex flex-col gap-5">
       <div>
         <label className="text-xs font-semibold text-slate-600 mb-1 block">Title</label>
-        <input {...register('title')} placeholder="e.g. 100% Cashback on First Order" className={inputClass} />
+        <input {...register('title')} placeholder="e.g. Buy 2 Get 1 Free" className={inputClass} />
         {errors.title && <p className="text-xs text-red-600 mt-1">{errors.title.message}</p>}
       </div>
 

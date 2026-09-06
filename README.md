@@ -37,7 +37,7 @@ Three independent Node projects, each with its own `package.json` and `.env`. Th
 
 ### Storefront (Frontend)
 - Browsable catalog: purpose/category filters, grid and list views, search, sort.
-- Product detail pages: variants, image gallery, offers, cashback badges, benefits, how-to-wear, reviews, related products.
+- Product detail pages: variants, image gallery, offers, benefits, how-to-wear, reviews, related products.
 - Cart (guest, session-based via `x-session-id`) → **login required at checkout** (phone OTP) → shipping address + live pincode serviceability check → Razorpay payment.
 - Order tracking by order number (`/track/[orderNumber]`), full order history for logged-in customers (`/orders`).
 - Customer profile (`/profile`): name, phone, date of birth (asked once at signup), last used shipping address.
@@ -49,11 +49,11 @@ Three independent Node projects, each with its own `package.json` and `.env`. Th
 - **Inventory**: stock grid with inline edit, CSV import/export, per-variant low-stock threshold.
 - **Orders**: list with status filter, detail view, manual status override with audit log (`OrderStatusLog`).
 - **Reviews**: moderate customer reviews.
-- **Offers**: universal, reusable offers (DISPLAY / FREE_ITEM / CASHBACK / DISCOUNT), toggle per product.
+- **Offers**: universal, reusable offers (DISPLAY / FREE_ITEM / DISCOUNT), toggle per product.
 - Auth: email + password → JWT (12h expiry), stored in a cookie; `middleware.ts` gates all routes except `/login`.
 
 ### Backend (API modules)
-`auth` · `cart` · `chat` · `checkout` · `dashboard` · `inventory` · `offers` · `orders` · `products` · `reviews` · `serviceability` · `upload` · `wallet` · `webhooks`
+`auth` · `cart` · `chat` · `checkout` · `dashboard` · `inventory` · `offers` · `orders` · `products` · `reviews` · `serviceability` · `upload` · `webhooks`
 
 Each module follows `controller.ts` (route handlers) · `service.ts` (business logic, only place Prisma is called) · `schema.ts` (Zod validation) · `routes.ts` (Fastify registration).
 
@@ -100,7 +100,7 @@ Full variable list: `Backend/.env.example`.
 
 Postgres via Prisma, single schema at `Backend/prisma/schema.prisma` (only copy — Frontend/Admin have no schema access):
 
-`Product` · `ProductVariant` · `StockMovement` · `Offer` · `CustomerAddress` · `OtpVerification` · `User` · `OrderSequence` · `Order` · `OrderItem` · `OrderStatusLog` · `Payment` · `Shipment` · `Review` · `Coupon` · `RewardPoint` · `WalletTransaction`
+`Product` · `ProductVariant` · `StockMovement` · `Offer` · `CustomerAddress` · `OtpVerification` · `User` · `OrderSequence` · `Order` · `OrderItem` · `OrderStatusLog` · `Payment` · `Shipment` · `Review` · `Coupon` · `RewardPoint`
 
 ## Non-Negotiable Rules
 

@@ -338,7 +338,7 @@ async function assertNoDuplicateName(name: string, excludeId?: string) {
 
 // Keeps a real ProductVariant in sync with Product.sidhiPrice, so the Sidhi/Energizing
 // add-on flows through cart/checkout/stock like any other SKU — never delete, only deactivate,
-// matching the append-only convention used for StockMovement/RewardPoint/WalletTransaction.
+// matching the append-only convention used for StockMovement/RewardPoint.
 async function syncSidhiVariant(productId: string, sidhiPrice: number | null | undefined) {
   if (sidhiPrice === undefined) return;
   const existing = await db.productVariant.findFirst({

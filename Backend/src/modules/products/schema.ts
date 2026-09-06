@@ -60,7 +60,6 @@ export const createProductSchema = z.object({
   careInstructions: z.string().optional().nullable(),
   socialProofText: z.string().max(100).optional().nullable(),
   tags: z.array(z.string().min(1).max(40)).max(6).default([]),
-  cashbackPercent: z.number().int().min(0).max(100).nullable().optional(),
   howToUseVideoUrl: z.string().url().max(500).nullable().optional(),
   testimonialVideos: z.array(testimonialVideoSchema).default([]),
   sidhiPrice: z.number().int().positive().max(999999).nullable().optional(),

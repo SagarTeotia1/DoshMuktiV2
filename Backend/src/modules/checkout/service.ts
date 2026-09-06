@@ -9,7 +9,6 @@ import {
   FREE_SHIPPING_ABOVE,
   RESERVATION_MINUTES,
 } from "../../shared/constants/purposes";
-import { redeemInCheckoutTx } from "../wallet/service";
 import { resolveAutoAppliedRewardsForCheckout } from "../offers/service";
 import {
   findValidatedCoupon,
@@ -149,8 +148,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
   // Discount + free-gift resolution — automatic, no coupon code. Preserves prior semantics:
   // first-matching-discount-offer-per-item (no stacking), one free unit per matching
   // FREE_GIFT offer per order. See offers/service.ts + offers/rewards/ for the strategy
-  // pattern behind this — CASHBACK is excluded, it stays wallet-only, resolved post-payment.
-  // Eligibility is resolved scope-aware (ALL_PRODUCTS/CATEGORY/SPECIFIC_PRODUCTS) via
+  // pattern behind this. Eligibility is resolved scope-aware (ALL_PRODUCTS/CATEGORY/SPECIFIC_PRODUCTS) via
   // attachApplicableOffers inside resolveAutoAppliedRewardsForCheckout.
   const autoRewards =
     await resolveAutoAppliedRewardsForCheckout(checkoutLineItems);
@@ -215,7 +213,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
         const orderNumber = await generateOrderNumber(tx);
         const orderTotal = subtotal + shippingFee - totalDiscount;
 
-        let order = await tx.order.create({
+        const order = await tx.order.create({
           data: {
             orderNumber,
             userId,
@@ -265,20 +263,6 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
           },
         });
 
-        const redeemed = await redeemInCheckoutTx(
-          tx,
-          input.customerPhone,
-          input.walletRedeem,
-          orderTotal,
-          order.id,
-        );
-        if (redeemed > 0) {
-          order = await tx.order.update({
-            where: { id: order.id },
-            data: { walletRedeemed: redeemed, total: orderTotal - redeemed },
-          });
-        }
-
         const payment = await tx.payment.create({
           data: {
             orderId: order.id,
@@ -294,7 +278,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
         isolationLevel: "Serializable",
         // Prisma's defaults (maxWait 2s, timeout 5s) are too tight for this transaction's
         // full round-trip count (stock reserve + coupon reservation + order/items create +
-        // wallet redeem + payment create) against Neon's serverless Postgres, where a
+        // payment create) against Neon's serverless Postgres, where a
         // cold-started compute alone can eat several seconds on the first query. Hitting
         // the default timeout closes the transaction mid-flight — any later query against
         // it (e.g. payment.create) then fails with P2028 "Transaction not found", even

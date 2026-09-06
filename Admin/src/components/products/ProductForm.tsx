@@ -32,7 +32,6 @@ const productFormSchema = z.object({
   purpose: z.array(z.enum(PURPOSE_IDS)).default([]),
   badge: z.string().optional(),
   tags: z.array(z.string().min(1).max(40)).max(6).default([]),
-  cashbackPercent: z.coerce.number().min(0).max(100).default(0), // 0 = no cashback, mapped to null on submit
   featured: z.boolean().default(false),
   status: z.enum(PRODUCT_STATUSES).optional(),
   images: z.array(imageSchema).default([]),
@@ -52,9 +51,8 @@ type FormShape = z.infer<typeof productFormSchema>;
 // howToWear is stored internally as {text}[] because react-hook-form's
 // useFieldArray requires array items to be objects — flattened to string[]
 // at the submit boundary so consumers/Backend only ever see string[].
-export type ProductFormValues = Omit<FormShape, 'howToWear' | 'cashbackPercent' | 'compareAtPrice' | 'sidhiPrice' | 'gstRate'> & {
+export type ProductFormValues = Omit<FormShape, 'howToWear' | 'compareAtPrice' | 'sidhiPrice' | 'gstRate'> & {
   howToWear: string[];
-  cashbackPercent: number | null;
   compareAtPrice: number | null;
   sidhiPrice: number | null;
   gstRate: number | null;
@@ -94,7 +92,6 @@ export function ProductForm({
       purpose: (defaultValues?.purpose as (typeof PURPOSE_IDS)[number][]) ?? [],
       badge: defaultValues?.badge ?? '',
       tags: defaultValues?.tags ?? [],
-      cashbackPercent: defaultValues?.cashbackPercent ?? 0,
       featured: defaultValues?.featured ?? false,
       status: defaultValues?.status,
       images: defaultValues?.images ?? [],
@@ -166,7 +163,6 @@ export function ProductForm({
     onSubmit({
       ...values,
       howToWear: values.howToWear.map((s) => s.text),
-      cashbackPercent: values.cashbackPercent > 0 ? values.cashbackPercent : null,
       compareAtPrice: values.compareAtPrice > 0 ? values.compareAtPrice : null,
       sidhiPrice: values.sidhiPrice > 0 ? values.sidhiPrice : null,
       gstRate: values.gstRate > 0 ? values.gstRate : null,
@@ -338,7 +334,7 @@ export function ProductForm({
                   addTag();
                 }
               }}
-              placeholder="e.g. 100% Cashback in Wallet"
+              placeholder="e.g. Bestseller"
               className={inputClass}
               disabled={(selectedTags ?? []).length >= 6}
             />
@@ -351,14 +347,6 @@ export function ProductForm({
               Add
             </button>
           </div>
-        </div>
-
-        <div>
-          <label className="text-xs font-semibold text-slate-600 mb-1 block">
-            Wallet Cashback % <span className="text-slate-400 font-normal">(0 = no cashback; credited to customer wallet when order is marked paid)</span>
-          </label>
-          <input type="number" min={0} max={100} step={1} {...register('cashbackPercent')} className={`${inputClass} max-w-[140px]`} />
-          {errors.cashbackPercent && <p className="text-xs text-red-600 mt-1">{errors.cashbackPercent.message}</p>}
         </div>
 
         <div>

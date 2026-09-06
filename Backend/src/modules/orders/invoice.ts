@@ -156,9 +156,6 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
       const discount = Number(order.discountAmount);
       if (discount > 0) writeTotalRow('Discount', `- ${formatCurrency(order.discountAmount)}`);
 
-      const walletRedeemed = Number(order.walletRedeemed);
-      if (walletRedeemed > 0) writeTotalRow('Wallet Redeemed', `- ${formatCurrency(order.walletRedeemed)}`);
-
       // GST is an inclusive breakup of amounts already counted in Subtotal above — these
       // two rows are informational only and never change the Total. Omitted entirely when
       // no item on the order has a gstRate set (showing "GST: Rs. 0.00" would be misleading).

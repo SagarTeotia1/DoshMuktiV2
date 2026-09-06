@@ -15,7 +15,6 @@ interface SeedProduct {
   badge?: string;
   featured?: boolean;
   tags?: string[];
-  cashbackPercent?: number;
   compareAtPrice?: number;
 }
 
@@ -115,7 +114,6 @@ const PRODUCTS: SeedProduct[] = [
     badge: 'Bestseller',
     featured: true,
     tags: ['Premium Pick'],
-    cashbackPercent: 10,
   },
   {
     name: 'Digvijay Havan Powder',
@@ -148,7 +146,6 @@ const PRODUCTS: SeedProduct[] = [
     description: 'A handcrafted Vastu tree combining Pyrite, Rose Quartz and Seven Chakra stones — a multi-purpose energy piece for home or workspace.',
     featured: true,
     tags: ['Trending', 'GenZ Favorite'],
-    cashbackPercent: 15,
   },
   {
     name: 'Vahan Suraksha Kavach',
@@ -172,8 +169,7 @@ const PRODUCTS: SeedProduct[] = [
     description: 'A classic Feng Shui money turtle, placed near the entrance or workspace to attract steady wealth and career stability.',
     badge: 'Bestseller',
     featured: true,
-    tags: ['100% Cashback in Wallet', 'Bestseller'],
-    cashbackPercent: 100,
+    tags: ['Bestseller'],
   },
 
   // ─── Rudraksha / Kada ─────────────────────────────────────────────────────
@@ -214,7 +210,6 @@ const PRODUCTS: SeedProduct[] = [
     description: 'The most widely worn rudraksha — 5 Mukhi is associated with balance, wellbeing and everyday protection.',
     featured: true,
     tags: ['Most Loved'],
-    cashbackPercent: 20,
   },
   {
     name: '6 Mukhi Rudraksha',
@@ -313,7 +308,6 @@ const PRODUCTS: SeedProduct[] = [
     description: 'The stone of unconditional love — Rose Quartz is worn to open the heart and deepen compassion in relationships.',
     featured: true,
     tags: ['GenZ Favorite'],
-    cashbackPercent: 10,
   },
   {
     name: 'Golden Pyrite Bracelet',
@@ -366,7 +360,6 @@ const PRODUCTS: SeedProduct[] = [
     purpose: ['wealth'],
     description: 'A carved Pyrite turtle figurine — a Vastu favorite for slow, steady wealth accumulation.',
     tags: ['Wealth Pick'],
-    cashbackPercent: 15,
     featured: true,
   },
   {
@@ -397,7 +390,7 @@ const DUMMY_REVIEWS: Array<{ productSlug: string; customerName: string; rating: 
     customerName: 'Ananya R.',
     rating: 5,
     title: 'Actually love this on my desk',
-    body: 'Ordered this for my study table and the cashback landed in my wallet within a day of delivery. Didn\'t expect that honestly, felt like a proper reward not just a gimmick.',
+    body: 'Ordered this for my study table and it arrived within a day, packaged really neatly. Feels like a proper piece, not just a gimmick.',
   },
   {
     productSlug: 'money-magnet-turtle',
@@ -491,7 +484,6 @@ async function main() {
         benefits: [],
         howToWear: [],
         tags: p.tags ?? [],
-        cashbackPercent: p.cashbackPercent ?? null,
         variants: {
           create: [
             {

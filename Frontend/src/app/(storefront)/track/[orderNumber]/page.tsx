@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
-import { CheckCircle2, Package, Truck, Home, MapPin, Phone, Download, ExternalLink, Wallet, XCircle, RotateCcw } from 'lucide-react';
+import { CheckCircle2, Package, Truck, Home, MapPin, Phone, Download, ExternalLink, XCircle, RotateCcw } from 'lucide-react';
 import { api, invoiceUrl } from '@/lib/api-client';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ORDER_STATUS_LABELS } from '@/lib/constants';
@@ -251,15 +251,6 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ ord
               <div className="flex justify-between font-body text-sm text-[#9C5A26] font-semibold">
                 <span>Discount</span>
                 <span>&minus;{formatCurrency(order.discountAmount)}</span>
-              </div>
-            )}
-            {order.walletRedeemed > 0 && (
-              <div className="flex justify-between font-body text-sm text-[#9C5A26] font-semibold">
-                <span className="flex items-center gap-1.5">
-                  <Wallet className="w-3.5 h-3.5" />
-                  Wallet Redeemed
-                </span>
-                <span>&minus;{formatCurrency(order.walletRedeemed)}</span>
               </div>
             )}
             <div className="flex justify-between font-heading font-bold text-lg text-[#2B1B0C] pt-3 border-t border-[#2B1B0C]/10">

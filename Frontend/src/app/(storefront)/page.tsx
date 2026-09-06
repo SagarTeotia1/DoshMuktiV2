@@ -1,5 +1,4 @@
 import { HeroCarousel } from '@/components/storefront/HeroCarousel';
-import { CashbackStrip } from '@/components/storefront/CashbackStrip';
 import { PurposeGrid } from '@/components/storefront/PurposeGrid';
 import { TrustBar } from '@/components/storefront/TrustBar';
 import { ProductRail } from '@/components/storefront/ProductRail';
@@ -61,7 +60,6 @@ export default async function LandingPage() {
     <>
       <CategoryStrip items={categoryThumbs} />
       <HeroCarousel banners={banners} />
-      <CashbackStrip />
       <PurposeGrid />
 
       <ProductRail title="Handpicked This Week" products={featured} tightTop tightBottom centered />

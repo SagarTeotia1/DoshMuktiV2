@@ -4,7 +4,6 @@ export type OfferReward =
   | 'DISPLAY_MESSAGE'
   | 'PERCENTAGE_DISCOUNT'
   | 'FLAT_DISCOUNT'
-  | 'CASHBACK'
   | 'FREE_GIFT'
   | 'BUY_X_GET_Y'
   | 'FREE_SHIPPING';
@@ -20,10 +19,6 @@ export interface PercentageDiscountConfig {
 
 export interface FlatDiscountConfig {
   amount: number;
-}
-
-export interface CashbackConfig {
-  percent: number; // 0-100
 }
 
 export interface FreeGiftConfig {
@@ -46,7 +41,6 @@ export interface OfferConfigMap {
   DISPLAY_MESSAGE: DisplayMessageConfig;
   PERCENTAGE_DISCOUNT: PercentageDiscountConfig;
   FLAT_DISCOUNT: FlatDiscountConfig;
-  CASHBACK: CashbackConfig;
   FREE_GIFT: FreeGiftConfig;
   BUY_X_GET_Y: BuyXGetYConfig;
   FREE_SHIPPING: FreeShippingConfig;
@@ -182,7 +176,6 @@ export interface Product {
   careInstructions: string | null;
   socialProofText: string | null;
   tags: string[];
-  cashbackPercent: number | null;
   howToUseVideoUrl: string | null;
   testimonialVideos: TestimonialVideo[];
   sidhiPrice: number | null;

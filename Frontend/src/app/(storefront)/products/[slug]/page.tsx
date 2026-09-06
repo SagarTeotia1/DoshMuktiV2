@@ -2,7 +2,7 @@ import { cloneElement, type ReactElement } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Gem, Truck, ShieldCheck, RotateCcw, Sparkles, Wallet, Star, Gift } from 'lucide-react';
+import { Gem, Truck, ShieldCheck, RotateCcw, Sparkles, Star, Gift } from 'lucide-react';
 import { Accordion } from '@/components/storefront/Accordion';
 import Image from 'next/image';
 import { AddToCart } from './add-to-cart';
@@ -27,7 +27,6 @@ const OFFER_REWARD_FORMATTERS: Record<Offer['reward'], (offer: Offer) => string>
   DISPLAY_MESSAGE: (offer) => (typeof offer.config.bannerText === 'string' && offer.config.bannerText) || offer.title,
   PERCENTAGE_DISCOUNT: (offer) => (typeof offer.config.percent === 'number' ? `${offer.config.percent}% OFF` : offer.title),
   FLAT_DISCOUNT: (offer) => (typeof offer.config.amount === 'number' ? `${formatCurrency(offer.config.amount)} OFF` : offer.title),
-  CASHBACK: (offer) => (typeof offer.config.percent === 'number' ? `${offer.config.percent}% Cashback` : offer.title),
   FREE_GIFT: () => 'Free Gift',
   BUY_X_GET_Y: (offer) =>
     typeof offer.config.buyQuantity === 'number' && typeof offer.config.getQuantity === 'number'
@@ -70,10 +69,6 @@ const POLICY_SECTIONS = [
   {
     title: 'Returns & Replacement',
     content: 'Damaged or incorrect items can be reported within 48 hours of delivery for a free replacement.',
-  },
-  {
-    title: 'Cashback Policy',
-    content: 'Cashback, where applicable, is credited to your account within 7 days of order delivery.',
   },
   {
     title: 'Need Help?',
@@ -158,13 +153,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const mrp = product.compareAtPrice && product.compareAtPrice > price ? product.compareAtPrice : null;
   const discountPct = mrp ? Math.round(((mrp - price) / mrp) * 100) : null;
 
-  // Cashback is already shown once via cashbackPercent's own badge — a CASHBACK-reward Offer
-  // saying the same thing in a second badge would just contradict it if the numbers differ.
   // COUPON_BASED offers live exclusively in the Exclusive Offers card section below (they need
   // the code + copy button, which doesn't fit this compact badge), so this row only carries
   // AUTO_APPLIED (applies with no action needed) and DISPLAY_ONLY (pure marketing tag) —
   // keeping every offer in exactly one place on the page.
-  const displayOffers = product.offers.filter((o) => o.reward !== 'CASHBACK' && o.behavior !== 'COUPON_BASED');
+  const displayOffers = product.offers.filter((o) => o.behavior !== 'COUPON_BASED');
 
   type DetailSection = { title: string; content: React.ReactNode };
   const rawDetailSections: Array<DetailSection | false | '' | null> = [
@@ -315,27 +308,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           </div>
 
           {/* Offer badges — every offer rendered the same way, wrapping to as many rows as needed.
-              Cashback % (if set) takes the first slot. An odd badge out spans the full row
-              instead of leaving an empty half-slot next to it. */}
+              An odd badge out spans the full row instead of leaving an empty half-slot next to it. */}
           {(() => {
-            const cashbackBadge = !!product.cashbackPercent ? (
-              <div key="cashback" className="brutal-border flex items-center gap-2 bg-[#2B1B0C] text-[#E6D3AE] rounded-lg px-3 py-3 shadow-[2px_2px_0_0_#9C5A26]">
-                <Wallet className="w-4 h-4 text-[#C9863F] flex-shrink-0" />
-                <div className="leading-tight">
-                  <p className="font-heading font-black text-[11px] uppercase tracking-wide">{product.cashbackPercent}% Cashback</p>
-                  <p className="font-body text-[10px] text-[#C9863F]">on first order</p>
-                </div>
+            const badges: ReactElement<{ className: string }>[] = displayOffers.map((offer) => (
+              <div key={offer.id} className="brutal-border flex items-center gap-2 bg-[#2B1B0C] text-[#E6D3AE] rounded-lg px-3 py-3 shadow-[2px_2px_0_0_#9C5A26]">
+                <Gift className="w-4 h-4 text-[#C9863F] flex-shrink-0" />
+                <p className="font-heading font-black text-[11px] uppercase tracking-wide leading-tight">{formatOfferBadgeText(offer)}</p>
               </div>
-            ) : null;
-            const badges: ReactElement<{ className: string }>[] = [
-              cashbackBadge,
-              ...displayOffers.map((offer) => (
-                <div key={offer.id} className="brutal-border flex items-center gap-2 bg-[#2B1B0C] text-[#E6D3AE] rounded-lg px-3 py-3 shadow-[2px_2px_0_0_#9C5A26]">
-                  <Gift className="w-4 h-4 text-[#C9863F] flex-shrink-0" />
-                  <p className="font-heading font-black text-[11px] uppercase tracking-wide leading-tight">{formatOfferBadgeText(offer)}</p>
-                </div>
-              )),
-            ].filter((b): b is ReactElement<{ className: string }> => b !== null);
+            ));
             const isLastOdd = badges.length % 2 === 1;
 
             return (

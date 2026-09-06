@@ -1,7 +1,6 @@
 import { db } from '../../shared/db/client';
 import { sendOrderConfirmation } from '../../shared/integrations/resend/client';
 import { createShipment } from '../../shared/integrations/delhivery/client';
-import { creditCashbackForOrder } from '../wallet/service';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
 
@@ -34,10 +33,6 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
       statusLog: { create: { from: 'PENDING_PAYMENT', to: 'PAID', createdBy: 'system' } },
     },
   });
-
-  // Credited on PAID rather than DELIVERED — simpler, matches this store's guest-checkout
-  // trust model. Cheap DB writes, safe to await inline (unlike the network calls below).
-  await creditCashbackForOrder(payment.orderId);
 
   // Fire-and-forget — never block webhook response on email/shipment calls
   if (payment.order.customerEmail) {

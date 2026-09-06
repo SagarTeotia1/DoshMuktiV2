@@ -30,7 +30,6 @@ export const OFFER_REWARDS: Array<{ value: OfferReward; label: string }> = [
   { value: 'DISPLAY_MESSAGE', label: 'Display Message' },
   { value: 'PERCENTAGE_DISCOUNT', label: 'Percentage Discount' },
   { value: 'FLAT_DISCOUNT', label: 'Flat Discount' },
-  { value: 'CASHBACK', label: 'Cashback' },
   { value: 'FREE_GIFT', label: 'Free Gift' },
   { value: 'BUY_X_GET_Y', label: 'Buy X Get Y' },
   { value: 'FREE_SHIPPING', label: 'Free Shipping' },
@@ -53,7 +52,7 @@ export const offerFormSchema = z
   .object({
     title: z.string().min(1, 'Required'),
     behavior: z.enum(['DISPLAY_ONLY', 'AUTO_APPLIED', 'COUPON_BASED']),
-    reward: z.enum(['DISPLAY_MESSAGE', 'PERCENTAGE_DISCOUNT', 'FLAT_DISCOUNT', 'CASHBACK', 'FREE_GIFT', 'BUY_X_GET_Y', 'FREE_SHIPPING']),
+    reward: z.enum(['DISPLAY_MESSAGE', 'PERCENTAGE_DISCOUNT', 'FLAT_DISCOUNT', 'FREE_GIFT', 'BUY_X_GET_Y', 'FREE_SHIPPING']),
     couponId: z.string().optional(),
     // Top-level spend-threshold condition on the offer itself (behavior-scoped, not
     // reward-scoped) — deliberately named differently from the `minOrderValue` field
@@ -66,7 +65,7 @@ export const offerFormSchema = z
     productIds: z.array(z.string()).default([]), // only meaningful when scope === 'SPECIFIC_PRODUCTS'; zero is a valid, unlinked state
     // DISPLAY_MESSAGE
     bannerText: z.string().optional(),
-    // PERCENTAGE_DISCOUNT / CASHBACK share `percent`
+    // PERCENTAGE_DISCOUNT's `percent`
     percent: z.coerce.number().min(0).max(100).optional(),
     // PERCENTAGE_DISCOUNT
     maxDiscount: z.coerce.number().min(0).optional(),
@@ -93,9 +92,6 @@ export const offerFormSchema = z
         // Backend requires amount > 0 (z.number().positive()) — 0 is rejected server-side,
         // so it must be flagged here too or the form submits a config the backend 400s on.
         if (!data.amount || data.amount <= 0) ctx.addIssue({ path: ['amount'], code: z.ZodIssueCode.custom, message: 'Must be greater than 0' });
-        break;
-      case 'CASHBACK':
-        if (data.percent === undefined) ctx.addIssue({ path: ['percent'], code: z.ZodIssueCode.custom, message: 'Required' });
         break;
       case 'FREE_GIFT':
         if (!data.freeGiftProductId) ctx.addIssue({ path: ['freeGiftProductId'], code: z.ZodIssueCode.custom, message: 'Required' });
@@ -134,8 +130,6 @@ export function buildOfferConfig(values: OfferFormShape): OfferConfig {
       return { percent: values.percent!, ...(values.maxDiscount ? { maxDiscount: values.maxDiscount } : {}) };
     case 'FLAT_DISCOUNT':
       return { amount: values.amount! };
-    case 'CASHBACK':
-      return { percent: values.percent! };
     case 'FREE_GIFT':
       return { productId: values.freeGiftProductId! };
     case 'BUY_X_GET_Y':
@@ -171,8 +165,6 @@ export function offerToFormDefaults(offer?: Offer): Partial<OfferFormShape> {
       return { ...base, percent: offer.config.percent, maxDiscount: offer.config.maxDiscount };
     case 'FLAT_DISCOUNT':
       return { ...base, amount: offer.config.amount };
-    case 'CASHBACK':
-      return { ...base, percent: offer.config.percent };
     case 'FREE_GIFT':
       return { ...base, freeGiftProductId: offer.config.productId };
     case 'BUY_X_GET_Y':
