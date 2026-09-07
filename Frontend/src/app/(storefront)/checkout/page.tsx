@@ -76,6 +76,9 @@ function InlineLogin({
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
+  // Only known once verify actually fails with PROFILE_REQUIRED (new phone, no account
+  // yet) — an existing customer never sees a name field at all, just phone -> OTP.
+  const [needsName, setNeedsName] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const cooldownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -119,6 +122,7 @@ function InlineLogin({
   async function handleOtpSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!/^\d{4,6}$/.test(otp)) return toast.error('Enter the OTP');
+    if (needsName && !name.trim()) return toast.error('Enter your name');
 
     setSubmitting(true);
     try {
@@ -127,7 +131,8 @@ function InlineLogin({
       // re-renders the real form in place, same page, same scroll position.
     } catch (err) {
       if (isProfileRequired(err)) {
-        toast.error('New here — enter your name above and verify again');
+        setNeedsName(true);
+        toast.error("New here — what's your name?");
       } else {
         toast.error('Invalid or expired OTP');
       }
@@ -151,13 +156,16 @@ function InlineLogin({
           className={`${inputClass} disabled:opacity-60 disabled:bg-[#2B1B0C]/5`}
         />
 
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Full Name (if you're new here)"
-          className={inputClass}
-        />
+        {needsName && (
+          <input
+            type="text"
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Full Name"
+            className={inputClass}
+          />
+        )}
 
         {step === 'otp' && (
           <>
