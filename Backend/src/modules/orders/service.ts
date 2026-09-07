@@ -1,5 +1,5 @@
 import { db } from '../../shared/db/client';
-import type { OrderStatus } from '@prisma/client';
+import { Prisma, type OrderStatus } from '@prisma/client';
 import {
   createShipment,
   fetchShippingLabel,
@@ -11,12 +11,42 @@ import {
 import { refundPayment } from '../../shared/integrations/razorpay/client';
 import { logger } from '../../shared/logger/pino';
 import { addItemToCart } from '../cart/service';
+import { releaseCouponUsageTx } from '../coupons/service';
+import { invalidateProductCaches } from '../products/service';
 
 export class OrderNotResumableError extends Error {
   constructor() {
     super('This order is no longer pending payment.');
     this.name = 'OrderNotResumableError';
   }
+}
+
+// Shared by resumeOrder below and jobs/release-holds.ts — both need to undo the exact
+// same atomic stock deduction that initiateCheckout makes at order-creation time (see
+// checkout/service.ts), not just flip a status flag. Never call this on anything but
+// a still-PENDING_PAYMENT order — it unconditionally restores stock as if a real
+// reservation is being given up.
+export async function cancelPendingOrderTx(
+  tx: Prisma.TransactionClient,
+  order: { id: string; status: OrderStatus; couponId: string | null; items: Array<{ variantId: string; quantity: number }> },
+  note: string,
+  createdBy: string
+): Promise<void> {
+  for (const item of order.items) {
+    await tx.$executeRaw`
+      UPDATE "ProductVariant" SET "stockQuantity" = "stockQuantity" + ${item.quantity} WHERE id = ${item.variantId}
+    `;
+    await tx.stockMovement.create({
+      data: { variantId: item.variantId, change: item.quantity, reason: 'RESERVATION_RELEASED', orderId: order.id, createdBy },
+    });
+  }
+  if (order.couponId) {
+    await releaseCouponUsageTx(tx, order.couponId);
+  }
+  await tx.order.update({
+    where: { id: order.id },
+    data: { status: 'CANCELLED', statusLog: { create: { from: order.status, to: 'CANCELLED', createdBy, note } } },
+  });
 }
 
 // A cancelled/failed Razorpay payment left the order stuck at PENDING_PAYMENT with no
@@ -26,10 +56,21 @@ export class OrderNotResumableError extends Error {
 // Item-level failures (stock sold out, variant deactivated since) are skipped rather
 // than aborting the whole resume — better to let the customer see partial results and
 // adjust than to block them entirely because one line item is now unavailable.
+//
+// Cancels the old order FIRST, before touching the cart — initiateCheckout deducts
+// stockQuantity at order creation, not at payment capture, so the stuck order is still
+// holding a real reservation. Without releasing it here, the customer's own abandoned
+// attempt could make their retry fail as "out of stock" against nothing but their own
+// earlier hold (worst case if stock is down to the last unit), or silently double-lock
+// the same units until release-holds' cron eventually notices — which assumes that
+// cron is even wired up in this deploy.
 export async function resumeOrder(orderNumber: string, sessionId: string): Promise<{ addedCount: number; skippedCount: number }> {
   const order = await db.order.findUnique({ where: { orderNumber }, include: { items: true } });
   if (!order) throw new Error('Order not found');
   if (order.status !== 'PENDING_PAYMENT') throw new OrderNotResumableError();
+
+  await db.$transaction((tx) => cancelPendingOrderTx(tx, order, 'Cancelled to resume payment', 'system'));
+  await invalidateProductCaches();
 
   let addedCount = 0;
   let skippedCount = 0;

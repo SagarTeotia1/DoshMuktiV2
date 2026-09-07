@@ -135,8 +135,16 @@ export async function updateItemQuantity(
     return saveCart(cart);
   }
 
+  // item.maxStock is a snapshot from whenever this line was added to the cart — real
+  // stock can drop (someone else buys it, an admin adjusts inventory) any time after
+  // that, so clamping against the stale cached number let a customer raise quantity
+  // on an item that's actually sold out since. Re-checking live stock here matches
+  // what addItemToCart already enforces on a fresh add.
   const item = cart.items[index]!;
-  cart.items[index] = { ...item, quantity: Math.min(quantity, item.maxStock) };
+  const variant = await db.productVariant.findFirst({ where: { id: variantId, isActive: true }, select: { stockQuantity: true } });
+  if (!variant || variant.stockQuantity <= 0) throw new OutOfStockError(variantId);
+
+  cart.items[index] = { ...item, maxStock: variant.stockQuantity, quantity: Math.min(quantity, variant.stockQuantity) };
   return saveCart(cart);
 }
 

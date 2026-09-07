@@ -2,7 +2,8 @@
 
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api-client';
+import { toast } from 'sonner';
+import { api, ApiError } from '@/lib/api-client';
 import { getSessionId, getBuyNowSessionId } from '@/lib/session';
 import type { CartResponse } from '@/types/api.types';
 
@@ -38,6 +39,13 @@ export function useCart(scope: CartScope = 'cart') {
     mutationFn: ({ variantId, quantity }: { variantId: string; quantity: number }) =>
       api.patch<CartResponse>(`/api/cart/items/${variantId}`, { quantity }, sessionHeaders(scope)),
     onSuccess: (data) => queryClient.setQueryData(queryKey, data),
+    // Real stock can drop between when an item was added and when the customer taps
+    // "+" on it — the request then fails with OUT_OF_STOCK, and without this the click
+    // just silently did nothing (no optimistic update to roll back, no error surfaced).
+    onError: (err) => {
+      toast.error(err instanceof ApiError && err.body.code === 'OUT_OF_STOCK' ? 'No more of this item in stock' : 'Could not update quantity — try again');
+      queryClient.invalidateQueries({ queryKey });
+    },
   });
 
   const removeMutation = useMutation({

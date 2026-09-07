@@ -49,8 +49,13 @@ export async function updateItemHandler(req: FastifyRequest, reply: FastifyReply
   const parsed = updateQuantitySchema.safeParse(req.body);
   if (!parsed.success) return reply.code(400).send({ error: 'Invalid input' });
 
-  const cart = await updateItemQuantity(sessionId, variantId, parsed.data.quantity);
-  return cartResponse(cart, reply);
+  try {
+    const cart = await updateItemQuantity(sessionId, variantId, parsed.data.quantity);
+    return cartResponse(cart, reply);
+  } catch (err) {
+    if (err instanceof OutOfStockError) return reply.code(409).send({ error: 'Item out of stock', code: 'OUT_OF_STOCK', variantId: err.variantId });
+    throw err;
+  }
 }
 
 export async function removeItemHandler(req: FastifyRequest, reply: FastifyReply) {
