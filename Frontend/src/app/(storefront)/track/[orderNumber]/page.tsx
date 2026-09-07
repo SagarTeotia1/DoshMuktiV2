@@ -1,9 +1,10 @@
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
-import { CheckCircle2, Package, Truck, Home, MapPin, Phone, Download, ExternalLink, XCircle, RotateCcw } from 'lucide-react';
+import { CheckCircle2, Package, Truck, Home, MapPin, Phone, Download, ExternalLink, XCircle, RotateCcw, CreditCard } from 'lucide-react';
 import { api, invoiceUrl } from '@/lib/api-client';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ORDER_STATUS_LABELS } from '@/lib/constants';
+import { CompletePaymentButton } from './complete-payment-button';
 import type { OrderTrackingResponse } from '@/types/api.types';
 
 async function getOrder(orderNumber: string): Promise<OrderTrackingResponse | null> {
@@ -24,6 +25,7 @@ const STEPS = [
 ] as const;
 
 const EXCEPTION_STATUS: Record<string, { label: string; icon: typeof XCircle; tone: string }> = {
+  PENDING_PAYMENT: { label: 'Payment wasn’t completed for this order', icon: CreditCard, tone: 'text-[#9C5A26] border-[#9C5A26]/30 bg-[#9C5A26]/5' },
   CANCELLED: { label: 'This order was cancelled', icon: XCircle, tone: 'text-brand-alert border-brand-alert/30 bg-brand-alert/5' },
   RETURN_REQUESTED: { label: 'Return requested — we’ll pick this up soon', icon: RotateCcw, tone: 'text-[#9C5A26] border-[#9C5A26]/30 bg-[#9C5A26]/5' },
   REFUNDED: { label: 'This order was refunded', icon: RotateCcw, tone: 'text-[#6B5539] border-[#2B1B0C]/15 bg-[#2B1B0C]/[0.03]' },
@@ -130,9 +132,10 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ ord
       {/* Status — either the happy-path stepper, or a clear exception banner */}
       <div className="bg-white border border-[#2B1B0C] rounded-2xl p-5 sm:p-6 mb-6">
         {exception ? (
-          <div className={`flex items-center gap-3 rounded-xl border px-4 py-3.5 ${exception.tone}`}>
+          <div className={`flex items-center gap-3 flex-wrap rounded-xl border px-4 py-3.5 ${exception.tone}`}>
             <exception.icon className="w-5 h-5 flex-shrink-0" />
-            <p className="font-body font-bold text-sm">{exception.label}</p>
+            <p className="font-body font-bold text-sm flex-1 min-w-0">{exception.label}</p>
+            {order.status === 'PENDING_PAYMENT' && <CompletePaymentButton orderNumber={order.orderNumber} />}
           </div>
         ) : (
           <>

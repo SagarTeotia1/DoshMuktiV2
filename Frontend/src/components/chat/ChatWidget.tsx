@@ -46,6 +46,20 @@ export function ChatWidget() {
     setShowPop(false);
   }
 
+  // Lets other components (e.g. the homepage "Chat with Acharya Madhav" CTA, which
+  // used to link out to WhatsApp) open this same in-page AI chat instead — a custom
+  // DOM event rather than lifting state, since those components don't otherwise share
+  // any parent/store with this widget.
+  useEffect(() => {
+    function handleExternalOpen(e: Event) {
+      handleOpen();
+      const message = (e as CustomEvent<{ message?: string }>).detail?.message;
+      if (message) void sendMessage(message);
+    }
+    window.addEventListener('open-acharya-chat', handleExternalOpen);
+    return () => window.removeEventListener('open-acharya-chat', handleExternalOpen);
+  }, [sendMessage]);
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = input.trim();

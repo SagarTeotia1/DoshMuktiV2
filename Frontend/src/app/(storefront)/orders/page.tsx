@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { PackageSearch, FileDown, ChevronRight, Package } from 'lucide-react';
+import { toast } from 'sonner';
 import { api, invoiceUrl } from '@/lib/api-client';
 import { getToken } from '@/lib/auth';
+import { getSessionId } from '@/lib/session';
 import { useAuth } from '@/providers/auth-provider';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_TONE } from '@/lib/constants';
@@ -17,10 +19,26 @@ export default function OrdersPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [orders, setOrders] = useState<OrderTrackingResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [resuming, setResuming] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push('/login?redirect=/orders');
   }, [authLoading, isAuthenticated, router]);
+
+  // A cancelled/failed Razorpay payment leaves the order stuck at PENDING_PAYMENT with
+  // no way back in otherwise — this re-adds its items into the customer's cart and
+  // sends them through checkout again, instead of a dead-end order they can never pay.
+  async function completePayment(orderNumber: string) {
+    setResuming(orderNumber);
+    try {
+      await api.post(`/api/orders/${orderNumber}/resume`, {}, { 'x-session-id': getSessionId() });
+      router.push('/checkout');
+    } catch {
+      toast.error('Could not resume this order — try adding the items to your cart again.');
+    } finally {
+      setResuming(null);
+    }
+  }
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -62,20 +80,33 @@ export default function OrdersPage() {
             const thumb = firstItem?.variant?.product?.images?.[0]?.thumb;
             const extraCount = order.items.length - 1;
             const tone = ORDER_STATUS_TONE[order.status] ?? 'bg-[#9C5A26] text-white border-[#2B1B0C]';
+            const isPending = order.status === 'PENDING_PAYMENT';
 
             return (
               <div
                 key={order.orderNumber}
                 className="relative bg-white border border-[#2B1B0C] rounded-2xl p-4 sm:p-5 hover:shadow-neo-md transition-shadow duration-200"
               >
-                {/* Stretched link — makes the whole card navigate to /track, while the
-                    invoice icon below stays independently clickable via its own z-10
-                    (avoids nesting an <a> inside a <Link>, which is invalid HTML). */}
-                <Link
-                  href={`/track/${order.orderNumber}`}
-                  className="absolute inset-0"
-                  aria-label={`Track order ${order.orderNumber}`}
-                />
+                {/* Stretched control — makes the whole card navigate to /track, or (for a
+                    payment that never completed) resume the order into the cart and go
+                    straight to checkout instead of a dead-end tracking page. The invoice
+                    icon below stays independently clickable via its own z-10 (avoids
+                    nesting an <a> inside a <Link>, which is invalid HTML). */}
+                {isPending ? (
+                  <button
+                    type="button"
+                    onClick={() => completePayment(order.orderNumber)}
+                    disabled={resuming === order.orderNumber}
+                    className="absolute inset-0 disabled:cursor-wait"
+                    aria-label={`Complete payment for order ${order.orderNumber}`}
+                  />
+                ) : (
+                  <Link
+                    href={`/track/${order.orderNumber}`}
+                    className="absolute inset-0"
+                    aria-label={`Track order ${order.orderNumber}`}
+                  />
+                )}
 
                 <div className="flex items-start gap-3 sm:gap-4">
                   <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-[#F6E4C2] flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -119,7 +150,8 @@ export default function OrdersPage() {
                           </a>
                         )}
                         <span className="flex items-center gap-0.5 font-body text-xs font-bold text-[#9C5A26]">
-                          Track <ChevronRight className="w-3.5 h-3.5" />
+                          {isPending ? (resuming === order.orderNumber ? 'Loading...' : 'Complete Payment') : 'Track'}
+                          <ChevronRight className="w-3.5 h-3.5" />
                         </span>
                       </div>
                     </div>
@@ -130,6 +162,21 @@ export default function OrdersPage() {
           })}
         </div>
       )}
+
+      <div className="mt-8 border border-dashed border-[#2B1B0C]/20 rounded-2xl p-4 sm:p-5 text-center">
+        <p className="font-body text-xs text-[#6B5539] mb-2">
+          Need help with a return, exchange, or have a question about a product? Contact our customer support at{' '}
+          <span className="font-bold text-[#2B1B0C]">+91 88823 86868</span> for any query regarding the product.
+        </p>
+        <a
+          href="https://wa.me/918882386868"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 font-body text-xs font-bold uppercase tracking-wide text-[#9C5A26] hover:text-[#6B3D19] transition-colors"
+        >
+          Chat on WhatsApp with +91 88823 86868
+        </a>
+      </div>
     </div>
   );
 }

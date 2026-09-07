@@ -24,6 +24,8 @@ import {
   takeOrderNdrAction,
   updateOrderEwaybill,
   bookOrderShipment,
+  resumeOrder,
+  OrderNotResumableError,
   NoWaybillError,
   type GstReportOrderRow,
 } from './service';
@@ -37,6 +39,23 @@ export async function trackOrderHandler(req: FastifyRequest, reply: FastifyReply
   if (!order) return reply.code(404).send({ error: 'Order not found' });
 
   return reply.send({ ...order, ...computeOrderGst(order.items) });
+}
+
+export async function resumeOrderHandler(req: FastifyRequest, reply: FastifyReply) {
+  const parsed = orderNumberParamSchema.safeParse(req.params);
+  if (!parsed.success) return reply.code(400).send({ error: 'Invalid order number' });
+
+  const sessionId = req.headers['x-session-id'];
+  if (typeof sessionId !== 'string' || !sessionId) return reply.code(400).send({ error: 'Missing session id' });
+
+  try {
+    const result = await resumeOrder(parsed.data.orderNumber, sessionId);
+    return reply.send(result);
+  } catch (err) {
+    if (err instanceof OrderNotResumableError) return reply.code(409).send({ error: err.message });
+    if (err instanceof Error && err.message === 'Order not found') return reply.code(404).send({ error: err.message });
+    throw err;
+  }
 }
 
 export async function invoiceHandler(req: FastifyRequest, reply: FastifyReply) {

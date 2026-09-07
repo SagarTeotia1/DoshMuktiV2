@@ -1,14 +1,15 @@
-import Link from 'next/link';
+'use client';
+
 import { MessageCircle, MoonStar, Heart, TrendingUp, ShieldCheck } from 'lucide-react';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { Reveal } from '@/components/motion/Reveal';
 import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
 
-const WHATSAPP_NUMBER = '918882386868';
-
-function waLink(question: string) {
-  const message = encodeURIComponent(`Namaste Acharya Madhav 🙏 ${question}`);
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
+// Opens the same in-page AI chat as the floating widget (see ChatWidget.tsx) instead
+// of handing the visitor off to WhatsApp — a custom event since this section and the
+// widget don't share a parent/store.
+function openChat(message: string) {
+  window.dispatchEvent(new CustomEvent('open-acharya-chat', { detail: { message } }));
 }
 
 const DOMAINS = [
@@ -90,15 +91,14 @@ export function AcharyaMadhavSection() {
               Vedic astrology and numerology, and tells you exactly what to wear.
             </p>
 
-            <Link
-              href={waLink("I'd like a personalized recommendation based on my Vedic astrology / numerology.")}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => openChat("I'd like a personalized recommendation based on my Vedic astrology / numerology.")}
               className="border border-[#2B1B0C] shadow-neo-gold-md inline-flex items-center gap-2 rounded-lg bg-[#9C5A26] text-[#E6D3AE] px-7 py-3 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#C9863F] transition-colors duration-200"
             >
               <MessageCircle className="w-3.5 h-3.5" />
               Chat with Acharya Madhav
-            </Link>
+            </button>
           </Reveal>
 
           {/* Right — ask him about, as cards */}
@@ -107,11 +107,10 @@ export function AcharyaMadhavSection() {
               const Icon = d.icon;
               return (
                 <StaggerItem key={d.label}>
-                  <Link
-                    href={waLink(d.question)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group flex flex-col items-center sm:items-start gap-3 rounded-xl border border-[#9C5A26]/20 bg-[#E6D3AE]/[0.03] p-4 sm:p-5 hover:border-[#9C5A26]/60 hover:bg-[#E6D3AE]/[0.06] hover:-translate-y-1 transition-all duration-300"
+                  <button
+                    type="button"
+                    onClick={() => openChat(d.question)}
+                    className="group w-full flex flex-col items-center sm:items-start gap-3 rounded-xl border border-[#9C5A26]/20 bg-[#E6D3AE]/[0.03] p-4 sm:p-5 hover:border-[#9C5A26]/60 hover:bg-[#E6D3AE]/[0.06] hover:-translate-y-1 transition-all duration-300"
                   >
                     <span className="w-10 h-10 rounded-full bg-[#9C5A26]/10 flex items-center justify-center group-hover:bg-[#9C5A26]/20 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                       <Icon className="w-[18px] h-[18px] text-[#C9863F]" strokeWidth={1.5} />
@@ -119,8 +118,8 @@ export function AcharyaMadhavSection() {
                     <p className="hidden sm:block font-heading font-black text-[11px] sm:text-sm uppercase tracking-tight text-[#E6D3AE]">
                       {d.label}
                     </p>
-                    <p className="hidden sm:block font-body text-xs sm:text-sm text-[#B8A98A]/70 leading-snug">&ldquo;{d.prompt}&rdquo;</p>
-                  </Link>
+                    <p className="hidden sm:block font-body text-xs sm:text-sm text-[#B8A98A]/70 leading-snug text-left">&ldquo;{d.prompt}&rdquo;</p>
+                  </button>
                 </StaggerItem>
               );
             })}

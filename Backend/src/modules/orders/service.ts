@@ -10,6 +10,39 @@ import {
 } from '../../shared/integrations/delhivery/client';
 import { refundPayment } from '../../shared/integrations/razorpay/client';
 import { logger } from '../../shared/logger/pino';
+import { addItemToCart } from '../cart/service';
+
+export class OrderNotResumableError extends Error {
+  constructor() {
+    super('This order is no longer pending payment.');
+    this.name = 'OrderNotResumableError';
+  }
+}
+
+// A cancelled/failed Razorpay payment left the order stuck at PENDING_PAYMENT with no
+// way back in — the order itself was never designed to be paid twice, so instead of
+// trying to resurrect the same Order row, this re-adds its items into the customer's
+// live cart and lets them go through checkout again normally (new order, new payment).
+// Item-level failures (stock sold out, variant deactivated since) are skipped rather
+// than aborting the whole resume — better to let the customer see partial results and
+// adjust than to block them entirely because one line item is now unavailable.
+export async function resumeOrder(orderNumber: string, sessionId: string): Promise<{ addedCount: number; skippedCount: number }> {
+  const order = await db.order.findUnique({ where: { orderNumber }, include: { items: true } });
+  if (!order) throw new Error('Order not found');
+  if (order.status !== 'PENDING_PAYMENT') throw new OrderNotResumableError();
+
+  let addedCount = 0;
+  let skippedCount = 0;
+  for (const item of order.items) {
+    try {
+      await addItemToCart(sessionId, { variantId: item.variantId, quantity: item.quantity });
+      addedCount++;
+    } catch {
+      skippedCount++;
+    }
+  }
+  return { addedCount, skippedCount };
+}
 
 export class NoWaybillError extends Error {
   constructor() {
