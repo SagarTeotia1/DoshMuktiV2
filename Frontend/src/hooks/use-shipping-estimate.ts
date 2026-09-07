@@ -8,13 +8,18 @@ interface ShippingEstimate {
   originalFee: number;
 }
 
-// Public, unauthenticated endpoint — origin-to-origin estimate (real destination isn't
-// known until checkout), same math the cart preview uses. Shown on the PDP so a
-// customer sees an approximate shipping charge (or that it's free) before adding to cart.
-export function useShippingEstimate(subtotal: number, weightGrams: number) {
+// Public, unauthenticated endpoint. Without destPincode: an origin-to-origin estimate
+// (real destination isn't known yet) — used on the PDP and cart. With destPincode: the
+// real live-quoted rate for that destination — used once checkout has a validated
+// pincode, so the displayed shipping fee updates to the actual charge instead of
+// staying on the earlier estimate.
+export function useShippingEstimate(subtotal: number, weightGrams: number, destPincode?: string) {
   return useQuery({
-    queryKey: ['shipping-estimate', subtotal, weightGrams],
-    queryFn: () => api.get<ShippingEstimate>(`/api/shipping/estimate?subtotal=${subtotal}&weightGrams=${weightGrams}`),
+    queryKey: ['shipping-estimate', subtotal, weightGrams, destPincode],
+    queryFn: () =>
+      api.get<ShippingEstimate>(
+        `/api/shipping/estimate?subtotal=${subtotal}&weightGrams=${weightGrams}${destPincode ? `&destPincode=${destPincode}` : ''}`
+      ),
     enabled: subtotal > 0 && weightGrams > 0,
     staleTime: 5 * 60 * 1000,
   });

@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Search, ShoppingCart, Menu, X, User, LogOut } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/providers/auth-provider';
 import logo from '@/assets/Logo.png';
 
 const NAV_LINKS = [

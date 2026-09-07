@@ -41,6 +41,34 @@ export async function saveAddress(accountPhone: string, input: AddressInput) {
   });
 }
 
+export async function updateAddress(accountPhone: string, id: string, input: AddressInput) {
+  const phoneHash = hashPhone(accountPhone);
+
+  return db.$transaction(async (tx) => {
+    // Scoped by phoneHash — never let one customer edit another's saved address just
+    // by guessing/enumerating an id.
+    const existing = await tx.customerAddress.findFirst({ where: { id, phoneHash } });
+    if (!existing) throw new AddressNotFoundError();
+
+    if (input.setDefault) {
+      await tx.customerAddress.updateMany({ where: { phoneHash, isDefault: true, id: { not: id } }, data: { isDefault: false } });
+    }
+    return tx.customerAddress.update({
+      where: { id },
+      data: {
+        receiverPhone: normalizePhone(input.receiverPhone),
+        name: input.name,
+        line1: input.line1,
+        line2: input.line2,
+        city: input.city,
+        state: input.state,
+        pincode: input.pincode,
+        isDefault: input.setDefault,
+      },
+    });
+  });
+}
+
 export async function deleteAddress(accountPhone: string, id: string): Promise<void> {
   // Scoped by phoneHash too, not just id — never let one customer delete another's
   // saved address just by guessing/enumerating an id.

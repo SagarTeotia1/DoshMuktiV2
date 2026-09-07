@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useCart } from '@/hooks/use-cart';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/providers/auth-provider';
 import { trackAddToCart } from '@/lib/firebase';
 
 // Same "Order Now" flow as products/[slug]/add-to-cart.tsx's handleOrderNow — an

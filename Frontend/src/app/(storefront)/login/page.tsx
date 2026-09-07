@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { ShieldCheck } from 'lucide-react';
-import { useAuth, isProfileRequired } from '@/hooks/use-auth';
+import { useAuth, isProfileRequired } from '@/providers/auth-provider';
 
 const inputClass =
   'bg-white border border-[#2B1B0C]/40 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:border-[#9C5A26] focus:outline-none font-body placeholder:text-[#6B5539] transition-colors w-full';

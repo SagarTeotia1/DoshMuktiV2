@@ -114,6 +114,8 @@ export interface CartItem {
   sku: string;
   imageUrl: string | null;
   gstRate?: number | null;
+  // Grams — used to recompute a real shipping rate once checkout has a destination pincode.
+  weight?: number;
 }
 
 export interface CartResponse {

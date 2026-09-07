@@ -33,9 +33,9 @@ export async function rateCalcHandler(req: FastifyRequest, reply: FastifyReply) 
   return reply.send(result);
 }
 
-// Public (storefront) — shows a shipping-charge estimate on the product page for a
-// single item's price+weight, before the customer knows their own cart total or
-// address. Same origin-to-origin estimate the cart preview uses (see cart/service.ts).
+// Public (storefront) — shows a shipping-charge estimate on the PDP/cart (origin-to-
+// origin, real destination unknown yet) and, once checkout has a real validated
+// pincode, the actual live-quoted amount for that destination.
 export async function shippingEstimateHandler(req: FastifyRequest, reply: FastifyReply) {
   const parsed = shippingEstimateQuerySchema.safeParse(req.query);
   if (!parsed.success) return reply.code(400).send({ error: 'Invalid query', details: parsed.error.flatten().fieldErrors });
@@ -43,7 +43,7 @@ export async function shippingEstimateHandler(req: FastifyRequest, reply: Fastif
   const { fee, originalFee } = await calculateShippingFee(
     parsed.data.subtotal,
     parsed.data.weightGrams,
-    env.DELHIVERY_WAREHOUSE_PINCODE
+    parsed.data.destPincode ?? env.DELHIVERY_WAREHOUSE_PINCODE
   );
   return reply.send({ fee, originalFee });
 }

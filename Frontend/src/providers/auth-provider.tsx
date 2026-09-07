@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { api, ApiError } from '@/lib/api-client';
 import { getToken, setToken, clearToken } from '@/lib/auth';
 
@@ -16,7 +16,25 @@ interface VerifyOtpResponse {
   user: CustomerUser;
 }
 
-export function useAuth() {
+interface AuthContextValue {
+  user: CustomerUser | null;
+  loading: boolean;
+  isAuthenticated: boolean;
+  sendOtp: (phone: string) => Promise<void>;
+  verifyOtp: (phone: string, otp: string, name?: string) => Promise<CustomerUser>;
+  logout: () => void;
+  refresh: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+// Mounted once at the root layout — every component that calls useAuth() shares this
+// exact same state. Previously useAuth was a plain hook (its own useState per call
+// site), so e.g. logging in from the checkout page's inline OTP form updated only that
+// component's copy of `user`/`isAuthenticated`; the Navbar's own separate useAuth()
+// call never found out, and stayed showing "logged out" until a full page reload
+// re-ran every hook from scratch. A shared context fixes this everywhere at once.
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CustomerUser | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -64,7 +82,17 @@ export function useAuth() {
     setUser(null);
   }
 
-  return { user, loading, isAuthenticated: !!user, sendOtp, verifyOtp, logout, refresh };
+  return (
+    <AuthContext.Provider value={{ user, loading, isAuthenticated: !!user, sendOtp, verifyOtp, logout, refresh }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
 }
 
 export function isProfileRequired(err: unknown): boolean {

@@ -8,8 +8,9 @@ import { ShieldCheck } from 'lucide-react';
 import { useCart, type CartScope } from '@/hooks/use-cart';
 import { usePincodeCheck } from '@/hooks/use-pincode-check';
 import { useRazorpay } from '@/hooks/use-razorpay';
-import { useAuth, isProfileRequired } from '@/hooks/use-auth';
-import { useAddresses, useSaveAddress } from '@/hooks/use-addresses';
+import { useAuth, isProfileRequired } from '@/providers/auth-provider';
+import { useAddresses, useSaveAddress, useUpdateAddress } from '@/hooks/use-addresses';
+import { useShippingEstimate } from '@/hooks/use-shipping-estimate';
 import { api, ApiError } from '@/lib/api-client';
 import { getSessionId, getBuyNowSessionId } from '@/lib/session';
 import { getToken } from '@/lib/auth';
@@ -251,13 +252,21 @@ function CheckoutPageContent() {
   const { isChecking, serviceable } = usePincodeCheck(form.pincode);
 
   // Saved-address book — a returning customer sees their last delivery address by
-  // default instead of retyping name/phone/address every single order. "Same as login
-  // number" defaults checked because most orders ship to whoever's placing them.
+  // default instead of retyping name/phone/address every single order. Receiver phone
+  // pre-fills to the login number (most orders ship to whoever's placing them) but stays
+  // a plain editable field — no separate "same as login" toggle to fuss with.
   const { data: savedAddresses } = useAddresses(isAuthenticated);
   const saveAddress = useSaveAddress();
+  const updateAddress = useUpdateAddress();
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [addressFormOpen, setAddressFormOpen] = useState(false);
-  const [receiverSameAsLogin, setReceiverSameAsLogin] = useState(true);
+  // Set while editing an existing saved address — Pay Now PATCHes this id instead of
+  // creating a new row. null means the open form (if any) is either a fresh "Add New
+  // Address" or just the summary/picker, not an edit.
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  // True only in the sliver of time between clicking "Edit Address" (with more than one
+  // saved address) and actually picking which one — shows the list with nothing else.
+  const [pickingAddressToEdit, setPickingAddressToEdit] = useState(false);
   // Distinguishes "no addresses saved yet" from "still loading" — avoids a flash of the
   // blank form before the saved-address fetch resolves.
   const addressesLoaded = savedAddresses !== undefined;
@@ -269,15 +278,11 @@ function CheckoutPageContent() {
     applySavedAddress(savedAddresses[0]!);
   }, [savedAddresses]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (!receiverSameAsLogin || !user) return;
-    update('customerPhone', user.phone.replace(/^\+91/, ''));
-  }, [receiverSameAsLogin, user]); // eslint-disable-line react-hooks/exhaustive-deps
-
   function applySavedAddress(addr: Address) {
     setSelectedAddressId(addr.id);
+    setEditingAddressId(null);
     setAddressFormOpen(false);
-    setReceiverSameAsLogin(false); // it's whatever was saved on the address, not necessarily the login number
+    setPickingAddressToEdit(false);
     setForm((f) => ({
       ...f,
       customerName: addr.name,
@@ -290,10 +295,40 @@ function CheckoutPageContent() {
     }));
   }
 
+  // Opens the form pre-filled with an existing saved address, in edit mode — Pay Now
+  // will PATCH this address instead of creating a new one. Also makes it the active
+  // address for this order, so picking one to edit doubles as "use this one."
+  function startEditAddress(addr: Address) {
+    setSelectedAddressId(addr.id);
+    setEditingAddressId(addr.id);
+    setAddressFormOpen(true);
+    setPickingAddressToEdit(false);
+    setForm((f) => ({
+      ...f,
+      customerName: addr.name,
+      customerPhone: addr.receiverPhone.replace(/^\+91/, ''),
+      line1: addr.line1,
+      line2: addr.line2 ?? '',
+      city: addr.city,
+      state: addr.state,
+      pincode: addr.pincode,
+    }));
+  }
+
+  // "Edit Address" button — skips straight to the edit form when there's only one
+  // saved address (nothing to pick), otherwise shows the list first.
+  function handleEditClick() {
+    if (!savedAddresses || savedAddresses.length === 0) return startNewAddress();
+    if (savedAddresses.length === 1) return startEditAddress(savedAddresses[0]!);
+    setPickingAddressToEdit(true);
+    setAddressFormOpen(true);
+  }
+
   function startNewAddress() {
     setSelectedAddressId(null);
+    setEditingAddressId(null);
     setAddressFormOpen(true);
-    setReceiverSameAsLogin(true);
+    setPickingAddressToEdit(false);
     setForm((f) => ({
       ...f,
       customerName: user?.name ?? '',
@@ -316,13 +351,27 @@ function CheckoutPageContent() {
   const items = cart?.items ?? [];
   const checkoutItems = items.map((i) => ({ variantId: i.variantId, quantity: i.quantity }));
   const subtotal = cart?.subtotal ?? 0;
+
+  // The cart preview only ever has an origin-to-origin shipping estimate (no destination
+  // known pre-checkout). Once a real 6-digit pincode is entered here, re-quote against
+  // it live — the displayed fee then updates to the actual charge instead of sitting on
+  // that earlier guess. (The real order charge was always computed server-side against
+  // the real pincode regardless — this only affects what's *shown* before paying.)
+  const cartWeightGrams = items.reduce((sum, item) => sum + (item.weight ?? 500) * item.quantity, 0);
+  const liveShipping = useShippingEstimate(
+    subtotal,
+    cartWeightGrams,
+    /^\d{6}$/.test(form.pincode) ? form.pincode : undefined
+  );
+
   // Backend-computed — same resolution path checkout itself uses (see cart/service.ts's
   // computeCartPricing), so this can never drift from what actually gets charged. Previously
   // this page computed shippingFee locally and never subtracted AUTO_APPLIED offer discounts
   // at all — the Razorpay charge was always correct, but the customer never saw the price
   // move before paying, which is exactly the "total isn't going down" gap this closes.
-  const shippingFee = cart?.shippingFee ?? (subtotal >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE);
-  const shippingFeeOriginal = cart?.shippingFeeOriginal ?? shippingFee;
+  const shippingFee =
+    liveShipping.data?.fee ?? cart?.shippingFee ?? (subtotal >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE);
+  const shippingFeeOriginal = liveShipping.data?.originalFee ?? cart?.shippingFeeOriginal ?? shippingFee;
   const autoAppliedDiscount = cart?.autoAppliedDiscount ?? 0;
   const preDiscountTotal = subtotal + shippingFee - autoAppliedDiscount;
   const couponDiscount = appliedCoupon?.discountAmount ?? 0;
@@ -374,6 +423,38 @@ function CheckoutPageContent() {
     if (serviceable === false) return toast.error('Sorry, we do not deliver to this pincode yet');
 
     setSubmitting(true);
+
+    // Save the address the moment "Pay Now" is pressed, not after payment succeeds —
+    // the customer typed/changed a real address either way, and if the payment itself
+    // fails or gets abandoned they still want it remembered for the retry, not lost.
+    // Fire-and-forget: never block checkout on this. Three cases: editing an existing
+    // saved address (PATCH it), a freshly-typed one (create it), or an unchanged saved
+    // address already picked from the list (nothing to save).
+    if (editingAddressId) {
+      updateAddress.mutate({
+        id: editingAddressId,
+        name: form.customerName,
+        receiverPhone: form.customerPhone,
+        line1: form.line1,
+        line2: form.line2 || undefined,
+        city: form.city,
+        state: form.state,
+        pincode: form.pincode,
+        setDefault: true,
+      });
+    } else if (!selectedAddressId) {
+      saveAddress.mutate({
+        name: form.customerName,
+        receiverPhone: form.customerPhone,
+        line1: form.line1,
+        line2: form.line2 || undefined,
+        city: form.city,
+        state: form.state,
+        pincode: form.pincode,
+        setDefault: true,
+      });
+    }
+
     try {
       const input: CheckoutInput = {
         customerName: form.customerName,
@@ -404,21 +485,8 @@ function CheckoutPageContent() {
         theme: { color: '#9C5A26' },
         handler: async (response: RazorpayResponse) => {
           trackPurchase({ orderNumber: result.orderNumber, total, itemCount: items.length });
-          // Freshly-typed address (not one picked from the saved list) — save it as the
-          // new default so next order shows it automatically instead of a blank form
-          // again. Fire-and-forget: never block order completion on this.
-          if (!selectedAddressId) {
-            saveAddress.mutate({
-              name: form.customerName,
-              receiverPhone: form.customerPhone,
-              line1: form.line1,
-              line2: form.line2 || undefined,
-              city: form.city,
-              state: form.state,
-              pincode: form.pincode,
-              setDefault: true,
-            });
-          }
+          // Address is already saved (see handleSubmit, fires the moment Pay Now was
+          // pressed) — nothing address-related left to do here.
           // Payment has already succeeded by the time this fires — this call is only
           // about getting OUR order status flipped to PAID promptly, since the Razorpay
           // webhook (the usual trigger) never reaches localhost and is fragile even in
@@ -612,7 +680,7 @@ function CheckoutPageContent() {
         <form onSubmit={handleSubmit} className="grid md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
           <div className="flex flex-col gap-8">
             <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
-              <StepLabel n={1} title="Delivery Details" />
+              <StepLabel n={2} title="Delivery Details" />
 
               {!addressFormOpen && selectedAddress ? (
                 // Returning customer — their saved default address, shown as a summary
@@ -626,77 +694,68 @@ function CheckoutPageContent() {
                     <br />
                     {selectedAddress.city}, {selectedAddress.state} {selectedAddress.pincode}
                   </p>
+                  <div className="flex items-center gap-4 mt-1">
+                    <button
+                      type="button"
+                      onClick={handleEditClick}
+                      className="self-start font-body text-xs font-bold uppercase tracking-wide text-[#9C5A26] hover:text-[#6B3D19] transition-colors"
+                    >
+                      Edit Address
+                    </button>
+                    <button
+                      type="button"
+                      onClick={startNewAddress}
+                      className="self-start font-body text-xs font-bold uppercase tracking-wide text-[#8A7A63] hover:text-[#2B1B0C] transition-colors"
+                    >
+                      Add New Address
+                    </button>
+                  </div>
+                </div>
+              ) : pickingAddressToEdit ? (
+                // "Edit Address" with more than one saved address — pick which one first.
+                // Picking it opens that address's form pre-filled (startEditAddress), so
+                // selecting and editing are the same click, not two separate steps.
+                <div className="flex flex-col gap-2">
+                  {savedAddresses!.map((addr) => (
+                    <button
+                      key={addr.id}
+                      type="button"
+                      onClick={() => startEditAddress(addr)}
+                      className="flex flex-col items-start text-left border border-[#2B1B0C]/20 hover:border-[#9C5A26] rounded-xl px-3 py-2.5 transition-colors"
+                    >
+                      <span className="font-body text-sm font-bold text-[#2B1B0C]">{addr.name}</span>
+                      <span className="font-body text-xs text-[#6B5539]">
+                        {addr.line1}, {addr.city}, {addr.state} {addr.pincode}
+                      </span>
+                    </button>
+                  ))}
                   <button
                     type="button"
-                    onClick={() => setAddressFormOpen(true)}
-                    className="self-start mt-1 font-body text-xs font-bold uppercase tracking-wide text-[#9C5A26] hover:text-[#6B3D19] transition-colors"
+                    onClick={() => {
+                      setPickingAddressToEdit(false);
+                      setAddressFormOpen(false);
+                    }}
+                    className="self-start font-body text-xs font-bold uppercase tracking-wide text-[#8A7A63] hover:text-[#2B1B0C] transition-colors"
                   >
-                    Change Address
+                    Cancel
                   </button>
                 </div>
               ) : (
                 <div className="flex flex-col gap-3">
-                  {addressesLoaded && savedAddresses!.length > 0 && (
-                    <div className="flex flex-col gap-2 pb-1">
-                      {savedAddresses!.map((addr) => (
-                        <label
-                          key={addr.id}
-                          className={`flex items-start gap-2.5 border rounded-xl px-3 py-2.5 cursor-pointer transition-colors ${
-                            selectedAddressId === addr.id ? 'border-[#9C5A26] bg-[#9C5A26]/5' : 'border-[#2B1B0C]/20 hover:border-[#2B1B0C]/40'
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="savedAddress"
-                            checked={selectedAddressId === addr.id}
-                            onChange={() => applySavedAddress(addr)}
-                            className="mt-1"
-                          />
-                          <div className="flex flex-col">
-                            <span className="font-body text-sm font-bold text-[#2B1B0C]">{addr.name}</span>
-                            <span className="font-body text-xs text-[#6B5539]">
-                              {addr.line1}, {addr.city}, {addr.state} {addr.pincode}
-                            </span>
-                          </div>
-                        </label>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={startNewAddress}
-                        className="self-start font-body text-xs font-bold uppercase tracking-wide text-[#9C5A26] hover:text-[#6B3D19] transition-colors"
-                      >
-                        + Add New Address
-                      </button>
-                    </div>
-                  )}
-
-                  {(!addressesLoaded || savedAddresses!.length === 0 || selectedAddressId === null) && (
-                    <>
-                      <div>
-                        <input
-                          required
-                          type="tel"
-                          inputMode="numeric"
-                          placeholder="Receiver's Phone Number"
-                          disabled={receiverSameAsLogin}
-                          value={form.customerPhone}
-                          onChange={(e) => update('customerPhone', normalizePhone(e.target.value))}
-                          className={`${inputClass} disabled:opacity-60 disabled:bg-[#2B1B0C]/5`}
-                        />
-                        <label className="flex items-center gap-1.5 mt-1.5 font-body text-xs text-[#6B5539]">
-                          <input
-                            type="checkbox"
-                            checked={receiverSameAsLogin}
-                            onChange={(e) => setReceiverSameAsLogin(e.target.checked)}
-                          />
-                          Same as login number
-                        </label>
-                      </div>
                       <input
                         required
                         placeholder="Full Name"
                         value={form.customerName}
                         onChange={(e) => update('customerName', e.target.value)}
+                        className={inputClass}
+                      />
+                      <input
+                        required
+                        type="tel"
+                        inputMode="numeric"
+                        placeholder="Receiver's Phone Number"
+                        value={form.customerPhone}
+                        onChange={(e) => update('customerPhone', normalizePhone(e.target.value))}
                         className={inputClass}
                       />
                       <input
@@ -706,6 +765,31 @@ function CheckoutPageContent() {
                         onChange={(e) => update('customerEmail', e.target.value)}
                         className={inputClass}
                       />
+                      <div>
+                        <input
+                          required
+                          placeholder="Pincode"
+                          inputMode="numeric"
+                          value={form.pincode}
+                          onChange={(e) => update('pincode', e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          className={`${inputClass} w-full`}
+                        />
+                        {isChecking && <p className="text-xs text-[#8A7A63] mt-1.5 font-body">Checking serviceability...</p>}
+                        {serviceable === false && (
+                          <p className="text-xs text-brand-alert mt-1.5 font-body font-semibold">Not serviceable at this pincode</p>
+                        )}
+                        {serviceable === true && (
+                          <p className="text-xs text-brand-success mt-1.5 font-body font-semibold">✓ Deliverable to this address</p>
+                        )}
+                        {/* Ties the pincode straight to the number that actually matters to a
+                            customer deciding whether to check out — updates live once
+                            liveShipping resolves for this pincode (see shippingFee above). */}
+                        <p className="text-xs text-[#8A7A63] mt-1.5 font-body">
+                          {subtotal >= FREE_SHIPPING_ABOVE
+                            ? `Orders above ${formatCurrency(FREE_SHIPPING_ABOVE)} ship free.`
+                            : `Orders below ${formatCurrency(FREE_SHIPPING_ABOVE)} add a shipping charge (${formatCurrency(shippingFeeOriginal)} for this order) — free above that.`}
+                        </p>
+                      </div>
                       <input
                         required
                         placeholder="Address Line 1"
@@ -735,24 +819,6 @@ function CheckoutPageContent() {
                           className={inputClass}
                         />
                       </div>
-                      <div>
-                        <input
-                          required
-                          placeholder="Pincode"
-                          value={form.pincode}
-                          onChange={(e) => update('pincode', e.target.value)}
-                          className={`${inputClass} w-full`}
-                        />
-                        {isChecking && <p className="text-xs text-[#8A7A63] mt-1.5 font-body">Checking serviceability...</p>}
-                        {serviceable === false && (
-                          <p className="text-xs text-brand-alert mt-1.5 font-body font-semibold">Not serviceable at this pincode</p>
-                        )}
-                        {serviceable === true && (
-                          <p className="text-xs text-brand-success mt-1.5 font-body font-semibold">✓ Deliverable to this address</p>
-                        )}
-                      </div>
-                    </>
-                  )}
                 </div>
               )}
             </div>

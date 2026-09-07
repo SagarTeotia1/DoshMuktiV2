@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from 'sonner';
 import { QueryProvider } from '@/providers/query-provider';
 import { FirebaseProvider } from '@/providers/firebase-provider';
+import { AuthProvider } from '@/providers/auth-provider';
 import { SITE_URL, SOCIAL_LINKS } from '@/lib/constants';
 
 const outfit = Outfit({
@@ -85,9 +86,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
         <QueryProvider>
-          <FirebaseProvider />
-          {children}
-          <Toaster richColors position="top-right" />
+          <AuthProvider>
+            <FirebaseProvider />
+            {children}
+            <Toaster richColors position="top-right" />
+          </AuthProvider>
         </QueryProvider>
       </body>
     </html>

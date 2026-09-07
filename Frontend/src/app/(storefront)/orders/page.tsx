@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { PackageSearch, FileDown, ChevronRight, Package } from 'lucide-react';
 import { api, invoiceUrl } from '@/lib/api-client';
 import { getToken } from '@/lib/auth';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/providers/auth-provider';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_TONE } from '@/lib/constants';
 import type { OrderTrackingResponse } from '@/types/api.types';

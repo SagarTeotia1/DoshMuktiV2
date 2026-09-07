@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Minus, Plus, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/providers/auth-provider';
 import { useShippingEstimate } from '@/hooks/use-shipping-estimate';
 import { trackAddToCart } from '@/lib/firebase';
 import { formatCurrency } from '@/lib/formatters';

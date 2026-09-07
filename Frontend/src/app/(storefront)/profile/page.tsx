@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { User, Phone, Cake, MapPin, LogOut, PackageSearch } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { getToken } from '@/lib/auth';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/providers/auth-provider';
 import { formatDate } from '@/lib/formatters';
 import type { OrderTrackingResponse } from '@/types/api.types';
 

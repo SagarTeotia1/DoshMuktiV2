@@ -24,6 +24,15 @@ export function useSaveAddress() {
   });
 }
 
+export function useUpdateAddress() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: AddressInput & { id: string }) =>
+      api.patch<Address>(`/api/addresses/${id}`, input, { Authorization: `Bearer ${getToken()}` }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
+  });
+}
+
 export function useDeleteAddress() {
   const qc = useQueryClient();
   return useMutation({
