@@ -10,6 +10,7 @@ import { SidhiTabs } from './sidhi-tabs';
 import { HowToUseVideo } from './how-to-use-video';
 import { TestimonialVideos } from './testimonial-videos';
 import { ProductGallery } from './product-gallery';
+import { DescriptionCarousel } from './description-carousel';
 import { ReviewsSection } from './reviews-section';
 import { RelatedProductsRail } from './related-products-rail';
 import { ExclusiveOffers } from '@/components/storefront/ExclusiveOffers';
@@ -84,6 +85,27 @@ function getPolicySections(eligibleForReturn: boolean) {
       content: 'Chat with us Mon to Sat, 10 AM to 5 PM, via the support widget or WhatsApp.',
     },
   ];
+}
+
+// Consecutive 'image' blocks in the admin-composed description render as one carousel
+// instead of one full-width image per block — so an admin dropping in 4 photos back to
+// back gets a swipeable set, not a long vertical scroll of images.
+type DescriptionGroup =
+  | { type: 'text'; content: string }
+  | { type: 'images'; images: { full: string }[] };
+
+function groupDescriptionBlocks(blocks: Product['description']): DescriptionGroup[] {
+  const groups: DescriptionGroup[] = [];
+  for (const block of blocks) {
+    if (block.type === 'text') {
+      groups.push({ type: 'text', content: block.content });
+    } else {
+      const last = groups[groups.length - 1];
+      if (last?.type === 'images') last.images.push({ full: block.full });
+      else groups.push({ type: 'images', images: [{ full: block.full }] });
+    }
+  }
+  return groups;
 }
 
 function TrustStrip({ eligibleForReturn }: { eligibleForReturn: boolean }) {
@@ -256,14 +278,22 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         <span className="text-[#2B1B0C] font-semibold truncate max-w-[160px] sm:max-w-none">{product.name}</span>
       </nav>
 
+      {/* No items-start on the grid (default stretch) — the outer left cell's own box ends up
+          exactly as tall as the details column next to it. That's the opposite of what you'd
+          want on the STICKY element itself (a sticky box exactly as tall as its container has
+          zero room to stay pinned — it releases immediately), so sticky lives on the INNER
+          wrapper instead, which keeps its natural short height (gallery + accordion) and pins
+          within the tall outer box for the full scroll, releasing only when that box ends. */}
       <div className="grid lg:grid-cols-2 gap-8 lg:gap-14">
-        <div className="flex flex-col gap-6">
-          <ProductGallery images={product.images} name={product.name} badge={product.badge} inStock={inStock} />
+        <div>
+          <div className="lg:sticky lg:top-24 flex flex-col gap-6">
+            <ProductGallery images={product.images} name={product.name} badge={product.badge} inStock={inStock} />
 
-          {/* Policy accordion — desktop only, sits directly under the gallery.
-              Mobile keeps its own copy further down, in the details column. */}
-          <div className="hidden lg:block border-t border-[#2B1B0C]/10 pt-2">
-            <Accordion sections={policySections} />
+            {/* Policy accordion — desktop only, sits directly under the gallery.
+                Mobile keeps its own copy further down, in the details column. */}
+            <div className="hidden lg:block border-t border-[#2B1B0C]/10 pt-2">
+              <Accordion sections={policySections} />
+            </div>
           </div>
         </div>
 
@@ -375,35 +405,32 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             <TestimonialVideos videos={product.testimonialVideos ?? []} product={product} price={price} />
           )}
 
+          {/* How to Use — always open, not tucked into the accordion. Sits above the
+              description block below: video first (how it's worn), then the photo/text
+              gallery (what it looks like) — video is the higher-intent content here. */}
+          <HowToUseVideo url={product.howToUseVideoUrl} />
+
           {/* Description — the only "read more" section left open by default. Renders the
               admin-composed, fully-ordered block array (text/image, any mix/count, in the
               order the admin arranged them) rather than a fixed text-then-gallery layout.
               Array.isArray guard, not just `?? []` — a Prisma Json column has no runtime
               shape guarantee, so a non-array value here must not crash the whole PDP. */}
           {Array.isArray(product.description) && product.description.length > 0 && (
-            <div className="border-t border-[#2B1B0C]/10 pt-6 mb-2 flex flex-col gap-4">
-              {product.description.map((block, i) =>
-                block.type === 'text' ? (
+            <div className="border-t border-[#2B1B0C]/10 pt-6 mb-2 flex flex-col gap-5">
+              {groupDescriptionBlocks(product.description).map((group, i) =>
+                group.type === 'text' ? (
                   <p key={i} className="font-body text-sm text-[#6B5539] leading-relaxed whitespace-pre-line">
-                    {block.content}
+                    {group.content}
                   </p>
                 ) : (
-                  // Full image, no forced 16:9 crop — a fixed aspect-video box with
-                  // object-cover was cutting off portrait/tall images. Plain <img>, not
-                  // next/image, so an arbitrary uploaded aspect ratio (portrait, square,
-                  // landscape) always renders at its real proportions instead of being
-                  // squeezed into a guessed width/height box.
-                  <div key={i} className="w-full rounded-lg overflow-hidden border border-[#2B1B0C]/15">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={block.full} alt={product.name} className="w-full h-auto block" />
-                  </div>
+                  // No forced 16:9 crop — a fixed aspect-video box with object-cover was
+                  // cutting off portrait/tall images. Natural aspect ratio, swiped as a
+                  // carousel when the admin dropped in more than one image back to back.
+                  <DescriptionCarousel key={i} images={group.images} name={product.name} />
                 )
               )}
             </div>
           )}
-
-          {/* How to Use — always open, not tucked into the accordion */}
-          <HowToUseVideo url={product.howToUseVideoUrl} />
 
           {/* Everything else worth reading, but only if you go looking for it */}
           {detailSections.length > 0 && (

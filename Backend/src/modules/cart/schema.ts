@@ -18,6 +18,9 @@ export interface CartItem {
   productName: string;
   sku: string;
   imageUrl: string | null;
+  // Snapshotted at add-time, same as price — a later admin rate change shouldn't retag
+  // an item already sitting in someone's cart. Absent/null means no GST applies.
+  gstRate?: number | null;
 }
 
 export interface Cart {

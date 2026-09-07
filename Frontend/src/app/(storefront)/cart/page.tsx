@@ -18,6 +18,10 @@ export default function CartPage() {
   const autoAppliedDiscount = cart?.autoAppliedDiscount ?? 0;
   const remainingForFreeShipping = Math.max(0, FREE_SHIPPING_ABOVE - subtotal);
   const total = Math.max(subtotal + shippingFee - autoAppliedDiscount, 0);
+  // Inclusive breakup of subtotal (product price already includes GST — never an added
+  // charge), same math the invoice PDF uses. 0 when nothing in the cart carries a GST rate.
+  const gstAmount = cart?.gstAmount ?? 0;
+  const taxableValue = cart?.taxableValue ?? subtotal;
 
   if (isLoading) {
     return <div className="max-w-4xl mx-auto px-4 py-16 text-center text-[#8A7A63] font-body text-sm">Loading cart...</div>;
@@ -149,6 +153,11 @@ export default function CartPage() {
           <span>Total</span>
           <span>{formatCurrency(total)}</span>
         </div>
+        {gstAmount > 0 && (
+          <p className="font-body text-[11px] text-[#8A7A63] text-right -mt-1">
+            Inclusive of GST: {formatCurrency(gstAmount)} (Taxable {formatCurrency(taxableValue)} + GST {formatCurrency(gstAmount)})
+          </p>
+        )}
 
         <Link
           href="/checkout"

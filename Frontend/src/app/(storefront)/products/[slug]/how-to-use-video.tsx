@@ -64,12 +64,8 @@ function DirectVideoPlayer({ url }: { url: string }) {
       {/* Soft bottom gradient so overlay controls stay legible over any footage */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/60 to-transparent" />
 
-      {/* Center play/pause — visible at rest, fades on play, always reappears on hover/tap */}
-      <div
-        className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
-          playing ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'
-        }`}
-      >
+      {/* Center play/pause — always visible so there's a clear tap target to pause, even mid-play */}
+      <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-200">
         <div className="w-16 h-16 rounded-full bg-[#E6D3AE]/90 backdrop-blur-sm border border-[#2B1B0C]/20 flex items-center justify-center shadow-neo-md">
           {playing ? (
             <Pause className="w-6 h-6 text-[#2B1B0C]" fill="currentColor" />
@@ -115,7 +111,7 @@ export function HowToUseVideo({ url, bare = false }: { url: string | null; bare?
 
   return (
     <div className="border-t border-[#2B1B0C]/10 pt-6 mb-6">
-      <h2 className="font-heading font-bold text-sm uppercase tracking-wide text-[#2B1B0C] mb-4">How to Use</h2>
+      <h2 className="font-heading font-black text-base uppercase tracking-wide text-[#2B1B0C] mb-4">How to Use</h2>
       {player}
     </div>
   );

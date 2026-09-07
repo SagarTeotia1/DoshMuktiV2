@@ -59,6 +59,31 @@ function computeItemGst(lineTotal: number, gstRate: number): { taxableValue: num
   return { taxableValue, gstAmount: lineTotal - taxableValue };
 }
 
+// Inclusive GST breakup of an order's items, for the public order-tracking response —
+// same formula as the CA-facing GST report and the invoice PDF, so all three can never
+// disagree. gstAmount is 0 (and taxableValue == the summed line totals) when no item
+// carries a gstRate, so the UI can hide the line entirely.
+export function computeOrderGst(items: Array<{ priceAtPurchase: unknown; quantity: number; variantSnapshot: unknown }>): {
+  taxableValue: number;
+  gstAmount: number;
+} {
+  let taxableValue = 0;
+  let gstAmount = 0;
+  for (const item of items) {
+    const lineTotal = Number(item.priceAtPurchase) * item.quantity;
+    const snapshot = item.variantSnapshot as unknown as GstVariantSnapshot;
+    const gstRate = typeof snapshot?.gstRate === 'number' ? snapshot.gstRate : null;
+    if (gstRate === null) {
+      taxableValue += lineTotal;
+      continue;
+    }
+    const breakup = computeItemGst(lineTotal, gstRate);
+    taxableValue += breakup.taxableValue;
+    gstAmount += breakup.gstAmount;
+  }
+  return { taxableValue, gstAmount };
+}
+
 export interface GstReportItemRow {
   sku: string;
   productName: string;

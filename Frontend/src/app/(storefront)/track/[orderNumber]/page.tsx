@@ -257,6 +257,11 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ ord
               <span>Total</span>
               <span>{formatCurrency(order.total)}</span>
             </div>
+            {order.gstAmount > 0 && (
+              <p className="font-body text-[11px] text-[#8A7A63] text-right">
+                Inclusive of GST: {formatCurrency(order.gstAmount)} (Taxable {formatCurrency(order.taxableValue)} + GST {formatCurrency(order.gstAmount)})
+              </p>
+            )}
           </div>
         </div>
       </div>

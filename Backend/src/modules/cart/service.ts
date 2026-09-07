@@ -25,22 +25,30 @@ export async function getCart(sessionId: string): Promise<Cart> {
   const cached = await redis.get<Cart>(cacheKeys.cart(sessionId));
   if (!cached) return { sessionId, items: [], updatedAt: new Date().toISOString() };
 
-  // Carts persist in Redis across deploys — a session created before `imageUrl` was
-  // added to CartItem still has that field missing/undefined in its cached JSON, so it
-  // silently falls back to the frontend's initials placeholder forever (Redis TTL is
-  // long, the item is never re-added). Backfill it here instead of making the customer
-  // clear and re-add their cart.
-  const staleImageIds = cached.items.filter((i) => i.imageUrl === undefined).map((i) => i.variantId);
-  if (staleImageIds.length === 0) return cached;
+  // Carts persist in Redis across deploys — a session created before `imageUrl` or
+  // `gstRate` was added to CartItem still has that field missing/undefined in its
+  // cached JSON, so it silently falls back to the frontend's initials placeholder (or
+  // drops out of the GST breakdown) forever, since the 7-day TTL is long enough to
+  // outlive most sessions and the item is never re-added. Backfill both here instead of
+  // making the customer clear and re-add their cart.
+  const staleIds = cached.items
+    .filter((i) => i.imageUrl === undefined || i.gstRate === undefined)
+    .map((i) => i.variantId);
+  if (staleIds.length === 0) return cached;
 
   const variants = await db.productVariant.findMany({
-    where: { id: { in: staleImageIds } },
-    include: { product: { select: { images: true } } },
+    where: { id: { in: staleIds } },
+    include: { product: { select: { images: true, gstRate: true } } },
   });
   cached.items = cached.items.map((item) => {
-    if (item.imageUrl !== undefined) return item;
+    if (item.imageUrl !== undefined && item.gstRate !== undefined) return item;
     const v = variants.find((x) => x.id === item.variantId);
-    return { ...item, imageUrl: v ? firstThumb(v.product.images) : null };
+    return {
+      ...item,
+      imageUrl: item.imageUrl !== undefined ? item.imageUrl : v ? firstThumb(v.product.images) : null,
+      gstRate:
+        item.gstRate !== undefined ? item.gstRate : v && v.product.gstRate !== null ? Number(v.product.gstRate) : null,
+    };
   });
   return saveCart(cached);
 }
@@ -57,7 +65,7 @@ export async function addItemToCart(
 ): Promise<Cart> {
   const variant = await db.productVariant.findFirst({
     where: { id: input.variantId, isActive: true },
-    include: { product: { select: { name: true, basePrice: true, images: true } } },
+    include: { product: { select: { name: true, basePrice: true, images: true, gstRate: true } } },
   });
   if (!variant) throw new VariantNotFoundError(input.variantId);
 
@@ -75,6 +83,7 @@ export async function addItemToCart(
     productName: variant.product.name,
     sku: variant.sku,
     imageUrl: firstThumb(variant.product.images),
+    gstRate: variant.product.gstRate !== null ? Number(variant.product.gstRate) : null,
   };
 
   if (existingIndex >= 0) {
@@ -148,6 +157,34 @@ export interface CartPricing {
   freeItems: CartFreeItem[];
   shippingFee: number;
   total: number;
+  // GST is an inclusive breakup of `subtotal` above, never an added charge — taxableValue
+  // + gstAmount always sum back to subtotal. Same math as orders/invoice.ts, so the
+  // pre-purchase preview here can never disagree with what the invoice shows after payment.
+  // Omitted (both 0) when no cart item has a gstRate set, so the UI can hide the line
+  // entirely rather than show a misleading "GST: Rs. 0.00".
+  taxableValue: number;
+  gstAmount: number;
+}
+
+function computeItemGst(lineTotal: number, gstRate: number): { taxableValue: number; gstAmount: number } {
+  const taxableValue = lineTotal / (1 + gstRate / 100);
+  return { taxableValue, gstAmount: lineTotal - taxableValue };
+}
+
+function computeCartGst(cart: Cart): { taxableValue: number; gstAmount: number } {
+  let taxableValue = 0;
+  let gstAmount = 0;
+  for (const item of cart.items) {
+    const lineTotal = item.price * item.quantity;
+    if (typeof item.gstRate === 'number') {
+      const breakup = computeItemGst(lineTotal, item.gstRate);
+      taxableValue += breakup.taxableValue;
+      gstAmount += breakup.gstAmount;
+    } else {
+      taxableValue += lineTotal;
+    }
+  }
+  return { taxableValue, gstAmount };
 }
 
 // The cart/checkout pages previously computed their displayed total client-side as just
@@ -169,6 +206,8 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
       freeItems: [],
       shippingFee,
       total: subtotal + shippingFee,
+      taxableValue: 0,
+      gstAmount: 0,
     };
   }
 
@@ -220,6 +259,8 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
             })
           );
 
+  const { taxableValue, gstAmount } = computeCartGst(cart);
+
   return {
     subtotal,
     autoAppliedDiscount: totalDiscount,
@@ -228,5 +269,7 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
     // Clamped for display only — a defensive floor so a customer is never shown a
     // negative price, regardless of how a discount got computed.
     total: Math.max(subtotal + shippingFee - totalDiscount, 0),
+    taxableValue,
+    gstAmount,
   };
 }

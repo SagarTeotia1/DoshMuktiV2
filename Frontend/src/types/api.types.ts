@@ -111,6 +111,7 @@ export interface CartItem {
   productName: string;
   sku: string;
   imageUrl: string | null;
+  gstRate?: number | null;
 }
 
 export interface CartResponse {
@@ -127,6 +128,10 @@ export interface CartResponse {
   freeItems: Array<{ variantId: string; productName: string; sku: string; quantity: number }>;
   shippingFee: number;
   total: number;
+  // Inclusive GST breakup of `subtotal` — taxableValue + gstAmount === subtotal. gstAmount
+  // is 0 when no cart item carries a gstRate, so the UI can hide the GST line entirely.
+  taxableValue: number;
+  gstAmount: number;
   updatedAt: string;
 }
 
@@ -169,6 +174,10 @@ export interface OrderTrackingResponse {
   shippingFee: number;
   discountAmount: number;
   total: number;
+  // Inclusive GST breakup of the items' line totals — same formula as the invoice PDF.
+  // gstAmount is 0 when no item on the order carries a gstRate.
+  taxableValue: number;
+  gstAmount: number;
   items: Array<{
     variantSnapshot: { productName: string; sku: string; attributes?: Record<string, unknown> };
     quantity: number;

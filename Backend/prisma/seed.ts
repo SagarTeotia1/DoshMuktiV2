@@ -106,10 +106,10 @@ const PRODUCTS: SeedProduct[] = [
     description: 'A grounding, resin-rich dhoop blend inspired by the Bajrinath tradition — burns slow and steady through extended meditation sessions.',
   },
 
-  // ─── Dosh Mukti Special ───────────────────────────────────────────────────
+  // ─── DoshMukti Special ───────────────────────────────────────────────────
   {
     name: 'Rakshapati (Silver) – Shubh Rakshapati',
-    category: 'Dosh Mukti Special',
+    category: 'DoshMukti Special',
     price: 1499,
     purpose: ['protection', 'gifting'],
     description:
@@ -120,7 +120,7 @@ const PRODUCTS: SeedProduct[] = [
   },
   {
     name: 'Digvijay Havan Powder',
-    category: 'Dosh Mukti Special',
+    category: 'DoshMukti Special',
     price: 199,
     purpose: ['protection', 'clarity'],
     description: 'A fine ceremonial havan powder blended for Digvijay fire rituals, used to purify spaces and dissolve accumulated negativity.',
@@ -128,14 +128,14 @@ const PRODUCTS: SeedProduct[] = [
   },
   {
     name: 'Durbhagya Nashak Nariyal',
-    category: 'Dosh Mukti Special',
+    category: 'DoshMukti Special',
     price: 249,
     purpose: ['protection'],
     description: 'A ritually prepared coconut intended to counter durbhagya (misfortune) — used in traditional nazar-removal ceremonies at home.',
   },
   {
     name: 'Ghoda ki Naal',
-    category: 'Dosh Mukti Special',
+    category: 'DoshMukti Special',
     price: 349,
     purpose: ['protection', 'wealth'],
     description: 'An authentic horseshoe (ghoda ki naal), long regarded as a symbol of protection and good fortune when placed at the entrance of a home.',
@@ -143,7 +143,7 @@ const PRODUCTS: SeedProduct[] = [
   },
   {
     name: 'Vastu Tree (Pyrite, Rose Quartz, Seven Chakras)',
-    category: 'Dosh Mukti Special',
+    category: 'DoshMukti Special',
     extraCategories: ['Pyrite Items'],
     price: 799,
     purpose: ['wealth', 'love', 'clarity', 'gifting'],
@@ -153,21 +153,21 @@ const PRODUCTS: SeedProduct[] = [
   },
   {
     name: 'Vahan Suraksha Kavach',
-    category: 'Dosh Mukti Special',
+    category: 'DoshMukti Special',
     price: 399,
     purpose: ['protection'],
     description: 'A protective kavach designed to be placed in your vehicle, invoked for safe travel and accident protection on the road.',
   },
   {
     name: 'Dhan Santulan Sikka',
-    category: 'Dosh Mukti Special',
+    category: 'DoshMukti Special',
     price: 299,
     purpose: ['wealth'],
     description: 'A balancing coin (Dhan Santulan Sikka) kept in the cash box or wallet to steady the flow of income and curb impulsive financial loss.',
   },
   {
     name: 'Money Magnet Turtle',
-    category: 'Dosh Mukti Special',
+    category: 'DoshMukti Special',
     price: 599,
     purpose: ['wealth', 'gifting'],
     description: 'A classic Feng Shui money turtle, placed near the entrance or workspace to attract steady wealth and career stability.',

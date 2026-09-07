@@ -38,7 +38,7 @@ async function getCategory(category: string, limit = 4): Promise<Product[]> {
 export default async function LandingPage() {
   const [featured, doshMuktiSpecial, rudraksha, bracelets, pyrite, attar, dhoop, banners] = await Promise.all([
     getFeaturedProducts(),
-    getCategory('Dosh Mukti Special', 10),
+    getCategory('DoshMukti Special', 10),
     getCategory('Rudraksha / Kada', 10),
     getCategory('Bracelets', 10),
     getCategory('Pyrite Items', 1),
@@ -50,7 +50,7 @@ export default async function LandingPage() {
   const categoryThumbs: CategoryThumb[] = [
     { label: 'Rudraksha', category: 'Rudraksha / Kada', image: rudraksha[0]?.images[0]?.card ?? null },
     { label: 'Bracelets', category: 'Bracelets', image: bracelets[0]?.images[0]?.card ?? null },
-    { label: 'Dosh Mukti', category: 'Dosh Mukti Special', image: doshMuktiSpecial[0]?.images[0]?.card ?? null },
+    { label: 'DoshMukti', category: 'DoshMukti Special', image: doshMuktiSpecial[0]?.images[0]?.card ?? null },
     { label: 'Pyrite', category: 'Pyrite Items', image: pyrite[0]?.images[0]?.card ?? null },
     { label: 'Attar', category: 'Attar', image: attar[0]?.images[0]?.card ?? null },
     { label: 'Dhoop Sticks', category: 'Dhoop Sticks', image: dhoop[0]?.images[0]?.card ?? null },

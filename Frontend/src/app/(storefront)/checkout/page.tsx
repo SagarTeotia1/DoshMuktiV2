@@ -110,6 +110,10 @@ function CheckoutPageContent() {
   const preDiscountTotal = subtotal + shippingFee - autoAppliedDiscount;
   const couponDiscount = appliedCoupon?.discountAmount ?? 0;
   const total = Math.max(preDiscountTotal - couponDiscount, 0);
+  // Inclusive breakup of subtotal (product price already includes GST — never an added
+  // charge), same math the invoice PDF uses. 0 when nothing in the cart carries a GST rate.
+  const gstAmount = cart?.gstAmount ?? 0;
+  const taxableValue = cart?.taxableValue ?? subtotal;
 
   async function handleApplyCoupon() {
     const code = couponInput.trim();
@@ -409,6 +413,11 @@ function CheckoutPageContent() {
             <span>Total</span>
             <span>{formatCurrency(total)}</span>
           </div>
+          {gstAmount > 0 && (
+            <p className="font-body text-[11px] text-[#8A7A63] text-right -mt-1">
+              Inclusive of GST: {formatCurrency(gstAmount)} (Taxable {formatCurrency(taxableValue)} + GST {formatCurrency(gstAmount)})
+            </p>
+          )}
 
           <button
             type="submit"

@@ -43,6 +43,7 @@
   }
 
   body {
+    overflow-x: hidden;
     font-family: 'Satoshi', sans-serif;
     background-color: #E6D3AE;
     background-image:
@@ -61,7 +62,13 @@
 /* ─── App Shell Blobs ─────────────────────────────────────────────────────────── */
 .app-shell {
   position: relative;
-  overflow: hidden;
+  /* No overflow property here at all — even `overflow-x: hidden` alone forces the
+     computed overflow-y to `auto` per the CSS Overflow spec, and an ancestor with any
+     non-visible overflow-y becomes the containing block for position:sticky descendants
+     instead of the window, breaking every sticky element inside it (this is why the PDP
+     gallery wouldn't stay pinned). The horizontal clip for the blur blobs below now lives
+     on `body` instead, which is safe because the document's own scrolling element is
+     never a sticky "trap" the way a random ancestor div is. */
 }
 
 .app-shell::before {

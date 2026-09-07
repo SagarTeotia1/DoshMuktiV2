@@ -8,6 +8,7 @@ import {
   listOrdersForAdmin,
   updateOrderStatus,
   getGstReport,
+  computeOrderGst,
   type GstReportOrderRow,
 } from './service';
 import { generateInvoicePdf } from './invoice';
@@ -19,7 +20,7 @@ export async function trackOrderHandler(req: FastifyRequest, reply: FastifyReply
   const order = await getOrderByNumber(parsed.data.orderNumber);
   if (!order) return reply.code(404).send({ error: 'Order not found' });
 
-  return reply.send(order);
+  return reply.send({ ...order, ...computeOrderGst(order.items) });
 }
 
 export async function invoiceHandler(req: FastifyRequest, reply: FastifyReply) {
