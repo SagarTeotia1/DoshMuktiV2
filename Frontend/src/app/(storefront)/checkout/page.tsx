@@ -647,7 +647,7 @@ function CheckoutPageContent() {
       </div>
       {!hasResolvedPincodeRate && (
         <p className="font-body text-[10px] text-[#8A7A63] text-right -mt-1">
-          Add {formatCurrency(Math.max(FREE_SHIPPING_ABOVE - subtotal, 0))} more for free delivery, or enter your pincode to see shipping.
+          Add item worth {formatCurrency(Math.max(FREE_SHIPPING_ABOVE - subtotal, 0))} more and claim free delivery.
         </p>
       )}
       {hasResolvedPincodeRate && gstAmount > 0 && (
@@ -806,7 +806,7 @@ function CheckoutPageContent() {
                             ? `Orders above ${formatCurrency(FREE_SHIPPING_ABOVE)} ship free.`
                             : hasResolvedPincodeRate
                             ? `Orders below ${formatCurrency(FREE_SHIPPING_ABOVE)} add a shipping charge (${formatCurrency(shippingFeeOriginal)} for this order) — free above that.`
-                            : `Add ${formatCurrency(Math.max(FREE_SHIPPING_ABOVE - subtotal, 0))} more for free delivery, or enter your pincode to see shipping.`}
+                            : `Add item worth ${formatCurrency(Math.max(FREE_SHIPPING_ABOVE - subtotal, 0))} more and claim free delivery.`}
                         </p>
                       </div>
                       <input
