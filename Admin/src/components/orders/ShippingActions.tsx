@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { FileText, Truck, AlertTriangle, Receipt } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { useGenerateLabel, useRaisePickup, useNdrAction, useUpdateEwaybill } from '@/hooks/use-orders';
+import { useGenerateLabel, useBookShipment, useRaisePickup, useNdrAction, useUpdateEwaybill } from '@/hooks/use-orders';
 import { ApiError } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
 import type { Order } from '@/types/api.types';
@@ -23,6 +23,7 @@ function errMsg(err: unknown, fallback: string) {
 export function ShippingActions({ order }: { order: Order }) {
   const waybill = order.shipment?.delhiveryWaybill;
   const generateLabel = useGenerateLabel(order.id);
+  const bookShipment = useBookShipment(order.id);
   const raisePickup = useRaisePickup(order.id);
   const ndrAction = useNdrAction(order.id);
   const updateEwaybill = useUpdateEwaybill(order.id);
@@ -39,8 +40,29 @@ export function ShippingActions({ order }: { order: Order }) {
 
   const [ewaybillNumber, setEwaybillNumber] = useState(order.shipment?.ewaybillNumber ?? '');
 
+  function handleBookShipment() {
+    bookShipment.mutate(undefined, {
+      onSuccess: () => toast.success('Shipment booked with Delhivery'),
+      onError: (err) => toast.error(errMsg(err, 'Could not book shipment')),
+    });
+  }
+
   if (!waybill) {
-    return <p className="text-xs text-slate-400">No Delhivery waybill yet — actions unlock once the shipment is booked.</p>;
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-xs text-slate-400">
+          No Delhivery waybill yet — the automatic booking on payment either hasn&apos;t run yet or failed.
+        </p>
+        <button
+          onClick={handleBookShipment}
+          disabled={bookShipment.isPending}
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#9C5A26] hover:bg-[#6B3D19] disabled:opacity-40 transition-colors"
+        >
+          <Truck className="w-4 h-4" />
+          {bookShipment.isPending ? 'Booking...' : 'Book Shipment'}
+        </button>
+      </div>
+    );
   }
 
   function handleGenerateLabel() {

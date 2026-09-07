@@ -45,6 +45,16 @@ export function useGenerateLabel(id: string) {
   });
 }
 
+// Manual retry for the auto-book-on-payment webhook, which is fire-and-forget and can
+// fail silently (Delhivery rejection, network blip) — see webhooks/service.ts.
+export function useBookShipment(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<{ waybill: string }>(`/api/admin/orders/${id}/shipment/book`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-order', id] }),
+  });
+}
+
 export function useRaisePickup(id: string) {
   const qc = useQueryClient();
   return useMutation({

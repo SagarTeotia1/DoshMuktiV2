@@ -1,4 +1,5 @@
 import { db } from '../../shared/db/client';
+import { logger } from '../../shared/logger/pino';
 import { sendOrderConfirmation, sendShipmentNotification } from '../../shared/integrations/resend/client';
 import { createShipment } from '../../shared/integrations/delhivery/client';
 import { releaseCouponUsageTx } from '../coupons/service';
@@ -52,7 +53,17 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
       if (payment.order.customerEmail) {
         void sendShipmentNotification(payment.order.customerEmail, payment.order.orderNumber, shipment.waybill);
       }
+    } else {
+      // createShipment returns null on a Delhivery-side rejection (bad wallet balance,
+      // fraud check, etc) rather than throwing — without this log the order is just
+      // stuck with no waybill and nothing ever says why. Admin can retry via the manual
+      // "Book Shipment" action once the underlying issue (e.g. wallet top-up) is fixed.
+      logger.error({ orderNumber: payment.order.orderNumber }, 'createShipment returned null — Delhivery rejected the shipment');
     }
+  }).catch((err) => {
+    // A thrown error here (network failure, etc) would otherwise be an unhandled
+    // rejection — silently dropped, order stuck with no waybill and no trace of why.
+    logger.error({ err, orderNumber: payment.order.orderNumber }, 'createShipment threw while booking shipment');
   });
 }
 

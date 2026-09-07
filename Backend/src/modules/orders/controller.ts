@@ -23,6 +23,7 @@ import {
   raiseOrderPickup,
   takeOrderNdrAction,
   updateOrderEwaybill,
+  bookOrderShipment,
   NoWaybillError,
   type GstReportOrderRow,
 } from './service';
@@ -152,6 +153,18 @@ export async function shipmentLabelHandler(req: FastifyRequest, reply: FastifyRe
     return reply.send(label);
   } catch (err) {
     return shippingErrorReply(reply, err);
+  }
+}
+
+export async function bookShipmentHandler(req: FastifyRequest, reply: FastifyReply) {
+  const parsed = idParamSchema.safeParse(req.params);
+  if (!parsed.success) return reply.code(400).send({ error: 'Invalid id' });
+
+  try {
+    const shipment = await bookOrderShipment(parsed.data.id);
+    return reply.send(shipment);
+  } catch (err) {
+    return reply.code(502).send({ error: err instanceof Error ? err.message : 'Booking failed' });
   }
 }
 

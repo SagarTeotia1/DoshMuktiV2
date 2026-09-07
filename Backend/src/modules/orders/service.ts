@@ -1,6 +1,7 @@
 import { db } from '../../shared/db/client';
 import type { OrderStatus } from '@prisma/client';
 import {
+  createShipment,
   fetchShippingLabel,
   raisePickupRequest,
   takeNdrAction,
@@ -19,6 +20,37 @@ async function getWaybillOrThrow(orderId: string): Promise<string> {
   const shipment = await db.shipment.findUnique({ where: { orderId } });
   if (!shipment?.delhiveryWaybill) throw new NoWaybillError();
   return shipment.delhiveryWaybill;
+}
+
+type BookableAddress = { line1: string; line2?: string; city: string; state: string; pincode: string };
+
+// Manual retry path for the auto-book on payment.captured (see webhooks/service.ts) —
+// that one is fire-and-forget and can fail silently (Delhivery rejection, network blip).
+// This lets Admin re-trigger it once whatever caused the rejection is fixed, without
+// needing a DB console. Refuses if a shipment already exists — never books twice.
+export async function bookOrderShipment(orderId: string): Promise<{ waybill: string }> {
+  const existing = await db.shipment.findUnique({ where: { orderId } });
+  if (existing?.delhiveryWaybill) throw new Error('This order already has a Delhivery shipment booked.');
+
+  const order = await db.order.findUnique({ where: { id: orderId }, include: { items: { include: { variant: true } } } });
+  if (!order) throw new Error('Order not found');
+
+  const shipment = await createShipment({
+    orderNumber: order.orderNumber,
+    customerName: order.customerName,
+    customerPhone: order.customerPhone,
+    address: order.shippingAddress as unknown as BookableAddress,
+    totalAmount: Number(order.total),
+    weight: order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0),
+  });
+  if (!shipment) throw new Error('Delhivery rejected the shipment — check wallet balance and address details');
+
+  if (existing) {
+    await db.shipment.update({ where: { orderId }, data: { delhiveryWaybill: shipment.waybill, status: 'BOOKED' } });
+  } else {
+    await db.shipment.create({ data: { orderId, delhiveryWaybill: shipment.waybill, status: 'BOOKED' } });
+  }
+  return shipment;
 }
 
 export async function getShipmentLabel(orderId: string): Promise<{ pdfUrl: string }> {
