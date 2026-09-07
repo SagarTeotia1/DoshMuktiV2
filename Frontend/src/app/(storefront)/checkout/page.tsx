@@ -59,8 +59,18 @@ const RESEND_COOLDOWN_SECONDS = 120;
 // summary, which stays visible throughout) instead of bouncing the customer to a
 // separate /login page and back. Mirrors the GoKwik-style "Login to continue" pattern:
 // the product/price context never disappears while the customer authenticates.
-function InlineLogin() {
-  const { sendOtp, verifyOtp } = useAuth();
+// sendOtp/verifyOtp are passed down from the parent's own single useAuth() call rather
+// than calling useAuth() again here — useAuth is a plain hook (its own useState), not a
+// shared context, so a second call here would get its own independent isAuthenticated
+// state. verifyOtp would succeed, but the parent's copy of isAuthenticated would never
+// flip, and the page would silently never advance past the login card.
+function InlineLogin({
+  sendOtp,
+  verifyOtp,
+}: {
+  sendOtp: (phone: string) => Promise<void>;
+  verifyOtp: (phone: string, otp: string, name?: string) => Promise<unknown>;
+}) {
   const [step, setStep] = useState<OtpStep>('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
@@ -206,7 +216,7 @@ function CheckoutPageContent() {
   const queryClient = useQueryClient();
   const { cart } = useCart(scope);
   const { openCheckout, loading: rzpLoading } = useRazorpay();
-  const { user, loading: authLoading, isAuthenticated } = useAuth();
+  const { user, loading: authLoading, isAuthenticated, sendOtp, verifyOtp } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
   const [form, setForm] = useState({
@@ -500,7 +510,7 @@ function CheckoutPageContent() {
       {!isAuthenticated ? (
         <div className="grid md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
           <div className="flex flex-col gap-8">
-            <InlineLogin />
+            <InlineLogin sendOtp={sendOtp} verifyOtp={verifyOtp} />
           </div>
           {summaryCard}
         </div>
