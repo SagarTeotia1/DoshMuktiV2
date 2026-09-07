@@ -292,25 +292,44 @@ export async function updateOrderStatus(
     return { order }; // never paid, already refunded, or payment failed — nothing to refund
   }
 
-  try {
-    const { refundId } = await refundPayment(payment.razorpayPaymentId, Number(payment.amount));
-    await db.payment.update({
-      where: { orderId },
-      data: { status: 'REFUNDED', razorpayRefundId: refundId, refundedAt: new Date() },
-    });
-    // Order status itself moves to REFUNDED once money is actually back with the
-    // customer — CANCELLED alone left the order looking stuck even when the refund
-    // had gone through, since Payment's REFUNDED status wasn't visible on the badge.
-    const refunded = await db.$transaction(async (tx) => {
+  // Marks the order REFUNDED once Payment already carries a refund id — shared by both
+  // the request that actually called Razorpay and a concurrent duplicate that lost the
+  // race (see the "already refunded" branch below). Re-running this is harmless: it's
+  // the same transition either way, just logged twice if it genuinely races.
+  async function markOrderRefunded(refundId: string) {
+    return db.$transaction(async (tx) => {
       const updated = await tx.order.update({ where: { id: orderId }, data: { status: 'REFUNDED' } });
       await tx.orderStatusLog.create({
         data: { orderId, from: 'CANCELLED', to: 'REFUNDED', note: `Razorpay refund ${refundId}`, createdBy: admin },
       });
       return updated;
     });
-    return { order: refunded };
+  }
+
+  try {
+    const { refundId } = await refundPayment(payment.razorpayPaymentId, Number(payment.amount));
+    await db.payment.update({
+      where: { orderId },
+      data: { status: 'REFUNDED', razorpayRefundId: refundId, refundedAt: new Date() },
+    });
+    return { order: await markOrderRefunded(refundId) };
   } catch (err) {
-    const reason = err instanceof Error ? err.message : 'Refund failed — retry from the Razorpay dashboard';
+    // Razorpay's SDK throws a plain object here (`{statusCode, error: {code, description}}`),
+    // never an Error — reading err.message on it silently produced nothing and always fell
+    // through to the generic fallback, hiding the real reason from the admin.
+    const razorpayError = (err as { error?: { description?: string; code?: string } } | null)?.error;
+    const reason = razorpayError?.description ?? (err instanceof Error ? err.message : 'Refund failed — retry from the Razorpay dashboard');
+
+    // A near-simultaneous duplicate request (double-click, double-submit) can lose this
+    // exact race: the sibling request's refund already landed at Razorpay by the time
+    // this one's call goes out, so Razorpay correctly rejects it — that's not a real
+    // failure, just this request losing to its sibling. Reconcile from the DB instead
+    // of reporting it as broken.
+    if (razorpayError?.code === 'BAD_REQUEST_ERROR' && /already.*refunded/i.test(reason)) {
+      const fresh = await db.payment.findUnique({ where: { orderId } });
+      if (fresh?.razorpayRefundId) return { order: await markOrderRefunded(fresh.razorpayRefundId) };
+    }
+
     logger.error({ err, orderId, orderNumber: order.orderNumber }, 'Refund failed after order cancellation');
     // Order status stays CANCELLED (never faked as REFUNDED), but the failure needs to
     // survive a page reload, not just the one toast the admin who clicked Cancel saw —

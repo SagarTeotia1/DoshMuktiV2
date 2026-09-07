@@ -216,6 +216,7 @@ export default function OrderDetailPage() {
         }
         onConfirm={confirmStatusChange}
         onCancel={() => setPendingStatus(null)}
+        confirmDisabled={updateStatus.isPending}
       />
     </>
   );

@@ -6,12 +6,17 @@ export function ConfirmDialog({
   message,
   onConfirm,
   onCancel,
+  confirmDisabled,
 }: {
   open: boolean;
   title: string;
   message: string;
   onConfirm: () => void;
   onCancel: () => void;
+  // Prevents a rapid double-click firing the confirmed action twice before the dialog
+  // has a chance to close — matters most for side-effectful actions (refunds, Delhivery
+  // calls) where a duplicate request isn't purely wasted, it hits a real external API.
+  confirmDisabled?: boolean;
 }) {
   if (!open) return null;
 
@@ -24,7 +29,11 @@ export function ConfirmDialog({
           <button onClick={onCancel} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
             Cancel
           </button>
-          <button onClick={onConfirm} className="px-4 py-2 text-sm font-semibold text-white bg-[#9C5A26] hover:bg-[#6B3D19] rounded-lg transition-colors">
+          <button
+            onClick={onConfirm}
+            disabled={confirmDisabled}
+            className="px-4 py-2 text-sm font-semibold text-white bg-[#9C5A26] hover:bg-[#6B3D19] disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-colors"
+          >
             Confirm
           </button>
         </div>
