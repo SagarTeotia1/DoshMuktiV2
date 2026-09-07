@@ -31,7 +31,22 @@ export default function OrdersPage() {
   async function completePayment(orderNumber: string) {
     setResuming(orderNumber);
     try {
-      await api.post(`/api/orders/${orderNumber}/resume`, {}, { 'x-session-id': getSessionId() });
+      const { addedCount, skippedCount } = await api.post<{ addedCount: number; skippedCount: number }>(
+        `/api/orders/${orderNumber}/resume`,
+        {},
+        { 'x-session-id': getSessionId() }
+      );
+      // Stock (or a deactivated variant) can genuinely change between when this order
+      // was placed and now — resume skips whatever's no longer available rather than
+      // failing the whole thing, but silently landing on checkout with fewer items than
+      // expected (or none at all) would be confusing without saying why.
+      if (addedCount === 0) {
+        toast.error('All items in this order are now out of stock.');
+        return;
+      }
+      if (skippedCount > 0) {
+        toast.warning(`${skippedCount} item${skippedCount === 1 ? '' : 's'} in this order ${skippedCount === 1 ? 'is' : 'are'} no longer available and were left out.`);
+      }
       router.push('/checkout');
     } catch {
       toast.error('Could not resume this order — try adding the items to your cart again.');

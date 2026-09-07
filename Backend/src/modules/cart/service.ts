@@ -14,6 +14,13 @@ export class VariantNotFoundError extends Error {
   }
 }
 
+export class OutOfStockError extends Error {
+  constructor(public variantId: string) {
+    super(`Out of stock: ${variantId}`);
+    this.name = "OutOfStockError";
+  }
+}
+
 // Product.images is stored as Json ([{thumb,card,full}]) — see prisma/schema.prisma.
 // Cart/free-gift lines only ever need the thumb-sized crop.
 function firstThumb(images: unknown): string | null {
@@ -70,6 +77,12 @@ export async function addItemToCart(
     include: { product: { select: { name: true, basePrice: true, images: true, gstRate: true } } },
   });
   if (!variant) throw new VariantNotFoundError(input.variantId);
+  // Previously this fell through to the Math.min(...) clamps below, which silently
+  // inserted a quantity-0 line for a genuinely out-of-stock variant — invisible in the
+  // cart total, but then failed checkout's schema (quantity min 1) with no clear reason,
+  // or worse, a resumed order (see orders/service.ts's resumeOrder) would "succeed" at
+  // resume time while quietly carrying a zero-quantity item nobody could actually pay for.
+  if (variant.stockQuantity <= 0) throw new OutOfStockError(input.variantId);
 
   const cart = await getCart(sessionId);
   const price = Number(variant.priceOverride ?? variant.product.basePrice);

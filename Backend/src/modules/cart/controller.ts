@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { cartItemSchema, updateQuantitySchema } from './schema';
-import { getCart, addItemToCart, updateItemQuantity, removeItemFromCart, clearCart, computeCartPricing, VariantNotFoundError } from './service';
+import { getCart, addItemToCart, updateItemQuantity, removeItemFromCart, clearCart, computeCartPricing, VariantNotFoundError, OutOfStockError } from './service';
 import type { Cart } from './schema';
 
 function sessionIdOf(req: FastifyRequest): string | null {
@@ -36,6 +36,7 @@ export async function addItemHandler(req: FastifyRequest, reply: FastifyReply) {
     return cartResponse(cart, reply);
   } catch (err) {
     if (err instanceof VariantNotFoundError) return reply.code(404).send({ error: err.message });
+    if (err instanceof OutOfStockError) return reply.code(409).send({ error: 'Item out of stock', code: 'OUT_OF_STOCK', variantId: err.variantId });
     throw err;
   }
 }
