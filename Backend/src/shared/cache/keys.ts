@@ -9,6 +9,10 @@ export const cacheKeys = {
   cronLock: (job: string) => `cron:lock:${job}` as const,
   chatProfile: (sessionId: string) => `chat:profile:${sessionId}` as const,
   activeBanners: () => `banners:active` as const,
+  // originPincode|destPincode|weightGrams — same route+weight always prices the same,
+  // so this is safe to cache and saves a live Delhivery call on every cart/PDP view.
+  shippingRate: (originPincode: string, destPincode: string, weightGrams: number) =>
+    `shipping:rate:${originPincode}:${destPincode}:${weightGrams}` as const,
 } as const;
 
 export const CACHE_TTL = {
@@ -22,4 +26,5 @@ export const CACHE_TTL = {
   CRON_LOCK: 60,
   CHAT_PROFILE: 60 * 60 * 24 * 30,
   BANNERS: 60 * 10,
+  SHIPPING_RATE: 60 * 60, // 1h — rates don't move minute to minute, and this is hit on every cart/PDP view
 } as const;

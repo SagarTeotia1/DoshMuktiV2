@@ -5,7 +5,7 @@ import { RETURN_ELIGIBLE_ABOVE } from '@/lib/constants';
 
 const ITEMS = [
   { icon: Gem, label: 'Authentic & Energized', sub: 'Sourced directly from verified artisans' },
-  { icon: Truck, label: 'Free Shipping ₹999+', sub: 'Pan-India delivery via Delhivery' },
+  { icon: Truck, label: 'Free Shipping ₹399+', sub: 'Pan-India delivery via Delhivery' },
   { icon: ShieldCheck, label: 'Secure Payments', sub: 'Powered by Razorpay' },
   { icon: RotateCcw, label: `7-Day Returns ₹${RETURN_ELIGIBLE_ABOVE}+`, sub: 'On eligible orders, hassle-free' },
 ];

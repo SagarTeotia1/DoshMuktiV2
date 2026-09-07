@@ -1,6 +1,7 @@
 import { db } from "../../shared/db/client";
 import { redis } from "../../shared/cache/client";
 import { cacheKeys, CACHE_TTL } from "../../shared/cache/keys";
+import { env } from "../../config/env";
 import { resolveAutoAppliedRewardsForCheckout } from "../offers/service";
 import type { CheckoutLineItem } from "../offers/service";
 import { calculateShippingFee } from "../checkout/service";
@@ -32,7 +33,7 @@ export async function getCart(sessionId: string): Promise<Cart> {
   // outlive most sessions and the item is never re-added. Backfill both here instead of
   // making the customer clear and re-add their cart.
   const staleIds = cached.items
-    .filter((i) => i.imageUrl === undefined || i.gstRate === undefined)
+    .filter((i) => i.imageUrl === undefined || i.gstRate === undefined || i.weight === undefined)
     .map((i) => i.variantId);
   if (staleIds.length === 0) return cached;
 
@@ -41,13 +42,14 @@ export async function getCart(sessionId: string): Promise<Cart> {
     include: { product: { select: { images: true, gstRate: true } } },
   });
   cached.items = cached.items.map((item) => {
-    if (item.imageUrl !== undefined && item.gstRate !== undefined) return item;
+    if (item.imageUrl !== undefined && item.gstRate !== undefined && item.weight !== undefined) return item;
     const v = variants.find((x) => x.id === item.variantId);
     return {
       ...item,
       imageUrl: item.imageUrl !== undefined ? item.imageUrl : v ? firstThumb(v.product.images) : null,
       gstRate:
         item.gstRate !== undefined ? item.gstRate : v && v.product.gstRate !== null ? Number(v.product.gstRate) : null,
+      weight: item.weight !== undefined ? item.weight : (v?.weight ?? 500),
     };
   });
   return saveCart(cached);
@@ -84,6 +86,7 @@ export async function addItemToCart(
     sku: variant.sku,
     imageUrl: firstThumb(variant.product.images),
     gstRate: variant.product.gstRate !== null ? Number(variant.product.gstRate) : null,
+    weight: variant.weight,
   };
 
   if (existingIndex >= 0) {
@@ -156,6 +159,13 @@ export interface CartPricing {
   // what they're getting before they ever reach the final order confirmation.
   freeItems: CartFreeItem[];
   shippingFee: number;
+  // The real (or flat-fallback) shipping cost, regardless of whether it's actually being
+  // charged — lets the UI show "₹99 → FREE" once the cart crosses the threshold instead
+  // of the fee just disappearing. Equal to shippingFee whenever it isn't yet waived.
+  // Pre-checkout, this is an ORIGIN-TO-ORIGIN estimate (destination pincode isn't known
+  // until the customer enters an address at checkout) — the real charge is recalculated
+  // there against the actual destination.
+  shippingFeeOriginal: number;
   total: number;
   // GST is an inclusive breakup of `subtotal` above, never an added charge — taxableValue
   // + gstAmount always sum back to subtotal. Same math as orders/invoice.ts, so the
@@ -197,7 +207,14 @@ function computeCartGst(cart: Cart): { taxableValue: number; gstAmount: number }
 // second reimplementation of the discount math.
 export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
   const subtotal = cartSubtotal(cart);
-  const shippingFee = calculateShippingFee(subtotal);
+  const weightGrams = cart.items.reduce((sum, item) => sum + (item.weight ?? 500) * item.quantity, 0);
+  // No destination pincode pre-checkout — origin-to-origin is the closest available
+  // estimate (see the field comment on shippingFeeOriginal above).
+  const { fee: shippingFee, originalFee: shippingFeeOriginal } = await calculateShippingFee(
+    subtotal,
+    weightGrams,
+    env.DELHIVERY_WAREHOUSE_PINCODE
+  );
 
   if (cart.items.length === 0) {
     return {
@@ -205,6 +222,7 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
       autoAppliedDiscount: 0,
       freeItems: [],
       shippingFee,
+      shippingFeeOriginal,
       total: subtotal + shippingFee,
       taxableValue: 0,
       gstAmount: 0,
@@ -266,6 +284,7 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
     autoAppliedDiscount: totalDiscount,
     freeItems: freeItemDetails,
     shippingFee,
+    shippingFeeOriginal,
     // Clamped for display only — a defensive floor so a customer is never shown a
     // negative price, regardless of how a discount got computed.
     total: Math.max(subtotal + shippingFee - totalDiscount, 0),

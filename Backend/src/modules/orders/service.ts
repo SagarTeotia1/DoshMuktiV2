@@ -1,5 +1,61 @@
 import { db } from '../../shared/db/client';
 import type { OrderStatus } from '@prisma/client';
+import {
+  fetchShippingLabel,
+  raisePickupRequest,
+  takeNdrAction,
+  updateEwaybill,
+  type NdrAction,
+} from '../../shared/integrations/delhivery/client';
+
+export class NoWaybillError extends Error {
+  constructor() {
+    super('This order has no Delhivery waybill yet — shipment may not be booked.');
+    this.name = 'NoWaybillError';
+  }
+}
+
+async function getWaybillOrThrow(orderId: string): Promise<string> {
+  const shipment = await db.shipment.findUnique({ where: { orderId } });
+  if (!shipment?.delhiveryWaybill) throw new NoWaybillError();
+  return shipment.delhiveryWaybill;
+}
+
+export async function getShipmentLabel(orderId: string): Promise<{ pdfUrl: string }> {
+  const waybill = await getWaybillOrThrow(orderId);
+  const label = await fetchShippingLabel(waybill);
+  if (!label) throw new Error('Delhivery did not return a label for this waybill');
+  return label;
+}
+
+export async function raiseOrderPickup(
+  orderId: string,
+  params: { pickupDate: string; pickupTime: string; expectedPackageCount: number }
+): Promise<{ pickupId?: string }> {
+  await getWaybillOrThrow(orderId); // pickup only makes sense once a shipment is booked
+  const result = await raisePickupRequest(params);
+  if (!result.success) throw new Error(result.error ?? 'Pickup request failed');
+
+  await db.shipment.update({ where: { orderId }, data: { pickupRequestedAt: new Date() } });
+  return { pickupId: result.pickupId };
+}
+
+export async function takeOrderNdrAction(
+  orderId: string,
+  params: { action: NdrAction; reattemptDate?: string; comment?: string }
+): Promise<void> {
+  const waybill = await getWaybillOrThrow(orderId);
+  const result = await takeNdrAction({ waybill, ...params });
+  if (!result.success) throw new Error(result.error ?? 'NDR action failed');
+}
+
+export async function updateOrderEwaybill(orderId: string, ewaybillNumber: string): Promise<void> {
+  const waybill = await getWaybillOrThrow(orderId);
+  const result = await updateEwaybill({ waybill, ewaybillNumber });
+  if (!result.success) throw new Error(result.error ?? 'E-way bill update failed');
+
+  await db.shipment.update({ where: { orderId }, data: { ewaybillNumber } });
+}
 
 // Order/product images so the storefront's order pages can show real thumbnails
 // (Amazon/Flipkart-style) instead of a generic icon per line item.

@@ -15,6 +15,7 @@ export default function CartPage() {
   // checkout itself uses for AUTO_APPLIED offer discounts, so this preview total can
   // never drift from what checkout actually charges.
   const shippingFee = cart?.shippingFee ?? (subtotal >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE);
+  const shippingFeeOriginal = cart?.shippingFeeOriginal ?? shippingFee;
   const autoAppliedDiscount = cart?.autoAppliedDiscount ?? 0;
   const remainingForFreeShipping = Math.max(0, FREE_SHIPPING_ABOVE - subtotal);
   const total = Math.max(subtotal + shippingFee - autoAppliedDiscount, 0);
@@ -141,7 +142,18 @@ export default function CartPage() {
         </div>
         <div className="flex justify-between font-body text-sm text-[#6B5539]">
           <span>Shipping</span>
-          <span>{shippingFee === 0 ? 'Free' : formatCurrency(shippingFee)}</span>
+          {shippingFee === 0 ? (
+            shippingFeeOriginal > 0 ? (
+              <span className="flex items-center gap-1.5">
+                <span className="line-through text-[#8A7A63]">{formatCurrency(shippingFeeOriginal)}</span>
+                <span className="font-semibold text-brand-success">FREE</span>
+              </span>
+            ) : (
+              <span>Free</span>
+            )
+          ) : (
+            formatCurrency(shippingFee)
+          )}
         </div>
         {autoAppliedDiscount > 0 && (
           <div className="flex justify-between font-body text-sm text-[#9C5A26] font-semibold">

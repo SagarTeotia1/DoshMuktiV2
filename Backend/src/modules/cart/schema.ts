@@ -21,6 +21,9 @@ export interface CartItem {
   // Snapshotted at add-time, same as price — a later admin rate change shouldn't retag
   // an item already sitting in someone's cart. Absent/null means no GST applies.
   gstRate?: number | null;
+  // Grams, snapshotted at add-time — feeds the live Delhivery shipping-rate estimate
+  // shown on the cart/checkout pages. Optional/backfilled the same way gstRate is.
+  weight?: number;
 }
 
 export interface Cart {

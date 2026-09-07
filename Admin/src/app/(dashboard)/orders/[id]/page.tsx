@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Topbar } from '@/components/layout/Topbar';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { ShippingActions } from '@/components/orders/ShippingActions';
 import { useOrder, useUpdateOrderStatus } from '@/hooks/use-orders';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ApiError } from '@/lib/api-client';
@@ -144,8 +145,11 @@ export default function OrderDetailPage() {
               <h2 className="font-heading font-bold text-sm text-slate-900 mb-2">Shipment</h2>
               <p className="text-sm text-slate-500">Status: {order.shipment.status}</p>
               {order.shipment.delhiveryWaybill && <p className="text-xs text-slate-400 mt-1">Waybill: {order.shipment.delhiveryWaybill}</p>}
+              {order.shipment.ewaybillNumber && <p className="text-xs text-slate-400 mt-1">E-way Bill: {order.shipment.ewaybillNumber}</p>}
             </div>
           )}
+
+          <ShippingActions order={order} />
 
           {NEXT_STEP[order.status] && (
             <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">

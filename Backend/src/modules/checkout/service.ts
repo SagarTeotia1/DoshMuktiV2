@@ -3,7 +3,9 @@ import type { Prisma } from "@prisma/client";
 import { db } from "../../shared/db/client";
 import { razorpay } from "../../shared/integrations/razorpay/client";
 import { redis } from "../../shared/cache/client";
-import { cacheKeys } from "../../shared/cache/keys";
+import { cacheKeys, CACHE_TTL } from "../../shared/cache/keys";
+import { env } from "../../config/env";
+import { calculateShippingCost } from "../../shared/integrations/delhivery/client";
 import {
   SHIPPING_FEE,
   FREE_SHIPPING_ABOVE,
@@ -100,11 +102,44 @@ async function generateOrderNumber(
   return `DOSH-${today}-${String(row.seq).padStart(4, "0")}`;
 }
 
+// Live Delhivery rate (Surface mode), cached by route+weight since the same
+// origin/destination/weight always prices the same — this is hit on every cart/PDP
+// view, not just checkout, so an uncached call there would hammer Delhivery for no
+// reason. Returns null (never throws) on any failure so callers can fall back to the
+// flat SHIPPING_FEE — a customer must never be blocked from checking out because a
+// pricing API had a bad moment.
+async function getLiveShippingRate(destPincode: string, weightGrams: number): Promise<number | null> {
+  const originPincode = env.DELHIVERY_WAREHOUSE_PINCODE;
+  const key = cacheKeys.shippingRate(originPincode, destPincode, weightGrams);
+
+  const cached = await redis.get<number>(key);
+  if (typeof cached === "number") return cached;
+
+  const result = await calculateShippingCost({ originPincode, destPincode, weightGrams, paymentMode: "Pre-paid" });
+  if (!result) return null;
+
+  const rounded = Math.ceil(result.amount);
+  await redis.set(key, rounded, { ex: CACHE_TTL.SHIPPING_RATE });
+  return rounded;
+}
+
 // Exported for the cart module — the cart's pricing preview (shown pre-checkout on the
 // cart/checkout pages) must compute shipping the exact same way the real order will, or
 // the displayed total drifts from what actually gets charged.
-export function calculateShippingFee(subtotal: number): number {
-  return subtotal >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE;
+//
+// `originalFee` is always the real (or flat-fallback) shipping cost regardless of the
+// free-shipping threshold — the UI shows it struck through ("₹99 → FREE") once the cart
+// crosses FREE_SHIPPING_ABOVE, rather than just disappearing. `fee` is what's actually
+// charged (0 once waived).
+export async function calculateShippingFee(
+  subtotal: number,
+  weightGrams: number,
+  destPincode: string
+): Promise<{ fee: number; originalFee: number }> {
+  const liveRate = await getLiveShippingRate(destPincode, weightGrams);
+  const originalFee = liveRate ?? SHIPPING_FEE;
+  const fee = subtotal >= FREE_SHIPPING_ABOVE ? 0 : originalFee;
+  return { fee, originalFee };
 }
 
 export async function initiateCheckout(input: CheckoutInput, userId: string) {
@@ -190,7 +225,21 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
 
   const allReservationItems = [...input.items, ...freeItems];
 
-  const shippingFee = calculateShippingFee(subtotal);
+  // Every physically-shipped item counts toward weight — paid items (from `variants`,
+  // already fetched above) and free-gift items alike.
+  const paidWeight = input.items.reduce((sum, item) => {
+    const v = variants.find((x) => x.id === item.variantId)!;
+    return sum + v.weight * item.quantity;
+  }, 0);
+  const freeWeight = freeItems.reduce((sum, item) => {
+    const v = freeVariantById.get(item.variantId);
+    return sum + (v?.weight ?? 0) * item.quantity;
+  }, 0);
+  const { fee: shippingFee } = await calculateShippingFee(
+    subtotal,
+    paidWeight + freeWeight,
+    input.shippingAddress.pincode
+  );
   const reservedUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
   const { order, payment } = await withSerializableRetry(() =>

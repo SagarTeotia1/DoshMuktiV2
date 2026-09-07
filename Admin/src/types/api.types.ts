@@ -215,7 +215,12 @@ export interface Order {
   total: number;
   items: OrderItem[];
   payment: { status: string; razorpayPaymentId: string | null } | null;
-  shipment: { delhiveryWaybill: string | null; status: string } | null;
+  shipment: {
+    delhiveryWaybill: string | null;
+    status: string;
+    ewaybillNumber: string | null;
+    pickupRequestedAt: string | null;
+  } | null;
   statusLog?: Array<{ from: string; to: string; note: string | null; createdBy: string; createdAt: string }>;
   createdAt: string;
 }

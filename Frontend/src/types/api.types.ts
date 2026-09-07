@@ -41,6 +41,8 @@ export const productVariantSchema = z.object({
   priceOverride: z.number().nullable(),
   stockQuantity: z.number(),
   isActive: z.boolean(),
+  // Grams — feeds the shipping-charge estimate shown on the PDP.
+  weight: z.number().default(500),
 });
 
 export const productSchema = z.object({
@@ -127,12 +129,39 @@ export interface CartResponse {
   // "🎁 Attar (3ml) x1 — FREE" line, not just a count.
   freeItems: Array<{ variantId: string; productName: string; sku: string; quantity: number }>;
   shippingFee: number;
+  // The real (or flat-fallback) shipping cost regardless of whether it's actually being
+  // charged — lets the UI show "₹99 → FREE" once the cart crosses the free-shipping
+  // threshold instead of the fee just disappearing. Equal to shippingFee otherwise.
+  shippingFeeOriginal: number;
   total: number;
   // Inclusive GST breakup of `subtotal` — taxableValue + gstAmount === subtotal. gstAmount
   // is 0 when no cart item carries a gstRate, so the UI can hide the GST line entirely.
   taxableValue: number;
   gstAmount: number;
   updatedAt: string;
+}
+
+export interface Address {
+  id: string;
+  receiverPhone: string;
+  name: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string;
+  pincode: string;
+  isDefault: boolean;
+}
+
+export interface AddressInput {
+  name: string;
+  receiverPhone: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  pincode: string;
+  setDefault?: boolean;
 }
 
 export interface CheckoutInput {

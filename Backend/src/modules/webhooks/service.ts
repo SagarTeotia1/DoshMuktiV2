@@ -1,5 +1,5 @@
 import { db } from '../../shared/db/client';
-import { sendOrderConfirmation } from '../../shared/integrations/resend/client';
+import { sendOrderConfirmation, sendShipmentNotification } from '../../shared/integrations/resend/client';
 import { createShipment } from '../../shared/integrations/delhivery/client';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
@@ -49,6 +49,9 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
   }).then(async (shipment) => {
     if (shipment) {
       await db.shipment.create({ data: { orderId: payment.orderId, delhiveryWaybill: shipment.waybill, status: 'BOOKED' } });
+      if (payment.order.customerEmail) {
+        void sendShipmentNotification(payment.order.customerEmail, payment.order.orderNumber, shipment.waybill);
+      }
     }
   });
 }

@@ -37,3 +37,36 @@ export function useUpdateOrderStatus(id: string) {
     },
   });
 }
+
+// Not a mutation — fetches on demand and returns the PDF URL, no server state changes.
+export function useGenerateLabel(id: string) {
+  return useMutation({
+    mutationFn: () => api.get<{ pdfUrl: string }>(`/api/admin/orders/${id}/shipment/label`),
+  });
+}
+
+export function useRaisePickup(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { pickupDate: string; pickupTime: string; expectedPackageCount: number }) =>
+      api.post<{ pickupId?: string }>(`/api/admin/orders/${id}/shipment/pickup`, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-order', id] }),
+  });
+}
+
+export function useNdrAction(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { action: 'REATTEMPT' | 'RTO'; reattemptDate?: string; comment?: string }) =>
+      api.post<void>(`/api/admin/orders/${id}/shipment/ndr`, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-order', id] }),
+  });
+}
+
+export function useUpdateEwaybill(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { ewaybillNumber: string }) => api.post<void>(`/api/admin/orders/${id}/shipment/ewaybill`, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-order', id] }),
+  });
+}

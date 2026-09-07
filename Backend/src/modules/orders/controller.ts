@@ -1,5 +1,15 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { orderNumberParamSchema, phoneQuerySchema, listOrdersQuerySchema, updateOrderStatusSchema, idParamSchema, gstReportQuerySchema } from './schema';
+import {
+  orderNumberParamSchema,
+  phoneQuerySchema,
+  listOrdersQuerySchema,
+  updateOrderStatusSchema,
+  idParamSchema,
+  gstReportQuerySchema,
+  raisePickupSchema,
+  ndrActionSchema,
+  ewaybillUpdateSchema,
+} from './schema';
 import {
   getOrderByNumber,
   listOrdersByPhone,
@@ -9,6 +19,11 @@ import {
   updateOrderStatus,
   getGstReport,
   computeOrderGst,
+  getShipmentLabel,
+  raiseOrderPickup,
+  takeOrderNdrAction,
+  updateOrderEwaybill,
+  NoWaybillError,
   type GstReportOrderRow,
 } from './service';
 import { generateInvoicePdf } from './invoice';
@@ -121,4 +136,63 @@ export async function updateOrderStatusHandler(req: FastifyRequest, reply: Fasti
   const admin = (req.user as { sub: string }).sub;
   const order = await updateOrderStatus(id, parsed.data.status, parsed.data.note, admin);
   return reply.send(order);
+}
+
+function shippingErrorReply(reply: FastifyReply, err: unknown) {
+  if (err instanceof NoWaybillError) return reply.code(409).send({ error: err.message });
+  return reply.code(502).send({ error: err instanceof Error ? err.message : 'Delhivery request failed' });
+}
+
+export async function shipmentLabelHandler(req: FastifyRequest, reply: FastifyReply) {
+  const parsed = idParamSchema.safeParse(req.params);
+  if (!parsed.success) return reply.code(400).send({ error: 'Invalid id' });
+
+  try {
+    const label = await getShipmentLabel(parsed.data.id);
+    return reply.send(label);
+  } catch (err) {
+    return shippingErrorReply(reply, err);
+  }
+}
+
+export async function raisePickupHandler(req: FastifyRequest, reply: FastifyReply) {
+  const idParsed = idParamSchema.safeParse(req.params);
+  if (!idParsed.success) return reply.code(400).send({ error: 'Invalid id' });
+  const bodyParsed = raisePickupSchema.safeParse(req.body);
+  if (!bodyParsed.success) return reply.code(400).send({ error: 'Invalid input', details: bodyParsed.error.flatten().fieldErrors });
+
+  try {
+    const result = await raiseOrderPickup(idParsed.data.id, bodyParsed.data);
+    return reply.send(result);
+  } catch (err) {
+    return shippingErrorReply(reply, err);
+  }
+}
+
+export async function ndrActionHandler(req: FastifyRequest, reply: FastifyReply) {
+  const idParsed = idParamSchema.safeParse(req.params);
+  if (!idParsed.success) return reply.code(400).send({ error: 'Invalid id' });
+  const bodyParsed = ndrActionSchema.safeParse(req.body);
+  if (!bodyParsed.success) return reply.code(400).send({ error: 'Invalid input', details: bodyParsed.error.flatten().fieldErrors });
+
+  try {
+    await takeOrderNdrAction(idParsed.data.id, bodyParsed.data);
+    return reply.code(204).send();
+  } catch (err) {
+    return shippingErrorReply(reply, err);
+  }
+}
+
+export async function ewaybillUpdateHandler(req: FastifyRequest, reply: FastifyReply) {
+  const idParsed = idParamSchema.safeParse(req.params);
+  if (!idParsed.success) return reply.code(400).send({ error: 'Invalid id' });
+  const bodyParsed = ewaybillUpdateSchema.safeParse(req.body);
+  if (!bodyParsed.success) return reply.code(400).send({ error: 'Invalid input', details: bodyParsed.error.flatten().fieldErrors });
+
+  try {
+    await updateOrderEwaybill(idParsed.data.id, bodyParsed.data.ewaybillNumber);
+    return reply.code(204).send();
+  } catch (err) {
+    return shippingErrorReply(reply, err);
+  }
 }

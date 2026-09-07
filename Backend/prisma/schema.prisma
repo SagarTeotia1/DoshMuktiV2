@@ -163,18 +163,21 @@ enum StockMovementReason {
 
 // Saved address keyed on SHA-256(phone) — never store raw phone in cache
 model CustomerAddress {
-  id        String   @id @default(cuid())
-  phoneHash String // SHA-256 of normalized phone (+91XXXXXXXXXX)
-  name      String
-  line1     String
-  line2     String?
-  city      String
-  state     String
-  pincode   String
-  country   String   @default("IN")
-  isDefault Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  phoneHash     String // SHA-256 of normalized ACCOUNT phone (+91XXXXXXXXXX) — the logged-in
+  // customer, for lookup. Separate from receiverPhone below (who actually receives the parcel —
+  // may be a different number, e.g. ordering for family).
+  receiverPhone String   @default("") // normalized +91XXXXXXXXXX
+  name          String
+  line1         String
+  line2         String?
+  city          String
+  state         String
+  pincode       String
+  country       String   @default("IN")
+  isDefault     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([phoneHash])
 }
@@ -321,6 +324,12 @@ model Shipment {
   status            ShipmentStatus @default(PENDING)
   trackingEvents    Json           @default("[]") // [{timestamp,status,location,description}]
   estimatedDelivery DateTime?
+  // Government e-way bill number (GST-required above the transport value threshold) —
+  // generated externally (GST portal/GSP), just attached here and pushed to Delhivery.
+  ewaybillNumber    String?
+  // Set once a pickup is raised via Admin — lets the UI show "already requested" instead
+  // of letting an admin fire duplicate pickup requests for the same shipment.
+  pickupRequestedAt DateTime?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 

@@ -6,7 +6,9 @@ import { toast } from 'sonner';
 import { Minus, Plus, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { useAuth } from '@/hooks/use-auth';
+import { useShippingEstimate } from '@/hooks/use-shipping-estimate';
 import { trackAddToCart } from '@/lib/firebase';
+import { formatCurrency } from '@/lib/formatters';
 import type { Product } from '@/types/api.types';
 
 export function AddToCart({ product }: { product: Product }) {
@@ -20,6 +22,8 @@ export function AddToCart({ product }: { product: Product }) {
   const [quantity, setQuantity] = useState(1);
   const [isOrdering, setIsOrdering] = useState(false);
   const maxQty = Math.min(selected?.stockQuantity ?? 1, 99);
+  const unitPrice = selected?.priceOverride ?? product.basePrice;
+  const shipping = useShippingEstimate(unitPrice * quantity, (selected?.weight ?? 500) * quantity);
 
   function changeVariant(id: string) {
     setVariantId(id);
@@ -94,6 +98,24 @@ export function AddToCart({ product }: { product: Product }) {
             </button>
           ))}
         </div>
+      )}
+
+      {/* Estimated shipping — origin-to-origin (real destination pincode isn't known until
+          checkout), same math the cart preview uses. Struck-through once the free-shipping
+          threshold is met, so the customer sees what they're saving, not just "Free". */}
+      {shipping.data && (
+        <p className="font-body text-xs text-[#6B5539]">
+          {shipping.data.fee > 0 ? (
+            <>Shipping: <span className="font-semibold text-[#2B1B0C]">{formatCurrency(shipping.data.fee)}</span> (estimated)</>
+          ) : shipping.data.originalFee > 0 ? (
+            <>
+              Shipping: <span className="line-through text-[#8A7A63]">{formatCurrency(shipping.data.originalFee)}</span>{' '}
+              <span className="font-semibold text-brand-success">FREE</span>
+            </>
+          ) : (
+            <>Shipping: <span className="font-semibold text-brand-success">FREE</span></>
+          )}
+        </p>
       )}
 
       {/* Quantity + secondary "add to cart" — small, quiet, not competing with the primary CTA */}

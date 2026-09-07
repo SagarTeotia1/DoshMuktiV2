@@ -9,13 +9,14 @@ import { useCart, type CartScope } from '@/hooks/use-cart';
 import { usePincodeCheck } from '@/hooks/use-pincode-check';
 import { useRazorpay } from '@/hooks/use-razorpay';
 import { useAuth, isProfileRequired } from '@/hooks/use-auth';
+import { useAddresses, useSaveAddress } from '@/hooks/use-addresses';
 import { api, ApiError } from '@/lib/api-client';
 import { getSessionId, getBuyNowSessionId } from '@/lib/session';
 import { getToken } from '@/lib/auth';
 import { formatCurrency } from '@/lib/formatters';
 import { SHIPPING_FEE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
 import { trackBeginCheckout, trackPurchase } from '@/lib/firebase';
-import type { CheckoutInput, CheckoutResponse, CouponPreviewResponse } from '@/types/api.types';
+import type { Address, CheckoutInput, CheckoutResponse, CouponPreviewResponse } from '@/types/api.types';
 import type { RazorpayResponse } from '@/hooks/use-razorpay';
 
 const inputClass =
@@ -241,6 +242,64 @@ function CheckoutPageContent() {
 
   const { isChecking, serviceable } = usePincodeCheck(form.pincode);
 
+  // Saved-address book — a returning customer sees their last delivery address by
+  // default instead of retyping name/phone/address every single order. "Same as login
+  // number" defaults checked because most orders ship to whoever's placing them.
+  const { data: savedAddresses } = useAddresses(isAuthenticated);
+  const saveAddress = useSaveAddress();
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [addressFormOpen, setAddressFormOpen] = useState(false);
+  const [receiverSameAsLogin, setReceiverSameAsLogin] = useState(true);
+  // Distinguishes "no addresses saved yet" from "still loading" — avoids a flash of the
+  // blank form before the saved-address fetch resolves.
+  const addressesLoaded = savedAddresses !== undefined;
+
+  // Once saved addresses load, auto-select the default one (list is sorted
+  // default-first) instead of showing a blank form to a returning customer.
+  useEffect(() => {
+    if (!savedAddresses || savedAddresses.length === 0 || selectedAddressId !== null) return;
+    applySavedAddress(savedAddresses[0]!);
+  }, [savedAddresses]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!receiverSameAsLogin || !user) return;
+    update('customerPhone', user.phone.replace(/^\+91/, ''));
+  }, [receiverSameAsLogin, user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function applySavedAddress(addr: Address) {
+    setSelectedAddressId(addr.id);
+    setAddressFormOpen(false);
+    setReceiverSameAsLogin(false); // it's whatever was saved on the address, not necessarily the login number
+    setForm((f) => ({
+      ...f,
+      customerName: addr.name,
+      customerPhone: addr.receiverPhone.replace(/^\+91/, ''),
+      line1: addr.line1,
+      line2: addr.line2 ?? '',
+      city: addr.city,
+      state: addr.state,
+      pincode: addr.pincode,
+    }));
+  }
+
+  function startNewAddress() {
+    setSelectedAddressId(null);
+    setAddressFormOpen(true);
+    setReceiverSameAsLogin(true);
+    setForm((f) => ({
+      ...f,
+      customerName: user?.name ?? '',
+      customerPhone: user?.phone.replace(/^\+91/, '') ?? '',
+      line1: '',
+      line2: '',
+      city: '',
+      state: '',
+      pincode: '',
+    }));
+  }
+
+  const selectedAddress = savedAddresses?.find((a) => a.id === selectedAddressId) ?? null;
+
   const [couponInput, setCouponInput] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
@@ -255,6 +314,7 @@ function CheckoutPageContent() {
   // at all — the Razorpay charge was always correct, but the customer never saw the price
   // move before paying, which is exactly the "total isn't going down" gap this closes.
   const shippingFee = cart?.shippingFee ?? (subtotal >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE);
+  const shippingFeeOriginal = cart?.shippingFeeOriginal ?? shippingFee;
   const autoAppliedDiscount = cart?.autoAppliedDiscount ?? 0;
   const preDiscountTotal = subtotal + shippingFee - autoAppliedDiscount;
   const couponDiscount = appliedCoupon?.discountAmount ?? 0;
@@ -336,6 +396,21 @@ function CheckoutPageContent() {
         theme: { color: '#9C5A26' },
         handler: async (response: RazorpayResponse) => {
           trackPurchase({ orderNumber: result.orderNumber, total, itemCount: items.length });
+          // Freshly-typed address (not one picked from the saved list) — save it as the
+          // new default so next order shows it automatically instead of a blank form
+          // again. Fire-and-forget: never block order completion on this.
+          if (!selectedAddressId) {
+            saveAddress.mutate({
+              name: form.customerName,
+              receiverPhone: form.customerPhone,
+              line1: form.line1,
+              line2: form.line2 || undefined,
+              city: form.city,
+              state: form.state,
+              pincode: form.pincode,
+              setDefault: true,
+            });
+          }
           // Payment has already succeeded by the time this fires — this call is only
           // about getting OUR order status flipped to PAID promptly, since the Razorpay
           // webhook (the usual trigger) never reaches localhost and is fragile even in
@@ -414,7 +489,18 @@ function CheckoutPageContent() {
       </div>
       <div className="flex justify-between font-body text-sm text-[#6B5539]">
         <span>Shipping</span>
-        <span>{shippingFee === 0 ? 'Free' : formatCurrency(shippingFee)}</span>
+        {shippingFee === 0 ? (
+          shippingFeeOriginal > 0 ? (
+            <span className="flex items-center gap-1.5">
+              <span className="line-through text-[#8A7A63]">{formatCurrency(shippingFeeOriginal)}</span>
+              <span className="font-semibold text-brand-success">FREE</span>
+            </span>
+          ) : (
+            <span>Free</span>
+          )
+        ) : (
+          formatCurrency(shippingFee)
+        )}
       </div>
       {autoAppliedDiscount > 0 && (
         <div className="flex justify-between font-body text-sm text-[#9C5A26] font-semibold">
@@ -518,85 +604,149 @@ function CheckoutPageContent() {
         <form onSubmit={handleSubmit} className="grid md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
           <div className="flex flex-col gap-8">
             <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
-              <StepLabel n={1} title="Contact Details" />
-              <div className="flex flex-col gap-3">
-                <input
-                  required
-                  placeholder="Full Name"
-                  value={form.customerName}
-                  onChange={(e) => update('customerName', e.target.value)}
-                  className={inputClass}
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    required
-                    type="tel"
-                    inputMode="numeric"
-                    placeholder="Mobile Number"
-                    value={form.customerPhone}
-                    onChange={(e) => update('customerPhone', normalizePhone(e.target.value))}
-                    className={inputClass}
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email (optional)"
-                    value={form.customerEmail}
-                    onChange={(e) => update('customerEmail', e.target.value)}
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-            </div>
+              <StepLabel n={1} title="Delivery Details" />
 
-            <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
-              <StepLabel n={2} title="Shipping Address" />
-              <div className="flex flex-col gap-3">
-                <input
-                  required
-                  placeholder="Address Line 1"
-                  value={form.line1}
-                  onChange={(e) => update('line1', e.target.value)}
-                  className={inputClass}
-                />
-                <input
-                  placeholder="Address Line 2 (optional)"
-                  value={form.line2}
-                  onChange={(e) => update('line2', e.target.value)}
-                  className={inputClass}
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    required
-                    placeholder="City"
-                    value={form.city}
-                    onChange={(e) => update('city', e.target.value)}
-                    className={inputClass}
-                  />
-                  <input
-                    required
-                    placeholder="State"
-                    value={form.state}
-                    onChange={(e) => update('state', e.target.value)}
-                    className={inputClass}
-                  />
+              {!addressFormOpen && selectedAddress ? (
+                // Returning customer — their saved default address, shown as a summary
+                // instead of an editable form so they don't retype it every order.
+                <div className="flex flex-col gap-1.5">
+                  <p className="font-body text-sm font-bold text-[#2B1B0C]">{selectedAddress.name}</p>
+                  <p className="font-body text-sm text-[#6B5539]">+91 {selectedAddress.receiverPhone.replace(/^\+91/, '')}</p>
+                  <p className="font-body text-sm text-[#6B5539] leading-relaxed">
+                    {selectedAddress.line1}
+                    {selectedAddress.line2 ? `, ${selectedAddress.line2}` : ''}
+                    <br />
+                    {selectedAddress.city}, {selectedAddress.state} {selectedAddress.pincode}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setAddressFormOpen(true)}
+                    className="self-start mt-1 font-body text-xs font-bold uppercase tracking-wide text-[#9C5A26] hover:text-[#6B3D19] transition-colors"
+                  >
+                    Change Address
+                  </button>
                 </div>
-                <div>
-                  <input
-                    required
-                    placeholder="Pincode"
-                    value={form.pincode}
-                    onChange={(e) => update('pincode', e.target.value)}
-                    className={`${inputClass} w-full`}
-                  />
-                  {isChecking && <p className="text-xs text-[#8A7A63] mt-1.5 font-body">Checking serviceability...</p>}
-                  {serviceable === false && (
-                    <p className="text-xs text-brand-alert mt-1.5 font-body font-semibold">Not serviceable at this pincode</p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {addressesLoaded && savedAddresses!.length > 0 && (
+                    <div className="flex flex-col gap-2 pb-1">
+                      {savedAddresses!.map((addr) => (
+                        <label
+                          key={addr.id}
+                          className={`flex items-start gap-2.5 border rounded-xl px-3 py-2.5 cursor-pointer transition-colors ${
+                            selectedAddressId === addr.id ? 'border-[#9C5A26] bg-[#9C5A26]/5' : 'border-[#2B1B0C]/20 hover:border-[#2B1B0C]/40'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="savedAddress"
+                            checked={selectedAddressId === addr.id}
+                            onChange={() => applySavedAddress(addr)}
+                            className="mt-1"
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-body text-sm font-bold text-[#2B1B0C]">{addr.name}</span>
+                            <span className="font-body text-xs text-[#6B5539]">
+                              {addr.line1}, {addr.city}, {addr.state} {addr.pincode}
+                            </span>
+                          </div>
+                        </label>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={startNewAddress}
+                        className="self-start font-body text-xs font-bold uppercase tracking-wide text-[#9C5A26] hover:text-[#6B3D19] transition-colors"
+                      >
+                        + Add New Address
+                      </button>
+                    </div>
                   )}
-                  {serviceable === true && (
-                    <p className="text-xs text-brand-success mt-1.5 font-body font-semibold">✓ Deliverable to this address</p>
+
+                  {(!addressesLoaded || savedAddresses!.length === 0 || selectedAddressId === null) && (
+                    <>
+                      <div>
+                        <input
+                          required
+                          type="tel"
+                          inputMode="numeric"
+                          placeholder="Receiver's Phone Number"
+                          disabled={receiverSameAsLogin}
+                          value={form.customerPhone}
+                          onChange={(e) => update('customerPhone', normalizePhone(e.target.value))}
+                          className={`${inputClass} disabled:opacity-60 disabled:bg-[#2B1B0C]/5`}
+                        />
+                        <label className="flex items-center gap-1.5 mt-1.5 font-body text-xs text-[#6B5539]">
+                          <input
+                            type="checkbox"
+                            checked={receiverSameAsLogin}
+                            onChange={(e) => setReceiverSameAsLogin(e.target.checked)}
+                          />
+                          Same as login number
+                        </label>
+                      </div>
+                      <input
+                        required
+                        placeholder="Full Name"
+                        value={form.customerName}
+                        onChange={(e) => update('customerName', e.target.value)}
+                        className={inputClass}
+                      />
+                      <input
+                        type="email"
+                        placeholder="Email (optional)"
+                        value={form.customerEmail}
+                        onChange={(e) => update('customerEmail', e.target.value)}
+                        className={inputClass}
+                      />
+                      <input
+                        required
+                        placeholder="Address Line 1"
+                        value={form.line1}
+                        onChange={(e) => update('line1', e.target.value)}
+                        className={inputClass}
+                      />
+                      <input
+                        placeholder="Address Line 2 (optional)"
+                        value={form.line2}
+                        onChange={(e) => update('line2', e.target.value)}
+                        className={inputClass}
+                      />
+                      <div className="grid grid-cols-2 gap-3">
+                        <input
+                          required
+                          placeholder="City"
+                          value={form.city}
+                          onChange={(e) => update('city', e.target.value)}
+                          className={inputClass}
+                        />
+                        <input
+                          required
+                          placeholder="State"
+                          value={form.state}
+                          onChange={(e) => update('state', e.target.value)}
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <input
+                          required
+                          placeholder="Pincode"
+                          value={form.pincode}
+                          onChange={(e) => update('pincode', e.target.value)}
+                          className={`${inputClass} w-full`}
+                        />
+                        {isChecking && <p className="text-xs text-[#8A7A63] mt-1.5 font-body">Checking serviceability...</p>}
+                        {serviceable === false && (
+                          <p className="text-xs text-brand-alert mt-1.5 font-body font-semibold">Not serviceable at this pincode</p>
+                        )}
+                        {serviceable === true && (
+                          <p className="text-xs text-brand-success mt-1.5 font-body font-semibold">✓ Deliverable to this address</p>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
