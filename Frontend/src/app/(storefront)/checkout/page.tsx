@@ -372,6 +372,11 @@ function CheckoutPageContent() {
   const shippingFee =
     liveShipping.data?.fee ?? cart?.shippingFee ?? (subtotal >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE);
   const shippingFeeOriginal = liveShipping.data?.originalFee ?? cart?.shippingFeeOriginal ?? shippingFee;
+  // A real pincode hasn't been entered yet means shippingFee/shippingFeeOriginal above are
+  // still riding the cart-preview's origin-to-origin guess (see useShippingEstimate above) —
+  // never show that guess as if it were the real charge. Free-shipping orders are exempt:
+  // ₹0 is correct regardless of pincode, no guess involved.
+  const hasResolvedPincodeRate = subtotal >= FREE_SHIPPING_ABOVE || (/^\d{6}$/.test(form.pincode) && !!liveShipping.data);
   const autoAppliedDiscount = cart?.autoAppliedDiscount ?? 0;
   const preDiscountTotal = subtotal + shippingFee - autoAppliedDiscount;
   const couponDiscount = appliedCoupon?.discountAmount ?? 0;
@@ -565,7 +570,9 @@ function CheckoutPageContent() {
       </div>
       <div className="flex justify-between font-body text-sm text-[#6B5539]">
         <span>Shipping</span>
-        {shippingFee === 0 ? (
+        {!hasResolvedPincodeRate ? (
+          <span className="text-[#8A7A63] text-xs">Enter pincode</span>
+        ) : shippingFee === 0 ? (
           shippingFeeOriginal > 0 ? (
             <span className="flex items-center gap-1.5">
               <span className="line-through text-[#8A7A63]">{formatCurrency(shippingFeeOriginal)}</span>
@@ -632,9 +639,16 @@ function CheckoutPageContent() {
 
       <div className="flex justify-between font-heading font-bold text-lg text-[#2B1B0C] pt-2 border-t border-[#2B1B0C]/10">
         <span>Total</span>
-        <span>{formatCurrency(total)}</span>
+        <span>
+          {hasResolvedPincodeRate
+            ? formatCurrency(total)
+            : `${formatCurrency(Math.max(subtotal - autoAppliedDiscount - couponDiscount, 0))} + shipping`}
+        </span>
       </div>
-      {gstAmount > 0 && (
+      {!hasResolvedPincodeRate && (
+        <p className="font-body text-[11px] text-[#8A7A63] text-right -mt-1">Enter your pincode to see the final total</p>
+      )}
+      {hasResolvedPincodeRate && gstAmount > 0 && (
         <p className="font-body text-[11px] text-[#8A7A63] text-right -mt-1">
           Inclusive of GST: {formatCurrency(gstAmount)} (Taxable {formatCurrency(taxableValue)} + GST {formatCurrency(gstAmount)})
         </p>
@@ -781,13 +795,16 @@ function CheckoutPageContent() {
                         {serviceable === true && (
                           <p className="text-xs text-brand-success mt-1.5 font-body font-semibold">✓ Deliverable to this address</p>
                         )}
-                        {/* Ties the pincode straight to the number that actually matters to a
-                            customer deciding whether to check out — updates live once
-                            liveShipping resolves for this pincode (see shippingFee above). */}
+                        {/* Never show a shipping number before it's actually quoted for THIS
+                            pincode — the cart-preview figure is an origin-to-origin guess and
+                            showing it here reads as a real price. Only liveShipping.data (a
+                            resolved quote for the exact digits in form.pincode) counts as real. */}
                         <p className="text-xs text-[#8A7A63] mt-1.5 font-body">
                           {subtotal >= FREE_SHIPPING_ABOVE
                             ? `Orders above ${formatCurrency(FREE_SHIPPING_ABOVE)} ship free.`
-                            : `Orders below ${formatCurrency(FREE_SHIPPING_ABOVE)} add a shipping charge (${formatCurrency(shippingFeeOriginal)} for this order) — free above that.`}
+                            : hasResolvedPincodeRate
+                            ? `Orders below ${formatCurrency(FREE_SHIPPING_ABOVE)} add a shipping charge (${formatCurrency(shippingFeeOriginal)} for this order) — free above that.`
+                            : `Orders below ${formatCurrency(FREE_SHIPPING_ABOVE)} add a shipping charge, calculated from your pincode — free above that.`}
                         </p>
                       </div>
                       <input
