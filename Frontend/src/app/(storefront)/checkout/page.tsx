@@ -805,7 +805,7 @@ function CheckoutPageContent() {
                           {subtotal >= FREE_SHIPPING_ABOVE
                             ? `Orders above ${formatCurrency(FREE_SHIPPING_ABOVE)} ship free.`
                             : hasResolvedPincodeRate
-                            ? `Orders below ${formatCurrency(FREE_SHIPPING_ABOVE)} add a shipping charge (${formatCurrency(shippingFeeOriginal)} for this order) — free above that.`
+                            ? `Delivery charges are added for orders below ${formatCurrency(FREE_SHIPPING_ABOVE)} (${formatCurrency(shippingFeeOriginal)} for this order).`
                             : `Add item worth ${formatCurrency(Math.max(FREE_SHIPPING_ABOVE - subtotal, 0))} more and claim free delivery.`}
                         </p>
                       </div>
