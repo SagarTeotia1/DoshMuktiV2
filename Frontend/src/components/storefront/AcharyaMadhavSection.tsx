@@ -4,7 +4,7 @@ import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { Reveal } from '@/components/motion/Reveal';
 import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
 
-const WHATSAPP_NUMBER = '919999999999';
+const WHATSAPP_NUMBER = '918882386868';
 
 function waLink(question: string) {
   const message = encodeURIComponent(`Namaste Acharya Madhav 🙏 ${question}`);

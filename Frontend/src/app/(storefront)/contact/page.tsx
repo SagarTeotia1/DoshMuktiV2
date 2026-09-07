@@ -6,7 +6,7 @@ import { Reveal } from '@/components/motion/Reveal';
 import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
 import { SITE_URL } from '@/lib/constants';
 
-const WHATSAPP_NUMBER = '919999999999';
+const WHATSAPP_NUMBER = '918882386868';
 const SUPPORT_EMAIL = 'support@doshmukti.com';
 
 const CHANNELS = [
