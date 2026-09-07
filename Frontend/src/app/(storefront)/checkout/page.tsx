@@ -646,10 +646,8 @@ function CheckoutPageContent() {
         </span>
       </div>
       {!hasResolvedPincodeRate && (
-        <p className="font-body text-[11px] text-[#8A7A63] text-right -mt-1">
-          {subtotal >= FREE_SHIPPING_ABOVE
-            ? 'Enter your pincode to see the final total'
-            : `Add ${formatCurrency(FREE_SHIPPING_ABOVE - subtotal)} more for free delivery, or enter your pincode to see shipping.`}
+        <p className="font-body text-[10px] text-[#8A7A63] text-right -mt-1">
+          Orders below {formatCurrency(FREE_SHIPPING_ABOVE)} add a shipping charge, calculated from your pincode — free above that.
         </p>
       )}
       {hasResolvedPincodeRate && gstAmount > 0 && (
