@@ -84,7 +84,12 @@ function NewsletterForm() {
 export function Footer() {
   return (
     <footer
-      className="bg-[#2B1B0C] text-[#E6D3AE] relative"
+      // overflow-hidden — the decorative SVG below is deliberately positioned partly
+      // outside the footer's own box (-bottom-24 -right-24) for a bleed effect, but
+      // without this it also bled out of the PAGE itself, forcing ~96px of real
+      // horizontal overflow on every page (invisible at normal zoom since body clips
+      // scrolling, but visible as a hard-right gap once a phone is pinch-zoomed out).
+      className="bg-[#2B1B0C] text-[#E6D3AE] relative overflow-hidden"
       style={{
         backgroundImage:
           'radial-gradient(circle at 85% 20%, rgba(156,90,38,0.12), transparent 35%), radial-gradient(circle at 12% 75%, rgba(156,90,38,0.18), transparent 30%)',

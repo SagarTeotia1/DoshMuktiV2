@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Outfit } from 'next/font/google';
 import './globals.css';
 import { Toaster } from 'sonner';
@@ -15,6 +15,13 @@ export const metadata: Metadata = {
   title: 'Doshhmukti Admin',
   description: 'Internal admin panel — not indexed',
   robots: { index: false, follow: false },
+};
+
+// Without this, mobile browsers render at a default ~980px desktop-width viewport and
+// scale the whole page down to fit the screen instead of laying out responsively.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

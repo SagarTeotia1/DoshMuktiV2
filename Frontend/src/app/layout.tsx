@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Outfit } from 'next/font/google';
 import './globals.css';
 import { Toaster } from 'sonner';
@@ -44,6 +44,15 @@ export const metadata: Metadata = {
     url: SITE_URL,
   },
   twitter: { card: 'summary_large_image', title: TITLE_DEFAULT, description: DESCRIPTION },
+};
+
+// Without this, mobile browsers render at a default ~980px desktop-width viewport and
+// scale the whole page down to fit the screen — every page looks "zoomed out" with dark
+// letterboxing on the sides instead of laying out responsively edge-to-edge.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#E6D3AE',
 };
 
 const organizationJsonLd = {
