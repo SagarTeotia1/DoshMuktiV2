@@ -1,5 +1,7 @@
 'use client';
 
+import { Loader2 } from 'lucide-react';
+
 export function ConfirmDialog({
   open,
   title,
@@ -32,8 +34,9 @@ export function ConfirmDialog({
           <button
             onClick={onConfirm}
             disabled={confirmDisabled}
-            className="px-4 py-2 text-sm font-semibold text-white bg-[#9C5A26] hover:bg-[#6B3D19] disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[#9C5A26] hover:bg-[#6B3D19] disabled:opacity-70 disabled:cursor-not-allowed rounded-lg transition-colors"
           >
+            {confirmDisabled && <Loader2 className="w-4 h-4 animate-spin" />}
             Confirm
           </button>
         </div>
