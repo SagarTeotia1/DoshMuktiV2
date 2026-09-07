@@ -27,10 +27,14 @@ export function useGstReport(from: string, to: string) {
   });
 }
 
+// refundError is only ever set on a CANCELLED transition where the prepaid refund
+// itself failed (Razorpay down, etc) — the status change still committed regardless,
+// see orders/service.ts's updateOrderStatus.
 export function useUpdateOrderStatus(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { status: string; note?: string }) => api.patch<Order>(`/api/admin/orders/${id}/status`, input),
+    mutationFn: (input: { status: string; note?: string }) =>
+      api.patch<Order & { refundError?: string }>(`/api/admin/orders/${id}/status`, input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-orders'] });
       qc.invalidateQueries({ queryKey: ['admin-order', id] });

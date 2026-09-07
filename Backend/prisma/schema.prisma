@@ -303,6 +303,10 @@ model Payment {
   currency          String        @default("INR")
   verifiedAt        DateTime?
   failureReason     String?
+  // Set when an admin cancels a prepaid order before delivery — see
+  // orders/service.ts's updateOrderStatus. Null means never refunded.
+  razorpayRefundId  String?
+  refundedAt        DateTime?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 }

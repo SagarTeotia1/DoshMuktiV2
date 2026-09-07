@@ -135,8 +135,8 @@ export async function updateOrderStatusHandler(req: FastifyRequest, reply: Fasti
   if (!parsed.success) return reply.code(400).send({ error: 'Invalid input', details: parsed.error.flatten().fieldErrors });
 
   const admin = (req.user as { sub: string }).sub;
-  const order = await updateOrderStatus(id, parsed.data.status, parsed.data.note, admin);
-  return reply.send(order);
+  const { order, refundError } = await updateOrderStatus(id, parsed.data.status, parsed.data.note, admin);
+  return reply.send({ ...order, refundError });
 }
 
 function shippingErrorReply(reply: FastifyReply, err: unknown) {

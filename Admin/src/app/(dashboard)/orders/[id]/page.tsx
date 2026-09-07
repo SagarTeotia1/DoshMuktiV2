@@ -33,10 +33,19 @@ export default function OrderDetailPage() {
 
   function confirmStatusChange() {
     if (!pendingStatus) return;
+    const wasCancel = pendingStatus === 'CANCELLED';
     updateStatus.mutate(
       { status: pendingStatus },
       {
-        onSuccess: () => toast.success('Order status updated'),
+        onSuccess: (updated) => {
+          if (wasCancel && updated.refundError) {
+            toast.error(`Order cancelled, but refund failed: ${updated.refundError}`);
+          } else if (wasCancel) {
+            toast.success('Order cancelled' + (order?.payment?.status === 'CAPTURED' ? ' and payment refunded' : ''));
+          } else {
+            toast.success('Order status updated');
+          }
+        },
         onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to update status'),
         onSettled: () => setPendingStatus(null),
       }

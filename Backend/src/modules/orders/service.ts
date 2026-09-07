@@ -8,6 +8,8 @@ import {
   updateEwaybill,
   type NdrAction,
 } from '../../shared/integrations/delhivery/client';
+import { refundPayment } from '../../shared/integrations/razorpay/client';
+import { logger } from '../../shared/logger/pino';
 
 export class NoWaybillError extends Error {
   constructor() {
@@ -79,6 +81,15 @@ export async function takeOrderNdrAction(
   const waybill = await getWaybillOrThrow(orderId);
   const result = await takeNdrAction({ waybill, ...params });
   if (!result.success) throw new Error(result.error ?? 'NDR action failed');
+
+  // Reflect the NDR outcome locally too — previously this only told Delhivery, so
+  // Admin's "Shipment status" line stayed stale (still IN_TRANSIT/BOOKED) even after
+  // a failed delivery attempt was acted on. RTO is a real return-to-warehouse outcome;
+  // a reattempt means the last attempt failed but delivery is still being retried.
+  await db.shipment.update({
+    where: { orderId },
+    data: { status: params.action === 'RTO' ? 'RETURNED' : 'FAILED' },
+  });
 }
 
 export async function updateOrderEwaybill(orderId: string, ewaybillNumber: string): Promise<void> {
@@ -256,13 +267,40 @@ export async function getGstReport(from: string, to: string): Promise<GstReport>
   return { from, to, orders: reportOrders, totalTaxableValue, totalGstAmount };
 }
 
-export async function updateOrderStatus(orderId: string, newStatus: OrderStatus, note: string | undefined, admin: string) {
-  return db.$transaction(async (tx) => {
-    const order = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
+export async function updateOrderStatus(
+  orderId: string,
+  newStatus: OrderStatus,
+  note: string | undefined,
+  admin: string
+): Promise<{ order: Awaited<ReturnType<typeof db.order.update>>; refundError?: string }> {
+  const order = await db.$transaction(async (tx) => {
+    const existing = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
     const updated = await tx.order.update({ where: { id: orderId }, data: { status: newStatus } });
     await tx.orderStatusLog.create({
-      data: { orderId, from: order.status, to: newStatus, note, createdBy: admin },
+      data: { orderId, from: existing.status, to: newStatus, note, createdBy: admin },
     });
     return updated;
   });
+
+  // Cancelling always commits regardless of what happens below — a stuck refund must
+  // never leave stock/order state in limbo. Razorpay's refund call happens outside the
+  // transaction on purpose (never hold a DB connection open across a network call).
+  if (newStatus !== 'CANCELLED') return { order };
+
+  const payment = await db.payment.findUnique({ where: { orderId } });
+  if (!payment || payment.status !== 'CAPTURED' || !payment.razorpayPaymentId || payment.refundedAt) {
+    return { order }; // never paid, already refunded, or payment failed — nothing to refund
+  }
+
+  try {
+    const { refundId } = await refundPayment(payment.razorpayPaymentId, Number(payment.amount));
+    await db.payment.update({
+      where: { orderId },
+      data: { status: 'REFUNDED', razorpayRefundId: refundId, refundedAt: new Date() },
+    });
+    return { order };
+  } catch (err) {
+    logger.error({ err, orderId, orderNumber: order.orderNumber }, 'Refund failed after order cancellation');
+    return { order, refundError: err instanceof Error ? err.message : 'Refund failed — retry from the Razorpay dashboard' };
+  }
 }
