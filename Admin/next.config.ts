@@ -2,6 +2,9 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  // Pin explicitly — a package-lock.json one level up (C:\Users\acer) otherwise makes
+  // Turbopack guess wrong about the workspace root and warn on every build.
+  turbopack: { root: __dirname },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '*.r2.dev' },

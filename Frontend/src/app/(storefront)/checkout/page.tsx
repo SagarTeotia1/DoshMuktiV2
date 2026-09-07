@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -8,7 +8,7 @@ import { ShieldCheck } from 'lucide-react';
 import { useCart, type CartScope } from '@/hooks/use-cart';
 import { usePincodeCheck } from '@/hooks/use-pincode-check';
 import { useRazorpay } from '@/hooks/use-razorpay';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth, isProfileRequired } from '@/hooks/use-auth';
 import { api, ApiError } from '@/lib/api-client';
 import { getSessionId, getBuyNowSessionId } from '@/lib/session';
 import { getToken } from '@/lib/auth';
@@ -52,6 +52,153 @@ function sessionIdForScope(scope: CartScope): string {
   return scope === 'buyNow' ? getBuyNowSessionId() : getSessionId();
 }
 
+type OtpStep = 'phone' | 'otp';
+const RESEND_COOLDOWN_SECONDS = 120;
+
+// Inline phone+OTP login — sits inside the checkout page itself (next to the order
+// summary, which stays visible throughout) instead of bouncing the customer to a
+// separate /login page and back. Mirrors the GoKwik-style "Login to continue" pattern:
+// the product/price context never disappears while the customer authenticates.
+function InlineLogin() {
+  const { sendOtp, verifyOtp } = useAuth();
+  const [step, setStep] = useState<OtpStep>('phone');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [name, setName] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const cooldownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function startResendCooldown() {
+    if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    cooldownIntervalRef.current = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }
+
+  useEffect(() => () => {
+    if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+  }, []);
+
+  async function handlePhoneSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!/^\d{10}$/.test(phone)) return toast.error('Enter a valid 10-digit mobile number');
+    if (step === 'otp' && resendCooldown > 0) return;
+
+    setSubmitting(true);
+    try {
+      await sendOtp(phone);
+      setStep('otp');
+      startResendCooldown();
+      toast.success('OTP sent');
+    } catch {
+      toast.error('Could not send OTP — try again');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleOtpSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!/^\d{4,6}$/.test(otp)) return toast.error('Enter the OTP');
+
+    setSubmitting(true);
+    try {
+      await verifyOtp(phone, otp, name.trim() || undefined);
+      // No router.push — useAuth's isAuthenticated flips true and CheckoutPageContent
+      // re-renders the real form in place, same page, same scroll position.
+    } catch (err) {
+      if (isProfileRequired(err)) {
+        toast.error('New here — enter your name above and verify again');
+      } else {
+        toast.error('Invalid or expired OTP');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
+      <StepLabel n={1} title="Login to Continue" />
+      <form onSubmit={step === 'phone' ? handlePhoneSubmit : handleOtpSubmit} className="flex flex-col gap-3">
+        <input
+          type="tel"
+          inputMode="numeric"
+          autoFocus={step === 'phone'}
+          disabled={step === 'otp'}
+          value={phone}
+          onChange={(e) => setPhone(normalizePhone(e.target.value))}
+          placeholder="10-digit mobile number"
+          className={`${inputClass} disabled:opacity-60 disabled:bg-[#2B1B0C]/5`}
+        />
+
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Full Name (if you're new here)"
+          className={inputClass}
+        />
+
+        {step === 'otp' && (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setStep('phone');
+                setOtp('');
+              }}
+              className="font-body text-xs text-[#8A7A63] hover:text-[#2B1B0C] transition-colors self-start -mt-1"
+            >
+              Change phone number
+            </button>
+            <p className="font-body text-xs text-[#8A7A63] mb-1">OTP sent to +91 {phone}</p>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoFocus
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="Enter OTP"
+              className={inputClass}
+            />
+            <button
+              type="button"
+              onClick={handlePhoneSubmit}
+              disabled={resendCooldown > 0 || submitting}
+              className="font-body text-xs text-[#8A7A63] hover:text-[#2B1B0C] transition-colors self-start disabled:opacity-50 disabled:hover:text-[#8A7A63]"
+            >
+              {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP'}
+            </button>
+          </>
+        )}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="brutal-border bg-[#2B1B0C] text-white rounded-lg px-6 py-3.5 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200 disabled:opacity-50 mt-1"
+        >
+          {step === 'phone'
+            ? submitting
+              ? 'Sending...'
+              : 'Send OTP'
+            : submitting
+              ? 'Verifying...'
+              : 'Verify & Continue'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function CheckoutPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -72,14 +219,6 @@ function CheckoutPageContent() {
     state: '',
     pincode: '',
   });
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      const query = searchParams.toString();
-      const redirectTarget = query ? `/checkout?${query}` : '/checkout';
-      router.push(`/login?redirect=${encodeURIComponent(redirectTarget)}`);
-    }
-  }, [authLoading, isAuthenticated, router, searchParams]);
 
   useEffect(() => {
     if (!user) return;
@@ -230,9 +369,124 @@ function CheckoutPageContent() {
     }
   }
 
-  if (authLoading || !isAuthenticated) {
+  if (authLoading) {
     return <div className="max-w-5xl mx-auto px-4 sm:px-6 py-24 text-center font-body text-sm text-[#8A7A63]">Loading...</div>;
   }
+
+  // Shared between the logged-out and logged-in layouts below — order context (items,
+  // price, coupon) stays visible and identical either way. Only the Pay Now button is
+  // conditional: submitting before authenticating has nothing to charge yet.
+  const summaryCard = (
+    <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6 h-fit flex flex-col gap-2 md:sticky md:top-20">
+      <h2 className="font-heading font-bold text-sm uppercase tracking-wide text-[#2B1B0C] mb-2">Order Summary</h2>
+      <div className="flex flex-col gap-2 max-h-48 overflow-y-auto hide-scrollbar pr-1">
+        {items.map((item) => (
+          <div key={item.variantId} className="flex justify-between font-body text-xs text-[#6B5539]">
+            <span className="truncate pr-2">
+              {item.productName} × {item.quantity}
+            </span>
+            <span className="flex-shrink-0">{formatCurrency(item.price * item.quantity)}</span>
+          </div>
+        ))}
+        {(cart?.freeItems ?? []).map((item) => (
+          <div key={item.variantId} className="flex justify-between font-body text-xs text-[#9C5A26] font-semibold">
+            <span className="truncate pr-2">
+              🎁 {item.productName}
+              {item.quantity > 1 ? ` × ${item.quantity}` : ''}
+            </span>
+            <span className="flex-shrink-0">FREE</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-between font-body text-sm text-[#6B5539] pt-3 border-t border-[#2B1B0C]/10">
+        <span>Subtotal</span>
+        <span>{formatCurrency(subtotal)}</span>
+      </div>
+      <div className="flex justify-between font-body text-sm text-[#6B5539]">
+        <span>Shipping</span>
+        <span>{shippingFee === 0 ? 'Free' : formatCurrency(shippingFee)}</span>
+      </div>
+      {autoAppliedDiscount > 0 && (
+        <div className="flex justify-between font-body text-sm text-[#9C5A26] font-semibold">
+          <span>Offer Discount</span>
+          <span>−{formatCurrency(autoAppliedDiscount)}</span>
+        </div>
+      )}
+
+      {!appliedCoupon ? (
+        <div className="flex flex-col gap-1.5 py-2 border-t border-[#2B1B0C]/10">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Have a coupon code?"
+              value={couponInput}
+              onChange={(e) => {
+                setCouponInput(e.target.value.toUpperCase());
+                setCouponError(null);
+              }}
+              className={`${inputClass} flex-1 !px-3 !py-2 text-xs uppercase`}
+            />
+            <button
+              type="button"
+              onClick={handleApplyCoupon}
+              disabled={couponLoading || !couponInput.trim()}
+              className="flex-shrink-0 font-body font-bold text-xs uppercase tracking-wide text-[#9C5A26] border border-[#9C5A26] rounded-full px-4 py-2.5 hover:bg-[#9C5A26] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {couponLoading ? 'Applying...' : 'Apply'}
+            </button>
+          </div>
+          {couponError && <p className="text-xs text-brand-alert font-body font-semibold">{couponError}</p>}
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-2 py-2 border-t border-[#2B1B0C]/10">
+          <span className="font-body text-sm text-[#6B5539]">
+            Coupon <span className="font-bold text-[#2B1B0C]">{appliedCoupon.code}</span> applied
+          </span>
+          <button
+            type="button"
+            onClick={handleRemoveCoupon}
+            className="flex-shrink-0 font-body text-xs font-bold uppercase tracking-wide text-[#8A7A63] hover:text-brand-alert transition-colors"
+          >
+            Remove
+          </button>
+        </div>
+      )}
+      {couponDiscount > 0 && (
+        <div className="flex justify-between font-body text-sm text-[#9C5A26] font-semibold">
+          <span>Coupon Discount</span>
+          <span>−{formatCurrency(couponDiscount)}</span>
+        </div>
+      )}
+
+      <div className="flex justify-between font-heading font-bold text-lg text-[#2B1B0C] pt-2 border-t border-[#2B1B0C]/10">
+        <span>Total</span>
+        <span>{formatCurrency(total)}</span>
+      </div>
+      {gstAmount > 0 && (
+        <p className="font-body text-[11px] text-[#8A7A63] text-right -mt-1">
+          Inclusive of GST: {formatCurrency(gstAmount)} (Taxable {formatCurrency(taxableValue)} + GST {formatCurrency(gstAmount)})
+        </p>
+      )}
+
+      {isAuthenticated ? (
+        <>
+          <button
+            type="submit"
+            disabled={submitting || rzpLoading || items.length === 0}
+            className="mt-4 bg-[#2B1B0C] text-white border border-[#2B1B0C] rounded-full px-8 py-4 font-body font-bold uppercase tracking-widest text-sm hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? 'Processing...' : 'Pay Now'}
+          </button>
+          <p className="flex items-center justify-center gap-1.5 font-body text-[10px] text-[#8A7A63] mt-1">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#9C5A26]" />
+            Secured by Razorpay
+          </p>
+        </>
+      ) : (
+        <p className="font-body text-xs text-[#8A7A63] text-center mt-4">Log in to continue to payment</p>
+      )}
+    </div>
+  );
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
@@ -243,196 +497,102 @@ function CheckoutPageContent() {
         <h1 className="font-heading font-black tracking-tight leading-[1.1] text-2xl sm:text-3xl text-[#2B1B0C]">Checkout</h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
-        <div className="flex flex-col gap-8">
-          <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
-            <StepLabel n={1} title="Contact Details" />
-            <div className="flex flex-col gap-3">
-              <input
-                required
-                placeholder="Full Name"
-                value={form.customerName}
-                onChange={(e) => update('customerName', e.target.value)}
-                className={inputClass}
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  required
-                  type="tel"
-                  inputMode="numeric"
-                  placeholder="Mobile Number"
-                  value={form.customerPhone}
-                  onChange={(e) => update('customerPhone', normalizePhone(e.target.value))}
-                  className={inputClass}
-                />
-                <input
-                  type="email"
-                  placeholder="Email (optional)"
-                  value={form.customerEmail}
-                  onChange={(e) => update('customerEmail', e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-            </div>
+      {!isAuthenticated ? (
+        <div className="grid md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
+          <div className="flex flex-col gap-8">
+            <InlineLogin />
           </div>
-
-          <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
-            <StepLabel n={2} title="Shipping Address" />
-            <div className="flex flex-col gap-3">
-              <input
-                required
-                placeholder="Address Line 1"
-                value={form.line1}
-                onChange={(e) => update('line1', e.target.value)}
-                className={inputClass}
-              />
-              <input
-                placeholder="Address Line 2 (optional)"
-                value={form.line2}
-                onChange={(e) => update('line2', e.target.value)}
-                className={inputClass}
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  required
-                  placeholder="City"
-                  value={form.city}
-                  onChange={(e) => update('city', e.target.value)}
-                  className={inputClass}
-                />
-                <input
-                  required
-                  placeholder="State"
-                  value={form.state}
-                  onChange={(e) => update('state', e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <input
-                  required
-                  placeholder="Pincode"
-                  value={form.pincode}
-                  onChange={(e) => update('pincode', e.target.value)}
-                  className={`${inputClass} w-full`}
-                />
-                {isChecking && <p className="text-xs text-[#8A7A63] mt-1.5 font-body">Checking serviceability...</p>}
-                {serviceable === false && (
-                  <p className="text-xs text-brand-alert mt-1.5 font-body font-semibold">Not serviceable at this pincode</p>
-                )}
-                {serviceable === true && (
-                  <p className="text-xs text-brand-success mt-1.5 font-body font-semibold">✓ Deliverable to this address</p>
-                )}
-              </div>
-            </div>
-          </div>
+          {summaryCard}
         </div>
-
-        <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6 h-fit flex flex-col gap-2 md:sticky md:top-20">
-          <h2 className="font-heading font-bold text-sm uppercase tracking-wide text-[#2B1B0C] mb-2">Order Summary</h2>
-          <div className="flex flex-col gap-2 max-h-48 overflow-y-auto hide-scrollbar pr-1">
-            {items.map((item) => (
-              <div key={item.variantId} className="flex justify-between font-body text-xs text-[#6B5539]">
-                <span className="truncate pr-2">
-                  {item.productName} × {item.quantity}
-                </span>
-                <span className="flex-shrink-0">{formatCurrency(item.price * item.quantity)}</span>
-              </div>
-            ))}
-            {(cart?.freeItems ?? []).map((item) => (
-              <div key={item.variantId} className="flex justify-between font-body text-xs text-[#9C5A26] font-semibold">
-                <span className="truncate pr-2">
-                  🎁 {item.productName}
-                  {item.quantity > 1 ? ` × ${item.quantity}` : ''}
-                </span>
-                <span className="flex-shrink-0">FREE</span>
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-between font-body text-sm text-[#6B5539] pt-3 border-t border-[#2B1B0C]/10">
-            <span>Subtotal</span>
-            <span>{formatCurrency(subtotal)}</span>
-          </div>
-          <div className="flex justify-between font-body text-sm text-[#6B5539]">
-            <span>Shipping</span>
-            <span>{shippingFee === 0 ? 'Free' : formatCurrency(shippingFee)}</span>
-          </div>
-          {autoAppliedDiscount > 0 && (
-            <div className="flex justify-between font-body text-sm text-[#9C5A26] font-semibold">
-              <span>Offer Discount</span>
-              <span>−{formatCurrency(autoAppliedDiscount)}</span>
-            </div>
-          )}
-
-          {!appliedCoupon ? (
-            <div className="flex flex-col gap-1.5 py-2 border-t border-[#2B1B0C]/10">
-              <div className="flex items-center gap-2">
+      ) : (
+        <form onSubmit={handleSubmit} className="grid md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
+          <div className="flex flex-col gap-8">
+            <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
+              <StepLabel n={1} title="Contact Details" />
+              <div className="flex flex-col gap-3">
                 <input
-                  type="text"
-                  placeholder="Have a coupon code?"
-                  value={couponInput}
-                  onChange={(e) => {
-                    setCouponInput(e.target.value.toUpperCase());
-                    setCouponError(null);
-                  }}
-                  className={`${inputClass} flex-1 !px-3 !py-2 text-xs uppercase`}
+                  required
+                  placeholder="Full Name"
+                  value={form.customerName}
+                  onChange={(e) => update('customerName', e.target.value)}
+                  className={inputClass}
                 />
-                <button
-                  type="button"
-                  onClick={handleApplyCoupon}
-                  disabled={couponLoading || !couponInput.trim()}
-                  className="flex-shrink-0 font-body font-bold text-xs uppercase tracking-wide text-[#9C5A26] border border-[#9C5A26] rounded-full px-4 py-2.5 hover:bg-[#9C5A26] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {couponLoading ? 'Applying...' : 'Apply'}
-                </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    required
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="Mobile Number"
+                    value={form.customerPhone}
+                    onChange={(e) => update('customerPhone', normalizePhone(e.target.value))}
+                    className={inputClass}
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email (optional)"
+                    value={form.customerEmail}
+                    onChange={(e) => update('customerEmail', e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
               </div>
-              {couponError && <p className="text-xs text-brand-alert font-body font-semibold">{couponError}</p>}
             </div>
-          ) : (
-            <div className="flex items-center justify-between gap-2 py-2 border-t border-[#2B1B0C]/10">
-              <span className="font-body text-sm text-[#6B5539]">
-                Coupon <span className="font-bold text-[#2B1B0C]">{appliedCoupon.code}</span> applied
-              </span>
-              <button
-                type="button"
-                onClick={handleRemoveCoupon}
-                className="flex-shrink-0 font-body text-xs font-bold uppercase tracking-wide text-[#8A7A63] hover:text-brand-alert transition-colors"
-              >
-                Remove
-              </button>
-            </div>
-          )}
-          {couponDiscount > 0 && (
-            <div className="flex justify-between font-body text-sm text-[#9C5A26] font-semibold">
-              <span>Coupon Discount</span>
-              <span>−{formatCurrency(couponDiscount)}</span>
-            </div>
-          )}
 
-          <div className="flex justify-between font-heading font-bold text-lg text-[#2B1B0C] pt-2 border-t border-[#2B1B0C]/10">
-            <span>Total</span>
-            <span>{formatCurrency(total)}</span>
+            <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
+              <StepLabel n={2} title="Shipping Address" />
+              <div className="flex flex-col gap-3">
+                <input
+                  required
+                  placeholder="Address Line 1"
+                  value={form.line1}
+                  onChange={(e) => update('line1', e.target.value)}
+                  className={inputClass}
+                />
+                <input
+                  placeholder="Address Line 2 (optional)"
+                  value={form.line2}
+                  onChange={(e) => update('line2', e.target.value)}
+                  className={inputClass}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    required
+                    placeholder="City"
+                    value={form.city}
+                    onChange={(e) => update('city', e.target.value)}
+                    className={inputClass}
+                  />
+                  <input
+                    required
+                    placeholder="State"
+                    value={form.state}
+                    onChange={(e) => update('state', e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <input
+                    required
+                    placeholder="Pincode"
+                    value={form.pincode}
+                    onChange={(e) => update('pincode', e.target.value)}
+                    className={`${inputClass} w-full`}
+                  />
+                  {isChecking && <p className="text-xs text-[#8A7A63] mt-1.5 font-body">Checking serviceability...</p>}
+                  {serviceable === false && (
+                    <p className="text-xs text-brand-alert mt-1.5 font-body font-semibold">Not serviceable at this pincode</p>
+                  )}
+                  {serviceable === true && (
+                    <p className="text-xs text-brand-success mt-1.5 font-body font-semibold">✓ Deliverable to this address</p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-          {gstAmount > 0 && (
-            <p className="font-body text-[11px] text-[#8A7A63] text-right -mt-1">
-              Inclusive of GST: {formatCurrency(gstAmount)} (Taxable {formatCurrency(taxableValue)} + GST {formatCurrency(gstAmount)})
-            </p>
-          )}
 
-          <button
-            type="submit"
-            disabled={submitting || rzpLoading || items.length === 0}
-            className="mt-4 bg-[#2B1B0C] text-white border border-[#2B1B0C] rounded-full px-8 py-4 font-body font-bold uppercase tracking-widest text-sm hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? 'Processing...' : 'Pay Now'}
-          </button>
-
-          <p className="flex items-center justify-center gap-1.5 font-body text-[10px] text-[#8A7A63] mt-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#9C5A26]" />
-            Secured by Razorpay
-          </p>
-        </div>
-      </form>
+          {summaryCard}
+        </form>
+      )}
     </div>
   );
 }

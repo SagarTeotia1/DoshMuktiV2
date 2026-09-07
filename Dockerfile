@@ -3,7 +3,7 @@
 # Built for a single VM (Compute Engine), not Cloud Run — nginx binds real ports 80/443.
 
 # ── Backend build ────────────────────────────────────────────────────────────
-FROM node:20-alpine AS backend-build
+FROM node:22-alpine AS backend-build
 RUN apk add --no-cache openssl libc6-compat
 WORKDIR /app/backend
 COPY Backend/package*.json ./

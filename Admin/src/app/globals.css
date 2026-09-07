@@ -1,8 +1,11 @@
+/* Must precede every other rule (only @charset/@layer are allowed before an @import
+   per spec) — Turbopack's CSS parser enforces this strictly as of Next.js 16, unlike
+   webpack which silently tolerated it after @tailwind. */
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap');
 
 body {
   font-family: 'Satoshi', sans-serif;
