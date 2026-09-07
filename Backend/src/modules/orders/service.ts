@@ -298,9 +298,26 @@ export async function updateOrderStatus(
       where: { orderId },
       data: { status: 'REFUNDED', razorpayRefundId: refundId, refundedAt: new Date() },
     });
-    return { order };
+    // Order status itself moves to REFUNDED once money is actually back with the
+    // customer — CANCELLED alone left the order looking stuck even when the refund
+    // had gone through, since Payment's REFUNDED status wasn't visible on the badge.
+    const refunded = await db.$transaction(async (tx) => {
+      const updated = await tx.order.update({ where: { id: orderId }, data: { status: 'REFUNDED' } });
+      await tx.orderStatusLog.create({
+        data: { orderId, from: 'CANCELLED', to: 'REFUNDED', note: `Razorpay refund ${refundId}`, createdBy: admin },
+      });
+      return updated;
+    });
+    return { order: refunded };
   } catch (err) {
+    const reason = err instanceof Error ? err.message : 'Refund failed — retry from the Razorpay dashboard';
     logger.error({ err, orderId, orderNumber: order.orderNumber }, 'Refund failed after order cancellation');
-    return { order, refundError: err instanceof Error ? err.message : 'Refund failed — retry from the Razorpay dashboard' };
+    // Order status stays CANCELLED (never faked as REFUNDED), but the failure needs to
+    // survive a page reload, not just the one toast the admin who clicked Cancel saw —
+    // a same-status log entry is how "refund pending/failed" shows up in Status History.
+    await db.orderStatusLog.create({
+      data: { orderId, from: 'CANCELLED', to: 'CANCELLED', note: `Refund failed: ${reason}`, createdBy: admin },
+    });
+    return { order, refundError: reason };
   }
 }

@@ -147,7 +147,15 @@ export default function OrderDetailPage() {
             <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">
               <h2 className="font-heading font-bold text-sm text-slate-900 mb-2">Payment</h2>
               <p className="text-sm text-slate-500">Status: {order.payment.status}</p>
-              {order.payment.razorpayPaymentId && <p className="text-xs text-slate-400 mt-1">{order.payment.razorpayPaymentId}</p>}
+              {order.payment.razorpayPaymentId && (
+                <p className="text-xs text-slate-400 mt-1">Payment ID: {order.payment.razorpayPaymentId}</p>
+              )}
+              {order.payment.razorpayRefundId && (
+                <p className="text-xs text-slate-400 mt-1">
+                  Refund ID: {order.payment.razorpayRefundId}
+                  {order.payment.refundedAt && ` (${formatDate(order.payment.refundedAt)})`}
+                </p>
+              )}
             </div>
           )}
 

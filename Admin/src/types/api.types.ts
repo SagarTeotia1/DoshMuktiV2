@@ -214,7 +214,12 @@ export interface Order {
   shippingFee: number;
   total: number;
   items: OrderItem[];
-  payment: { status: string; razorpayPaymentId: string | null } | null;
+  payment: {
+    status: string;
+    razorpayPaymentId: string | null;
+    razorpayRefundId: string | null;
+    refundedAt: string | null;
+  } | null;
   shipment: {
     delhiveryWaybill: string | null;
     status: string;
