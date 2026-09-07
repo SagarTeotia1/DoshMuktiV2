@@ -3,6 +3,15 @@ import { SITE_URL, PURPOSES } from '@/lib/constants';
 import { api } from '@/lib/api-client';
 import type { PaginatedProducts } from '@/types/api.types';
 
+// Without this, Next.js treats sitemap.ts as fully static — generated once at `next
+// build` and frozen forever. The product fetch below failing even once during a build
+// (Backend unreachable from the build environment, catalog not seeded yet, etc) meant
+// every product page silently vanished from the live sitemap with no way to recover
+// short of a full rebuild — which is exactly what happened: the deployed sitemap had
+// zero /products/* URLs despite the catalog being live. Revalidating hourly means a
+// bad build self-heals on its own instead of staying broken indefinitely.
+export const revalidate = 3600;
+
 const STATIC_ROUTES = ['', '/shop', '/about', '/contact', '/faq', '/privacy', '/terms'];
 
 async function getAllProductSlugs(): Promise<Array<{ slug: string }>> {
