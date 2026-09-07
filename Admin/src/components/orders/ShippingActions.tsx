@@ -40,12 +40,7 @@ export function ShippingActions({ order }: { order: Order }) {
   const [ewaybillNumber, setEwaybillNumber] = useState(order.shipment?.ewaybillNumber ?? '');
 
   if (!waybill) {
-    return (
-      <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">
-        <h2 className="font-heading font-bold text-sm text-slate-900 mb-2">Shipping Actions</h2>
-        <p className="text-xs text-slate-400">No Delhivery waybill yet — actions unlock once the shipment is booked.</p>
-      </div>
-    );
+    return <p className="text-xs text-slate-400">No Delhivery waybill yet — actions unlock once the shipment is booked.</p>;
   }
 
   function handleGenerateLabel() {
@@ -93,9 +88,7 @@ export function ShippingActions({ order }: { order: Order }) {
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5 flex flex-col gap-5">
-      <h2 className="font-heading font-bold text-sm text-slate-900">Shipping Actions</h2>
-
+    <div className="flex flex-col gap-5">
       <button
         onClick={handleGenerateLabel}
         disabled={generateLabel.isPending}

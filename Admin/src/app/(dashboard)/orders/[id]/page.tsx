@@ -72,19 +72,7 @@ export default function OrderDetailPage() {
           <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">
             <div className="flex items-center justify-between mb-4">
               <StatusBadge status={order.status} />
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-400">{formatDate(order.createdAt)}</span>
-                {order.payment?.status === 'CAPTURED' && (
-                  <a
-                    href={`${BACKEND_URL}/api/orders/${order.orderNumber}/invoice`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-semibold text-[#9C5A26] hover:text-[#6B3D19] transition-colors"
-                  >
-                    Print Invoice
-                  </a>
-                )}
-              </div>
+              <span className="text-xs text-slate-400">{formatDate(order.createdAt)}</span>
             </div>
 
             <h2 className="font-heading font-bold text-sm text-slate-900 mb-3">Items</h2>
@@ -154,20 +142,31 @@ export default function OrderDetailPage() {
             </div>
           )}
 
-          {order.shipment && (
-            <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">
-              <h2 className="font-heading font-bold text-sm text-slate-900 mb-2">Shipment</h2>
-              <p className="text-sm text-slate-500">Status: {order.shipment.status}</p>
-              {order.shipment.delhiveryWaybill && <p className="text-xs text-slate-400 mt-1">Waybill: {order.shipment.delhiveryWaybill}</p>}
-              {order.shipment.ewaybillNumber && <p className="text-xs text-slate-400 mt-1">E-way Bill: {order.shipment.ewaybillNumber}</p>}
-            </div>
-          )}
+          <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5 flex flex-col gap-5">
+            <h2 className="font-heading font-bold text-sm text-slate-900">Order Progress</h2>
 
-          <ShippingActions order={order} />
+            {order.shipment && (
+              <div className="text-sm">
+                <p className="text-slate-500">Shipment status: {order.shipment.status}</p>
+                {order.shipment.delhiveryWaybill && <p className="text-xs text-slate-400 mt-1">Waybill: {order.shipment.delhiveryWaybill}</p>}
+                {order.shipment.ewaybillNumber && <p className="text-xs text-slate-400 mt-1">E-way Bill: {order.shipment.ewaybillNumber}</p>}
+              </div>
+            )}
 
-          {NEXT_STEP[order.status] && (
-            <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">
-              <h2 className="font-heading font-bold text-sm text-slate-900 mb-3">Order Progress</h2>
+            {order.payment?.status === 'CAPTURED' && (
+              <a
+                href={`${BACKEND_URL}/api/orders/${order.orderNumber}/invoice`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-700 border border-slate-300 hover:border-slate-400 transition-colors"
+              >
+                Print Invoice
+              </a>
+            )}
+
+            <ShippingActions order={order} />
+
+            {NEXT_STEP[order.status] && (
               <button
                 onClick={advanceToNextStep}
                 disabled={updateStatus.isPending}
@@ -175,11 +174,9 @@ export default function OrderDetailPage() {
               >
                 {NEXT_STEP[order.status]!.cta}
               </button>
-            </div>
-          )}
+            )}
 
-          {CANCELLABLE_STATUSES.has(order.status) && (
-            <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">
+            {CANCELLABLE_STATUSES.has(order.status) && (
               <button
                 onClick={() => setPendingStatus('CANCELLED')}
                 disabled={updateStatus.isPending}
@@ -187,8 +184,8 @@ export default function OrderDetailPage() {
               >
                 Cancel Order
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
