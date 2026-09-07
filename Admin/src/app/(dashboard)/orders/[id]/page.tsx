@@ -11,6 +11,8 @@ import { useOrder, useUpdateOrderStatus } from '@/hooks/use-orders';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ApiError } from '@/lib/api-client';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL!;
+
 // The real order lifecycle, one step at a time — replaces the old "every status
 // as a button" override grid, which let an admin skip steps or fat-finger the
 // wrong one. Cancel is handled separately below since it isn't a "next step."
@@ -70,7 +72,19 @@ export default function OrderDetailPage() {
           <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">
             <div className="flex items-center justify-between mb-4">
               <StatusBadge status={order.status} />
-              <span className="text-xs text-slate-400">{formatDate(order.createdAt)}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-slate-400">{formatDate(order.createdAt)}</span>
+                {order.payment?.status === 'CAPTURED' && (
+                  <a
+                    href={`${BACKEND_URL}/api/orders/${order.orderNumber}/invoice`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-[#9C5A26] hover:text-[#6B3D19] transition-colors"
+                  >
+                    Print Invoice
+                  </a>
+                )}
+              </div>
             </div>
 
             <h2 className="font-heading font-bold text-sm text-slate-900 mb-3">Items</h2>
