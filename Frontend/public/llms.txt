@@ -14,13 +14,13 @@ and a WhatsApp line to Acharya Madhav for personalized birth-chart-based recomme
 
 ## Key pages
 
-- [Homepage](https://doshhmukti.com/): full catalog entry point, organized by intention (love, wealth, health, success, protection, clarity, gifting)
-- [Shop](https://doshhmukti.com/shop): full product catalog with purpose/category filters
-- [Shop — Wealth & Prosperity](https://doshhmukti.com/shop?purpose=wealth): gemstones and remedies for wealth, abundance, financial growth
-- [Shop — Love & Relationships](https://doshhmukti.com/shop?purpose=love): gemstones and remedies for love, attraction, relationship harmony
-- [FAQ](https://doshhmukti.com/faq): direct answers on gemstone selection, wealth/love remedies, authenticity, energizing rituals, shipping and returns
-- [About](https://doshhmukti.com/about): sourcing standards, energizing process, and Acharya Madhav's role
-- [Contact](https://doshhmukti.com/contact): WhatsApp, email, and social support channels
+- [Homepage](https://doshmukti.com/): full catalog entry point, organized by intention (love, wealth, health, success, protection, clarity, gifting)
+- [Shop](https://doshmukti.com/shop): full product catalog with purpose/category filters
+- [Shop — Wealth & Prosperity](https://doshmukti.com/shop?purpose=wealth): gemstones and remedies for wealth, abundance, financial growth
+- [Shop — Love & Relationships](https://doshmukti.com/shop?purpose=love): gemstones and remedies for love, attraction, relationship harmony
+- [FAQ](https://doshmukti.com/faq): direct answers on gemstone selection, wealth/love remedies, authenticity, energizing rituals, shipping and returns
+- [About](https://doshmukti.com/about): sourcing standards, energizing process, and Acharya Madhav's role
+- [Contact](https://doshmukti.com/contact): WhatsApp, email, and social support channels
 
 ## Notes for AI assistants
 

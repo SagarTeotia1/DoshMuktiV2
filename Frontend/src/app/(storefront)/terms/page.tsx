@@ -80,7 +80,7 @@ export default function TermsPage() {
           <article className="max-w-3xl font-body text-sm text-[#6B5539] leading-relaxed space-y-10">
             <p>
               These Terms &amp; Conditions (&ldquo;Terms&rdquo;) govern your access to and use of the website
-              located at doshhmukti.com (the &ldquo;Site&rdquo;) and any purchase of products made through it,
+              located at doshmukti.com (the &ldquo;Site&rdquo;) and any purchase of products made through it,
               operated by Digital Kalakaar Videos Private Limited, trading as Doshhmukti (&ldquo;Doshhmukti&rdquo;,
               &ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;). By browsing the Site or placing an order, you
               (&ldquo;you&rdquo;, &ldquo;user&rdquo;, &ldquo;customer&rdquo;) agree to be bound by these Terms. If
@@ -161,7 +161,7 @@ export default function TermsPage() {
                 loss and title to products pass to you on delivery. You can track your order at any time using
                 your order number at{' '}
                 <Link href="/track" className="text-[#9C5A26] font-semibold hover:underline">
-                  doshhmukti.com/track
+                  doshmukti.com/track
                 </Link>
                 .
               </p>
@@ -291,7 +291,7 @@ export default function TermsPage() {
               <p>
                 <strong className="text-[#2B1B0C]">Grievance Officer:</strong> [Name to be designated]
                 <br />
-                <strong className="text-[#2B1B0C]">Email:</strong> support@doshhmukti.com
+                <strong className="text-[#2B1B0C]">Email:</strong> support@doshmukti.com
                 <br />
                 <strong className="text-[#2B1B0C]">Response time:</strong> Acknowledgement within 48 hours,
                 resolution within 30 days.
@@ -312,13 +312,13 @@ export default function TermsPage() {
                 <strong className="text-[#2B1B0C]">Digital Kalakaar Videos Private Limited</strong> (Doshhmukti)
                 <br />
                 Email:{' '}
-                <a href="mailto:support@doshhmukti.com" className="text-[#9C5A26] font-semibold hover:underline">
-                  support@doshhmukti.com
+                <a href="mailto:support@doshmukti.com" className="text-[#9C5A26] font-semibold hover:underline">
+                  support@doshmukti.com
                 </a>
                 <br />
                 WhatsApp / Contact form:{' '}
                 <Link href="/contact" className="text-[#9C5A26] font-semibold hover:underline">
-                  doshhmukti.com/contact
+                  doshmukti.com/contact
                 </Link>
               </p>
             </Section>

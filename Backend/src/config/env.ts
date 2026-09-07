@@ -34,7 +34,7 @@ const envSchema = z.object({
   R2_PUBLIC_URL: z.string().default(''),
 
   RESEND_API_KEY: z.string().default(''),
-  RESEND_FROM_EMAIL: z.string().default('orders@doshhmukti.com'),
+  RESEND_FROM_EMAIL: z.string().default('orders@doshmukti.com'),
 
   DELHIVERY_API_KEY: z.string().default(''),
   DELHIVERY_BASE_URL: z.string().default('https://staging-express.delhivery.com'),

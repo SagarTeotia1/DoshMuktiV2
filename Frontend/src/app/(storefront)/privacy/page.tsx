@@ -75,7 +75,7 @@ export default function PrivacyPage() {
             <p>
               This Privacy Policy explains how Digital Kalakaar Videos Private Limited, trading as Doshhmukti
               (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;) collects, uses, shares, and protects
-              information when you visit doshhmukti.com or place an order (together, the &ldquo;Site&rdquo;). We
+              information when you visit doshmukti.com or place an order (together, the &ldquo;Site&rdquo;). We
               built the Site on a guest-checkout model — you never need to create an account or hand us a password
               to buy something — and this policy is written around that fact.
             </p>
@@ -196,8 +196,8 @@ export default function PrivacyPage() {
               </ul>
               <p>
                 To exercise any of these rights, email us at{' '}
-                <a href="mailto:support@doshhmukti.com" className="text-[#9C5A26] font-semibold hover:underline">
-                  support@doshhmukti.com
+                <a href="mailto:support@doshmukti.com" className="text-[#9C5A26] font-semibold hover:underline">
+                  support@doshmukti.com
                 </a>{' '}
                 with your order number for verification. We will respond within 30 days.
               </p>
@@ -243,7 +243,7 @@ export default function PrivacyPage() {
               <p>
                 <strong className="text-[#2B1B0C]">Grievance Officer:</strong> [Name to be designated]
                 <br />
-                <strong className="text-[#2B1B0C]">Email:</strong> support@doshhmukti.com
+                <strong className="text-[#2B1B0C]">Email:</strong> support@doshmukti.com
                 <br />
                 <strong className="text-[#2B1B0C]">Response time:</strong> Acknowledgement within 48 hours,
                 resolution within 30 days.
@@ -256,13 +256,13 @@ export default function PrivacyPage() {
                 <strong className="text-[#2B1B0C]">Digital Kalakaar Videos Private Limited</strong> (Doshhmukti)
                 <br />
                 Email:{' '}
-                <a href="mailto:support@doshhmukti.com" className="text-[#9C5A26] font-semibold hover:underline">
-                  support@doshhmukti.com
+                <a href="mailto:support@doshmukti.com" className="text-[#9C5A26] font-semibold hover:underline">
+                  support@doshmukti.com
                 </a>
                 <br />
                 WhatsApp / Contact form:{' '}
                 <Link href="/contact" className="text-[#9C5A26] font-semibold hover:underline">
-                  doshhmukti.com/contact
+                  doshmukti.com/contact
                 </Link>
                 <br />
                 See also our{' '}

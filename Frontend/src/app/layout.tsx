@@ -14,9 +14,9 @@ const outfit = Outfit({
   display: 'swap',
 });
 
-const TITLE_DEFAULT = 'Doshhmukti — Gemstones & Astrology Remedies for Love, Wealth & Protection';
+const TITLE_DEFAULT = 'Doshhmukti — Dosh Mukti Gemstones & Astrology Remedies for Love, Wealth & Protection';
 const DESCRIPTION =
-  'Authentic, energized gemstones, rudraksha malas and bracelets — chosen for you with Vedic astrology guidance. Shop remedies for love, wealth, health, success, protection and clarity.';
+  'Doshhmukti (dosh mukti — freedom from planetary doshas) sells authentic, energized gemstones, rudraksha malas and bracelets chosen for you with Vedic astrology guidance. Shop remedies for love, wealth, health, success, protection and clarity.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -62,8 +62,9 @@ const organizationJsonLd = {
   name: 'Doshhmukti',
   url: SITE_URL,
   logo: `${SITE_URL}/icon`,
+  alternateName: 'Dosh Mukti',
   description:
-    'Doshhmukti sells authentic, ritually-energized gemstones, rudraksha malas and pooja accessories, chosen for the customer using Vedic astrology and numerology, for goals spanning love, wealth, health, success, protection and clarity.',
+    'Doshhmukti (dosh mukti — freedom from planetary doshas) sells authentic, ritually-energized gemstones, rudraksha malas and pooja accessories, chosen for the customer using Vedic astrology and numerology, for goals spanning love, wealth, health, success, protection and clarity.',
   sameAs: [SOCIAL_LINKS.instagram, SOCIAL_LINKS.youtube],
 };
 
@@ -71,6 +72,7 @@ const websiteJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
   name: 'Doshhmukti',
+  alternateName: 'Dosh Mukti',
   url: SITE_URL,
   potentialAction: {
     '@type': 'SearchAction',

@@ -76,6 +76,12 @@ export default function AboutPage() {
             mass-produced imitation — and paired with Vedic astrology guidance from Acharya Madhav so you buy the
             stone that actually fits your birth chart, not just the one that&apos;s trending.
           </p>
+          <p className="font-body text-sm sm:text-base text-[#B8A98A] leading-relaxed max-w-xl mx-auto mt-4">
+            The name comes from &ldquo;dosh mukti&rdquo; — freedom from the doshas, or planetary afflictions, that
+            Vedic astrology holds responsible for recurring trouble in love, money, health or career. Every gemstone
+            and remedy on Doshhmukti is chosen to work toward that: dosh nivaran (remedy) matched to your actual
+            kundli, not a generic best-seller.
+          </p>
         </Reveal>
       </section>
 
