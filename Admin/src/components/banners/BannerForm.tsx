@@ -38,7 +38,7 @@ export function BannerForm({
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const uploaded = await api.upload<ProductImage>('/api/admin/upload', formData);
+      const uploaded = await api.upload<ProductImage>('/api/admin/upload?kind=banner', formData);
       setImage(uploaded);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.body.error : 'Upload failed');
@@ -56,7 +56,7 @@ export function BannerForm({
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const uploaded = await api.upload<ProductImage>('/api/admin/upload', formData);
+      const uploaded = await api.upload<ProductImage>('/api/admin/upload?kind=banner', formData);
       setMobileImage(uploaded);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.body.error : 'Upload failed');
