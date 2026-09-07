@@ -31,7 +31,7 @@ export async function createShipment(params: {
     shipments: [
       {
         name: params.customerName,
-        add: params.address.line1,
+        add: [params.address.line1, params.address.line2].filter(Boolean).join(', '),
         pin: params.address.pincode,
         city: params.address.city,
         state: params.address.state,
