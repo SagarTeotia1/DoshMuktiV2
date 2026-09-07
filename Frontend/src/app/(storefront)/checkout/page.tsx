@@ -647,7 +647,7 @@ function CheckoutPageContent() {
       </div>
       {!hasResolvedPincodeRate && (
         <p className="font-body text-[10px] text-[#8A7A63] text-right -mt-1">
-          Orders below {formatCurrency(FREE_SHIPPING_ABOVE)} add a shipping charge, calculated from your pincode — free above that.
+          Add {formatCurrency(Math.max(FREE_SHIPPING_ABOVE - subtotal, 0))} more for free delivery, or enter your pincode to see shipping.
         </p>
       )}
       {hasResolvedPincodeRate && gstAmount > 0 && (
@@ -801,12 +801,12 @@ function CheckoutPageContent() {
                             pincode — the cart-preview figure is an origin-to-origin guess and
                             showing it here reads as a real price. Only liveShipping.data (a
                             resolved quote for the exact digits in form.pincode) counts as real. */}
-                        <p className="text-xs text-[#8A7A63] mt-1.5 font-body">
+                        <p className="text-[10px] text-[#8A7A63] mt-1.5 font-body">
                           {subtotal >= FREE_SHIPPING_ABOVE
                             ? `Orders above ${formatCurrency(FREE_SHIPPING_ABOVE)} ship free.`
                             : hasResolvedPincodeRate
                             ? `Orders below ${formatCurrency(FREE_SHIPPING_ABOVE)} add a shipping charge (${formatCurrency(shippingFeeOriginal)} for this order) — free above that.`
-                            : `Orders below ${formatCurrency(FREE_SHIPPING_ABOVE)} add a shipping charge, calculated from your pincode — free above that.`}
+                            : `Add ${formatCurrency(Math.max(FREE_SHIPPING_ABOVE - subtotal, 0))} more for free delivery, or enter your pincode to see shipping.`}
                         </p>
                       </div>
                       <input
