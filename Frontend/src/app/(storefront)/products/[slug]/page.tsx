@@ -16,7 +16,7 @@ import { RelatedProductsRail } from './related-products-rail';
 import { ExclusiveOffers } from '@/components/storefront/ExclusiveOffers';
 import { api } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
-import { SITE_URL, RETURN_ELIGIBLE_ABOVE } from '@/lib/constants';
+import { SITE_URL, RETURN_ELIGIBLE_ABOVE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
 import type { Product } from '@/types/api.types';
 
 type Offer = Product['offers'][number];
@@ -62,7 +62,7 @@ const PURPOSE_LABELS: Record<string, string> = {
 function getTrustItems(eligibleForReturn: boolean) {
   return [
     { icon: Gem, label: 'Authentic & Energized' },
-    { icon: Truck, label: 'Free Shipping ₹399+' },
+    { icon: Truck, label: `Free Shipping ₹${FREE_SHIPPING_ABOVE}+` },
     { icon: ShieldCheck, label: 'Secure Payments' },
     eligibleForReturn ? { icon: RotateCcw, label: '7-Day Returns' } : { icon: Ban, label: 'Non-Returnable' },
   ];
@@ -147,7 +147,7 @@ export async function generateMetadata({
   const primaryCategory = product.categories[0] ?? '';
   const description =
     product.excerpt ||
-    `${product.name} — authentic, ritually energized ${primaryCategory.toLowerCase()}${purposeText ? ` for ${purposeText.toLowerCase()}` : ''}. Vedic astrology guidance included. Free shipping over ₹399.`;
+    `${product.name} — authentic, ritually energized ${primaryCategory.toLowerCase()}${purposeText ? ` for ${purposeText.toLowerCase()}` : ''}. Vedic astrology guidance included. Free shipping over ₹${FREE_SHIPPING_ABOVE}.`;
   const canonical = `/products/${product.slug}`;
   const image = product.images[0]?.card;
 

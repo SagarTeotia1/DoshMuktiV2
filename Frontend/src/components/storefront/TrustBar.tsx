@@ -1,11 +1,11 @@
 import { Gem, Truck, ShieldCheck, RotateCcw } from 'lucide-react';
 import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
 import { BlobMotif } from '@/components/motion/BlobMotif';
-import { RETURN_ELIGIBLE_ABOVE } from '@/lib/constants';
+import { FREE_SHIPPING_ABOVE, RETURN_ELIGIBLE_ABOVE } from '@/lib/constants';
 
 const ITEMS = [
   { icon: Gem, label: 'Authentic & Energized', sub: 'Sourced directly from verified artisans' },
-  { icon: Truck, label: 'Free Shipping ₹399+', sub: 'Pan-India delivery via Delhivery' },
+  { icon: Truck, label: `Free Shipping ₹${FREE_SHIPPING_ABOVE}+`, sub: 'Pan-India delivery via Delhivery' },
   { icon: ShieldCheck, label: 'Secure Payments', sub: 'Powered by Razorpay' },
   { icon: RotateCcw, label: `7-Day Returns ₹${RETURN_ELIGIBLE_ABOVE}+`, sub: 'On eligible orders, hassle-free' },
 ];
