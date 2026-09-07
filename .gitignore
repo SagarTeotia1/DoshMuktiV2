@@ -57,3 +57,6 @@ Thumbs.db
 # One-time book OCR artifacts (language data + raw dump) — not source, already ingested to DB
 Backend/scripts/tessdata/
 Backend/scripts/tmp/
+
+# Deploy runbook — contains real infra details, kept local only
+DEPLOY.md

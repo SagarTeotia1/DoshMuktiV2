@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
 
 function toEmbedUrl(url: string): string | null {
@@ -22,6 +22,20 @@ function DirectVideoPlayer({ url }: { url: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
+  // Hidden while playing so the button doesn't sit over the footage — tapping the
+  // video re-shows it briefly (togglePlay bumps this true) before it fades out again.
+  // Always shown while paused, since that's the only way back into playback.
+  const [showControls, setShowControls] = useState(true);
+
+  useEffect(() => {
+    if (!playing) {
+      setShowControls(true);
+      return;
+    }
+    setShowControls(true);
+    const timer = setTimeout(() => setShowControls(false), 1500);
+    return () => clearTimeout(timer);
+  }, [playing]);
 
   function togglePlay() {
     const v = videoRef.current;
@@ -64,9 +78,18 @@ function DirectVideoPlayer({ url }: { url: string }) {
       {/* Soft bottom gradient so overlay controls stay legible over any footage */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/60 to-transparent" />
 
-      {/* Center play/pause — always visible so there's a clear tap target to pause, even mid-play */}
-      <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-200">
-        <div className="w-16 h-16 rounded-full bg-[#E6D3AE]/90 backdrop-blur-sm border border-[#2B1B0C]/20 flex items-center justify-center shadow-neo-md">
+      {/* Center play/pause — shown while paused (the only way back into playback) and
+          briefly on tap while playing, then fades out so it doesn't sit over the footage.
+          A soft pulsing ring while paused draws the eye to tap. */}
+      <div
+        className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
+          showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        {!playing && (
+          <span className="absolute w-16 h-16 rounded-full bg-[#E6D3AE]/40 animate-ping" />
+        )}
+        <div className="relative w-16 h-16 rounded-full bg-[#E6D3AE]/95 backdrop-blur-sm border border-[#2B1B0C]/20 flex items-center justify-center shadow-neo-md transition-transform duration-200 ease-out group-hover:scale-110 active:scale-95">
           {playing ? (
             <Pause className="w-6 h-6 text-[#2B1B0C]" fill="currentColor" />
           ) : (
@@ -80,7 +103,7 @@ function DirectVideoPlayer({ url }: { url: string }) {
         type="button"
         onClick={toggleMute}
         aria-label={muted ? 'Unmute' : 'Mute'}
-        className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-black/45 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-black/60 transition-colors"
+        className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-black/45 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-black/60 hover:scale-110 active:scale-95 transition-all duration-150"
       >
         {muted ? <VolumeX className="w-4 h-4 text-white" /> : <Volume2 className="w-4 h-4 text-white" />}
       </button>
@@ -111,7 +134,7 @@ export function HowToUseVideo({ url, bare = false }: { url: string | null; bare?
 
   return (
     <div className="border-t border-[#2B1B0C]/10 pt-6 mb-6">
-      <h2 className="font-heading font-black text-base uppercase tracking-wide text-[#2B1B0C] mb-4">How to Use</h2>
+      <h2 className="font-heading font-black text-base uppercase tracking-wide text-[#2B1B0C] mb-4 text-center">How to Use</h2>
       {player}
     </div>
   );
