@@ -54,7 +54,22 @@ const envSchema = z.object({
   CRON_SECRET: z.string().min(32),
 });
 
-const parsed = envSchema.safeParse(process.env);
+// Docker's `--env-file` (used in production, see root Dockerfile/entrypoint.sh) does
+// NOT strip surrounding quotes from values — unlike Node's own `--env-file` flag used
+// in local dev, which does. The same .env file with `KEY="value"` lines then silently
+// carries literal quote characters into every value in production only, breaking
+// anything that builds a URL or sends the value to an external API (Delhivery,
+// Razorpay, etc) — see the "Failed to parse URL" class of bug this caused. Stripping
+// one matching pair of leading/trailing quotes here makes env loading behave the same
+// regardless of which of the two loaders actually read the file.
+const unquoted = Object.fromEntries(
+  Object.entries(process.env).map(([key, value]) => [
+    key,
+    typeof value === 'string' ? value.replace(/^(['"])(.*)\1$/, '$2') : value,
+  ])
+);
+
+const parsed = envSchema.safeParse(unquoted);
 
 if (!parsed.success) {
   console.error('Invalid environment variables:');
