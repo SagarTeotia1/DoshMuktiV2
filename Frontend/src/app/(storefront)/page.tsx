@@ -9,6 +9,13 @@ import { SectionDivider } from '@/components/motion/SectionDivider';
 import { api } from '@/lib/api-client';
 import type { Product, PaginatedProducts, Banner, HomepageSection } from '@/types/api.types';
 
+// No searchParams/cookies/headers() here, so this page is fully static — Next prerenders
+// it once and serves that same HTML to every visitor everywhere until this window elapses,
+// then revalidates in the background (ISR). Matches the 60s the underlying fetches already
+// use (api-client's default) — bumping one without the other just means one half of the
+// page goes stale before the other on revalidation.
+export const revalidate = 60;
+
 async function getBanners(): Promise<Banner[]> {
   try {
     return await api.get<Banner[]>('/api/banners');

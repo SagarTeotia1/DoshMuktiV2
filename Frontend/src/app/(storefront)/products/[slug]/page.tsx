@@ -19,6 +19,20 @@ import { formatCurrency } from '@/lib/formatters';
 import { SITE_URL, RETURN_ELIGIBLE_ABOVE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
 import type { Product } from '@/types/api.types';
 
+// No searchParams/cookies/headers() on this route, so with the ISR pieces below, each
+// product page is cached per-slug (not just its data) and reused for every visitor,
+// anywhere, until this window elapses, then revalidated in the background.
+export const revalidate = 60;
+
+// This is what actually switches [slug] from per-request SSR to a cached ISR page —
+// `revalidate` alone does nothing on a dynamic segment without it. Returning [] here (not
+// pre-fetching real slugs) keeps the Docker build from depending on the Backend being
+// reachable at build time; `dynamicParams` defaults to true, so the first request for any
+// slug renders once and is cached from then on, same end result without the build risk.
+export async function generateStaticParams() {
+  return [];
+}
+
 type Offer = Product['offers'][number];
 
 // Reward-specific customer-facing badge text. Falls back to the offer's title

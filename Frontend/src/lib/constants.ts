@@ -3,7 +3,7 @@ export const SHIPPING_FEE = 99; // flat fallback only — Backend shows the real
 export const FREE_SHIPPING_ABOVE = 299;
 // Items priced below this are final sale — too low-value to make a reverse-pickup
 // return economical. Mirrors the same threshold in Terms & Conditions § 9.
-export const RETURN_ELIGIBLE_ABOVE = 200;
+export const RETURN_ELIGIBLE_ABOVE = 299;
 export const PRODUCTS_PER_PAGE = 12;
 
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
