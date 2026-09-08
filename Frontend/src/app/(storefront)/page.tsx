@@ -7,15 +7,7 @@ import { TestimonialsCarousel } from '@/components/storefront/TestimonialsCarous
 import { CategoryStrip, type CategoryThumb } from '@/components/storefront/CategoryStrip';
 import { SectionDivider } from '@/components/motion/SectionDivider';
 import { api } from '@/lib/api-client';
-import type { Product, PaginatedProducts, Banner } from '@/types/api.types';
-
-async function getFeaturedProducts(): Promise<Product[]> {
-  try {
-    return await api.get<Product[]>('/api/products/featured');
-  } catch {
-    return []; // Backend down — degrade to an empty section, never a crashed landing page
-  }
-}
+import type { Product, PaginatedProducts, Banner, HomepageSection } from '@/types/api.types';
 
 async function getBanners(): Promise<Banner[]> {
   try {
@@ -35,9 +27,19 @@ async function getCategory(category: string, limit = 4): Promise<Product[]> {
   }
 }
 
+// Admin-managed, ordered product rails ("Handpicked This Week", "Doshmukti
+// Special", "Rudraksha", "Bracelets", and any rail an admin adds later).
+async function getHomepageSections(): Promise<HomepageSection[]> {
+  try {
+    return await api.get<HomepageSection[]>('/api/homepage-sections');
+  } catch {
+    return []; // Backend down — degrade to no rails, never a crashed landing page
+  }
+}
+
 export default async function LandingPage() {
-  const [featured, doshMuktiSpecial, rudraksha, bracelets, pyrite, attar, dhoop, banners] = await Promise.all([
-    getFeaturedProducts(),
+  const [sections, doshMuktiSpecial, rudraksha, bracelets, pyrite, attar, dhoop, banners] = await Promise.all([
+    getHomepageSections(),
     getCategory('DoshMukti Special', 10),
     getCategory('Rudraksha / Kada', 10),
     getCategory('Bracelets', 10),
@@ -62,19 +64,45 @@ export default async function LandingPage() {
       <HeroCarousel banners={banners} />
       <PurposeGrid />
 
-      <ProductRail title="Handpicked This Week" products={featured} tightTop tightBottom centered />
+      {sections[0] && (
+        <ProductRail title={sections[0].title} products={sections[0].products} tightTop tightBottom centered />
+      )}
 
       <AcharyaMadhavSection />
 
-      <ProductRail title="Doshmukti Special" products={doshMuktiSpecial} tinted tightTop tightBottom centered />
+      {sections[1] && (
+        <ProductRail
+          title={sections[1].title}
+          products={sections[1].products}
+          tinted
+          tightTop
+          tightBottom
+          centered
+        />
+      )}
 
       <TrustBar />
 
-      <ProductRail title="Rudraksha" products={rudraksha} tightTop tightBottom centered />
+      {sections[2] && (
+        <ProductRail title={sections[2].title} products={sections[2].products} tightTop tightBottom centered />
+      )}
 
       <SectionDivider />
 
-      <ProductRail title="Bracelets" products={bracelets} tinted tightTop tightBottom centered blobVariant="b" />
+      {/* Admin-added rails beyond the original 4 fixed slots above render here,
+          alternating tint/blob so consecutive extra rails don't look identical. */}
+      {sections.slice(3).map((section, i) => (
+        <ProductRail
+          key={section.id}
+          title={section.title}
+          products={section.products}
+          tinted={i % 2 === 0}
+          tightTop
+          tightBottom
+          centered
+          blobVariant={i % 2 === 0 ? 'b' : 'a'}
+        />
+      ))}
 
       <TestimonialsCarousel />
     </>

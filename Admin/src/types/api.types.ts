@@ -300,3 +300,18 @@ export interface PaginatedReviews {
   pages: number;
   page: number;
 }
+
+export interface AdminHomepageSectionItem {
+  id: string; // HomepageSectionItem id
+  order: number;
+  product: { id: string; name: string; slug: string; images?: Array<{ thumb: string; card: string; full: string }> };
+}
+
+export interface AdminHomepageSection {
+  id: string;
+  key: string;
+  title: string;
+  order: number;
+  isActive: boolean;
+  items: AdminHomepageSectionItem[];
+}

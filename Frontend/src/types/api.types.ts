@@ -105,6 +105,18 @@ export const paginatedProductsSchema = z.object({
 });
 export type PaginatedProducts = z.infer<typeof paginatedProductsSchema>;
 
+// Mirrors Backend/src/modules/homepage-sections/schema.ts's response shape.
+// Admin-managed, ordered homepage product rails — replaces the hardcoded
+// "Handpicked This Week" / "Doshmukti Special" / "Rudraksha" / "Bracelets" rails.
+export const homepageSectionSchema = z.object({
+  id: z.string(),
+  key: z.string(),
+  title: z.string(),
+  order: z.number(),
+  products: z.array(productSchema),
+});
+export type HomepageSection = z.infer<typeof homepageSectionSchema>;
+
 export interface CartItem {
   variantId: string;
   quantity: number;

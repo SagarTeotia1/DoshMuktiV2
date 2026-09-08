@@ -28,19 +28,19 @@ function withExcerpt<T extends { description: unknown }>(products: T[]): Array<T
 // attachApplicableOffers on top, keyed by product id. Response shape is unchanged —
 // callers still see `product.offers: Offer[]`, now widened to OfferWithCoupon[] so a
 // COUPON_BASED offer's `coupon.code` and any set `minOrderValue` reach the storefront.
-async function withOffers<T extends { id: string; categories: string[] }>(products: T[]): Promise<Array<T & { offers: OfferWithCoupon[] }>> {
+export async function withOffers<T extends { id: string; categories: string[] }>(products: T[]): Promise<Array<T & { offers: OfferWithCoupon[] }>> {
   if (products.length === 0) return [];
   const byProduct = await attachApplicableOffers(products);
   return products.map((p) => ({ ...p, offers: byProduct.get(p.id) ?? [] }));
 }
 
 type ProductWithVariants = Prisma.ProductGetPayload<{ include: { variants: { where: { isActive: true } } } }>;
-type ProductWithRating = ProductWithVariants & { rating: { average: number; count: number }; excerpt: string };
+export type ProductWithRating = ProductWithVariants & { rating: { average: number; count: number }; excerpt: string };
 
 // Storefront-facing products always get both a rating summary and a derived plain-text
 // excerpt attached in the same pass — every caller of attachRatings is a storefront read,
 // so this is the one place to compute `excerpt` without touching each call site.
-async function attachRatings<T extends { id: string; description: unknown }>(
+export async function attachRatings<T extends { id: string; description: unknown }>(
   products: T[]
 ): Promise<Array<T & { rating: { average: number; count: number }; excerpt: string }>> {
   if (products.length === 0) return [];

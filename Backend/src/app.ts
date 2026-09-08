@@ -23,6 +23,7 @@ import { couponsRoutes } from './modules/coupons/routes';
 import { reviewsRoutes } from './modules/reviews/routes';
 import { chatRoutes } from './modules/chat/routes';
 import { bannersRoutes } from './modules/banners/routes';
+import { homepageSectionsRoutes } from './modules/homepage-sections/routes';
 import { shippingRoutes } from './modules/shipping/routes';
 import { addressRoutes } from './modules/addresses/routes';
 import { jobRoutes } from './jobs/routes';
@@ -73,6 +74,7 @@ export async function buildApp() {
   await app.register(reviewsRoutes, { prefix: '/api' });
   await app.register(chatRoutes, { prefix: '/api' });
   await app.register(bannersRoutes, { prefix: '/api' });
+  await app.register(homepageSectionsRoutes, { prefix: '/api' });
   await app.register(shippingRoutes, { prefix: '/api' });
   await app.register(addressRoutes, { prefix: '/api' });
   await app.register(jobRoutes, { prefix: '/api' });

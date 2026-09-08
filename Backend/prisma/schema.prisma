@@ -36,6 +36,7 @@ model Product {
   offers                   Offer[]          @relation("OfferProducts") // universal, admin-managed offers enabled on this product — see Offer model
   variants                 ProductVariant[]
   reviews                  Review[]
+  homepageSectionItems     HomepageSectionItem[]
   createdAt                DateTime         @default(now())
   updatedAt                DateTime         @updatedAt
 
@@ -464,4 +465,33 @@ model Banner {
   updatedAt   DateTime @updatedAt
 
   @@index([isActive, order])
+}
+
+// ─── Homepage Sections ──────────────────────────────────────────────────────
+
+// Admin-controlled homepage product rails — lets an admin rename a rail's display
+// title and curate/reorder exactly which products appear in it, without a deploy.
+// `key` is a stable slug used only to identify the rail across deploys/seeds; it is
+// never shown to shoppers — `title` is what renders on the storefront.
+model HomepageSection {
+  id        String                @id @default(cuid())
+  key       String                @unique
+  title     String
+  order     Int                   @default(0)
+  isActive  Boolean               @default(true)
+  items     HomepageSectionItem[]
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+}
+
+model HomepageSectionItem {
+  id        String          @id @default(cuid())
+  sectionId String
+  section   HomepageSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  order     Int             @default(0) // product position within the section; 0 = first
+
+  @@unique([sectionId, productId])
+  @@index([sectionId, order])
 }
