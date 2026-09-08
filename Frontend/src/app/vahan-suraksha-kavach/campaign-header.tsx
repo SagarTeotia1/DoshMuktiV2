@@ -29,7 +29,12 @@ export function CampaignHeader({ variantId, productName, price }: { variantId: s
       }`}
     >
       <div className="max-w-6xl mx-auto px-5 sm:px-8 h-14 sm:h-16 flex items-center justify-between">
-        <Link href="/" className="font-heading font-black text-sm sm:text-base tracking-tight text-[#2B1B0C]">
+        <Link
+          href="/"
+          className={`font-heading font-black text-sm sm:text-base tracking-tight transition-colors duration-300 ${
+            solid ? 'text-[#2B1B0C]' : 'text-[#FFFDF8]'
+          }`}
+        >
           Doshhmukti
         </Link>
 
@@ -41,13 +46,29 @@ export function CampaignHeader({ variantId, productName, price }: { variantId: s
           Vahan Suraksha Kavach
         </span>
 
-        <button
-          onClick={() => orderNow(1)}
-          disabled={isOrdering}
-          className="flex-shrink-0 bg-[#2B1B0C] text-[#E6D3AE] rounded-full px-4 sm:px-5 py-2 font-body font-bold text-xs sm:text-sm hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-colors disabled:opacity-50"
-        >
-          {isOrdering ? 'Please wait…' : 'Buy'}
-        </button>
+        <div className="flex-shrink-0 flex items-center gap-2 sm:gap-3">
+          <Link
+            href="/shop"
+            className={`hidden sm:inline-flex items-center rounded-full px-4 py-2 font-body font-bold text-xs sm:text-sm border transition-colors duration-300 ${
+              solid
+                ? 'text-[#2B1B0C] border-[#2B1B0C]/20 hover:border-[#2B1B0C] hover:bg-[#F6E4C2]'
+                : 'text-[#FFFDF8] border-[#E6D3AE]/30 hover:border-[#E6D3AE]/60 hover:bg-white/10'
+            }`}
+          >
+            Explore Collection
+          </Link>
+          <button
+            onClick={() => orderNow(1)}
+            disabled={isOrdering}
+            className={`rounded-full px-4 sm:px-5 py-2 font-body font-bold text-xs sm:text-sm transition-colors duration-300 disabled:opacity-50 ${
+              solid
+                ? 'bg-[#2B1B0C] text-[#E6D3AE] hover:bg-[#9C5A26] hover:text-[#2B1B0C]'
+                : 'bg-[#E6D3AE] text-[#2B1B0C] hover:bg-[#FFFDF8]'
+            }`}
+          >
+            {isOrdering ? 'Please wait…' : 'Buy'}
+          </button>
+        </div>
       </div>
     </header>
   );
