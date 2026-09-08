@@ -4,6 +4,7 @@ import { env } from '../config/env';
 import { releaseExpiredHolds } from './release-holds';
 import { syncOpenShipments } from './tracking-sync';
 import { sendLowStockDigest } from './low-stock-digest';
+import { warmCache } from './warm-cache';
 
 function verifyCronSecret(req: FastifyRequest, reply: FastifyReply): boolean {
   const auth = req.headers.authorization ?? '';
@@ -32,5 +33,10 @@ export async function jobRoutes(app: FastifyInstance) {
   app.post('/jobs/low-stock-digest', async (req, reply) => {
     if (!verifyCronSecret(req, reply)) return;
     return reply.send(await sendLowStockDigest());
+  });
+
+  app.post('/jobs/warm-cache', async (req, reply) => {
+    if (!verifyCronSecret(req, reply)) return;
+    return reply.send(await warmCache());
   });
 }
