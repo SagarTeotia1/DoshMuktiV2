@@ -25,6 +25,7 @@ import { chatRoutes } from './modules/chat/routes';
 import { bannersRoutes } from './modules/banners/routes';
 import { homepageSectionsRoutes } from './modules/homepage-sections/routes';
 import { shippingRoutes } from './modules/shipping/routes';
+import { pickupRequestsRoutes } from './modules/pickup-requests/routes';
 import { addressRoutes } from './modules/addresses/routes';
 import { jobRoutes } from './jobs/routes';
 
@@ -76,6 +77,7 @@ export async function buildApp() {
   await app.register(bannersRoutes, { prefix: '/api' });
   await app.register(homepageSectionsRoutes, { prefix: '/api' });
   await app.register(shippingRoutes, { prefix: '/api' });
+  await app.register(pickupRequestsRoutes, { prefix: '/api' });
   await app.register(addressRoutes, { prefix: '/api' });
   await app.register(jobRoutes, { prefix: '/api' });
 

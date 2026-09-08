@@ -3,7 +3,6 @@ import { Prisma, type OrderStatus } from '@prisma/client';
 import {
   createShipment,
   fetchShippingLabel,
-  raisePickupRequest,
   takeNdrAction,
   updateEwaybill,
   type NdrAction,
@@ -135,18 +134,6 @@ export async function getShipmentLabel(orderId: string): Promise<{ pdfUrl: strin
   return label;
 }
 
-export async function raiseOrderPickup(
-  orderId: string,
-  params: { pickupDate: string; pickupTime: string; expectedPackageCount: number }
-): Promise<{ pickupId?: string }> {
-  await getWaybillOrThrow(orderId); // pickup only makes sense once a shipment is booked
-  const result = await raisePickupRequest(params);
-  if (!result.success) throw new Error(result.error ?? 'Pickup request failed');
-
-  await db.shipment.update({ where: { orderId }, data: { pickupRequestedAt: new Date() } });
-  return { pickupId: result.pickupId };
-}
-
 export async function takeOrderNdrAction(
   orderId: string,
   params: { action: NdrAction; reattemptDate?: string; comment?: string }
@@ -161,7 +148,21 @@ export async function takeOrderNdrAction(
   // a reattempt means the last attempt failed but delivery is still being retried.
   await db.shipment.update({
     where: { orderId },
-    data: { status: params.action === 'RTO' ? 'RETURNED' : 'FAILED' },
+    data: { status: params.action === 'RTO' ? 'RETURNED' : 'FAILED', riskFlag: null, riskReason: null },
+  });
+}
+
+// Manual override for when Delhivery's NDR text doesn't hit the keyword match, or an
+// admin spots the problem before Delhivery does — pulls the shipment out of the pickup
+// batch queue immediately (see pickup-requests/service.ts). Passing riskFlag: null clears
+// it, same effect as resolving via an NDR action.
+export async function setShipmentRiskFlag(
+  orderId: string,
+  params: { riskFlag: 'BAD_ADDRESS' | 'HIGH_RISK' | null; riskReason?: string }
+): Promise<void> {
+  await db.shipment.update({
+    where: { orderId },
+    data: { riskFlag: params.riskFlag, riskReason: params.riskFlag ? params.riskReason ?? null : null },
   });
 }
 

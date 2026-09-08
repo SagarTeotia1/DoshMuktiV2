@@ -5,6 +5,7 @@ import {
   createOffer,
   updateOffer,
   duplicateOffer,
+  getSuggestedOffers,
   OfferNotFoundError,
   CouponNotFoundError,
   CategoryNotFoundError,
@@ -55,6 +56,10 @@ export async function updateOfferHandler(req: FastifyRequest, reply: FastifyRepl
   } catch (err) {
     return handleServiceError(err, reply);
   }
+}
+
+export async function suggestedOffersHandler(_req: FastifyRequest, reply: FastifyReply) {
+  return reply.send(await getSuggestedOffers());
 }
 
 export async function duplicateOfferHandler(req: FastifyRequest, reply: FastifyReply) {

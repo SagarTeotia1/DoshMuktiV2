@@ -16,6 +16,23 @@ const columns: ColumnDef<Order, unknown>[] = [
   { accessorKey: 'customerName', header: 'Customer' },
   { accessorKey: 'total', header: 'Total', cell: ({ row }) => formatCurrency(row.original.total) },
   { id: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
+  {
+    id: 'risk',
+    header: 'Risk',
+    cell: ({ row }) => {
+      const flag = row.original.shipment?.riskFlag;
+      if (!flag) return null;
+      return (
+        <span
+          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+            flag === 'BAD_ADDRESS' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+          }`}
+        >
+          {flag === 'BAD_ADDRESS' ? 'Bad Address' : 'High Risk'}
+        </span>
+      );
+    },
+  },
   { accessorKey: 'createdAt', header: 'Date', cell: ({ row }) => formatDate(row.original.createdAt) },
 ];
 

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, ChevronDown, Ticket, Copy, Check } from 'lucide-react';
 import { useCart, type CartScope } from '@/hooks/use-cart';
 import { usePincodeCheck } from '@/hooks/use-pincode-check';
 import { useRazorpay } from '@/hooks/use-razorpay';
@@ -17,11 +17,21 @@ import { getToken } from '@/lib/auth';
 import { formatCurrency } from '@/lib/formatters';
 import { SHIPPING_FEE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
 import { trackBeginCheckout, trackPurchase } from '@/lib/firebase';
-import type { Address, CheckoutInput, CheckoutResponse, CouponPreviewResponse } from '@/types/api.types';
+import type { Address, CheckoutInput, CheckoutResponse, CouponPreviewResponse, SuggestedCoupon } from '@/types/api.types';
 import type { RazorpayResponse } from '@/hooks/use-razorpay';
 
 const inputClass =
   'bg-white border border-[#2B1B0C]/40 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:border-[#9C5A26] focus:outline-none font-body placeholder:text-[#6B5539] transition-colors';
+
+// Short one-line description for a suggested coupon row — e.g. "10% off, up to ₹50,
+// on orders above ₹300". Purely presentational; the real eligibility check always
+// happens server-side via /api/coupon/preview when a code is actually applied.
+function couponDescription(c: SuggestedCoupon): string {
+  const value = c.type === 'FLAT' ? formatCurrency(c.value) : `${c.value}%`;
+  const cap = c.maxDiscount ? `, up to ${formatCurrency(c.maxDiscount)}` : '';
+  const minOrder = c.minOrder ? ` on orders above ${formatCurrency(c.minOrder)}` : '';
+  return `${value} off${cap}${minOrder}`;
+}
 
 const COUPON_ERROR_CODES = new Set([
   'COUPON_NOT_FOUND',
@@ -327,6 +337,30 @@ function CheckoutPageContent() {
   const [couponError, setCouponError] = useState<string | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null);
 
+  // Admin-curated (Coupon.showInSuggestions) — a small set of codes nudged as tappable
+  // chips right where the customer is already looking for a code, instead of making them
+  // go find one. Fetched once on mount; failure just means no chips, never blocks checkout.
+  const [suggestedCoupons, setSuggestedCoupons] = useState<SuggestedCoupon[]>([]);
+  const [couponPanelOpen, setCouponPanelOpen] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  useEffect(() => {
+    api
+      .get<SuggestedCoupon[]>('/api/coupons/suggestions')
+      .then(setSuggestedCoupons)
+      .catch(() => setSuggestedCoupons([]));
+  }, []);
+
+  async function handleCopyCode(code: string) {
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard API unavailable');
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 1500);
+    } catch {
+      // Clipboard denied/unavailable — the code is still visible in the row to copy by hand.
+    }
+  }
+
   const items = cart?.items ?? [];
   const checkoutItems = items.map((i) => ({ variantId: i.variantId, quantity: i.quantity }));
   const subtotal = cart?.subtotal ?? 0;
@@ -365,9 +399,10 @@ function CheckoutPageContent() {
   const gstAmount = cart?.gstAmount ?? 0;
   const taxableValue = cart?.taxableValue ?? subtotal;
 
-  async function handleApplyCoupon() {
-    const code = couponInput.trim();
+  async function handleApplyCoupon(codeOverride?: string) {
+    const code = (codeOverride ?? couponInput).trim();
     if (!code || items.length === 0) return;
+    if (codeOverride) setCouponInput(codeOverride);
     setCouponLoading(true);
     setCouponError(null);
     try {
@@ -586,7 +621,7 @@ function CheckoutPageContent() {
             />
             <button
               type="button"
-              onClick={handleApplyCoupon}
+              onClick={() => handleApplyCoupon()}
               disabled={couponLoading || !couponInput.trim()}
               className="flex-shrink-0 font-body font-bold text-xs uppercase tracking-wide text-[#9C5A26] border border-[#9C5A26] rounded-full px-4 py-2.5 hover:bg-[#9C5A26] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -594,6 +629,51 @@ function CheckoutPageContent() {
             </button>
           </div>
           {couponError && <p className="text-xs text-brand-alert font-body font-semibold">{couponError}</p>}
+
+          {suggestedCoupons.length > 0 && (
+            <div className="mt-0.5">
+              <button
+                type="button"
+                onClick={() => setCouponPanelOpen((v) => !v)}
+                className="flex items-center gap-1.5 font-body text-xs font-bold text-[#9C5A26]"
+              >
+                <Ticket className="w-3.5 h-3.5" />
+                {couponPanelOpen ? 'Hide available offers' : `View available offers (${suggestedCoupons.length})`}
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${couponPanelOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {couponPanelOpen && (
+                <div className="brutal-border mt-2 rounded-lg bg-[#FFFDF8] divide-y divide-[#2B1B0C]/10 overflow-hidden">
+                  {suggestedCoupons.map((c) => (
+                    <div key={c.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-heading font-black text-xs tracking-wide text-[#2B1B0C]">{c.code}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyCode(c.code)}
+                            className="text-[#8A7A63] hover:text-[#9C5A26] transition-colors"
+                            title="Copy code"
+                          >
+                            {copiedCode === c.code ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                        </div>
+                        <p className="font-body text-[11px] text-[#8A7A63] mt-0.5 truncate">{couponDescription(c)}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyCoupon(c.code)}
+                        disabled={couponLoading}
+                        className="flex-shrink-0 font-body font-bold text-[10px] uppercase tracking-wide text-[#9C5A26] border border-[#9C5A26] rounded-full px-3 py-1.5 hover:bg-[#9C5A26] hover:text-white transition-colors disabled:opacity-50"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex items-center justify-between gap-2 py-2 border-t border-[#2B1B0C]/10">

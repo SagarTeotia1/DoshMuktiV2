@@ -127,10 +127,31 @@ export async function handleDelhiveryStatusUpdate(waybill: string, event: { stat
   const events = (shipment.trackingEvents as unknown as Array<typeof event>) ?? [];
   events.push(event);
 
+  const risk = detectRiskFlag(event.description);
+
   await db.shipment.update({
     where: { id: shipment.id },
-    data: { trackingEvents: events as unknown as object, status: mapDelhiveryStatus(event.status) },
+    data: {
+      trackingEvents: events as unknown as object,
+      status: mapDelhiveryStatus(event.status),
+      // Only ever set here, never cleared — an NDR remark once seen stays true until an
+      // admin resolves it via an NDR action (see takeOrderNdrAction, which clears it).
+      ...(risk ? { riskFlag: risk.flag, riskReason: risk.reason } : {}),
+    },
   });
+}
+
+// Delhivery's NDR remarks are free text, not a coded reason field — this is a best-effort
+// keyword match against the phrases actually seen on this account's failed deliveries.
+function detectRiskFlag(description: string): { flag: 'BAD_ADDRESS' | 'HIGH_RISK'; reason: string } | null {
+  const text = description.toLowerCase();
+  if (/address|pin ?code|location not found|unserviceable/.test(text)) {
+    return { flag: 'BAD_ADDRESS', reason: description };
+  }
+  if (/fraud|fake order|refused|not reachable|phone.*(off|invalid)|door lock/.test(text)) {
+    return { flag: 'HIGH_RISK', reason: description };
+  }
+  return null;
 }
 
 function mapDelhiveryStatus(status: string): 'PENDING' | 'BOOKED' | 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'FAILED' | 'RETURNED' {

@@ -36,6 +36,7 @@ export interface CreateCouponInput {
   maxDiscount?: number | null;
   expiresAt?: string | null;
   isActive?: boolean;
+  showInSuggestions?: boolean;
 }
 
 export function useCreateCoupon() {
@@ -55,6 +56,7 @@ export interface UpdateCouponInput {
   maxDiscount?: number | null;
   expiresAt?: string | null;
   isActive?: boolean;
+  showInSuggestions?: boolean;
 }
 
 export function useUpdateCoupon() {

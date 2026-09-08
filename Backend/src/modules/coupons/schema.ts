@@ -37,6 +37,10 @@ const couponFieldsSchema = z.object({
   // Cap for PERCENT/BIRTHDAY type discounts — optional (no cap).
   maxDiscount: z.number().positive().nullable().optional(),
   expiresAt: z.coerce.date().nullable().optional(),
+  // Opt-in flag for the storefront's site-wide "Suggested Offers" widget — same curated,
+  // not-everything rule as Offer.showInSuggestions. Lets a standalone coupon (no linked
+  // Offer) surface there directly.
+  showInSuggestions: z.boolean().optional(),
 });
 
 // Full-object create can enforce the percent bound directly (type is always present).

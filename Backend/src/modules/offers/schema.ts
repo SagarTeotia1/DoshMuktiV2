@@ -44,6 +44,11 @@ const offerFieldsSchema = z.object({
   // an update can explicitly clear it — Admin's forms send null, not an omitted key, for
   // a blanked-out optional number field.
   minOrderValue: z.number().nonnegative().nullable().optional(),
+  // Opt-in flag for the storefront's site-wide "Suggested Offers" widget — deliberately
+  // not inferred from isActive/behavior, an admin curates this explicitly. Defaults to
+  // false on create (offerFieldsSchema.default below); on update, `.partial()` leaves an
+  // omitted field untouched rather than resetting it — same pattern as scope/category.
+  showInSuggestions: z.boolean().default(false),
 });
 
 // Shared by create (all fields required) and update (all fields partial) — validates

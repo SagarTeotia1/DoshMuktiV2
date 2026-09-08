@@ -72,6 +72,9 @@ interface OfferBase {
   // ("only applies once the cart reaches ₹X"). Always null for COUPON_BASED — the
   // linked Coupon has its own `minOrder` for that, and showing both would confuse.
   minOrderValue: number | null;
+  // Admin-curated — surfaces this offer in the storefront's site-wide "Suggested Offers"
+  // widget. Opt-in, independent of isActive.
+  showInSuggestions: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -120,6 +123,7 @@ export interface Coupon {
   expiresAt: string | null; // ISO date
   isActive: boolean;
   offerCount: number; // how many Offers (behavior=COUPON_BASED) link to this coupon
+  showInSuggestions: boolean;
   createdAt: string;
 }
 
@@ -224,7 +228,9 @@ export interface Order {
     delhiveryWaybill: string | null;
     status: string;
     ewaybillNumber: string | null;
-    pickupRequestedAt: string | null;
+    pickupRequestId: string | null;
+    riskFlag: 'BAD_ADDRESS' | 'HIGH_RISK' | null;
+    riskReason: string | null;
   } | null;
   statusLog?: Array<{ from: string; to: string; note: string | null; createdBy: string; createdAt: string }>;
   createdAt: string;
@@ -305,6 +311,28 @@ export interface AdminHomepageSectionItem {
   id: string; // HomepageSectionItem id
   order: number;
   product: { id: string; name: string; slug: string; images?: Array<{ thumb: string; card: string; full: string }> };
+}
+
+export type PickupRequestStatus = 'REQUESTED' | 'FAILED';
+
+export interface PickupRequest {
+  id: string;
+  pickupDate: string;
+  pickupTime: string;
+  expectedPackageCount: number;
+  delhiveryPickupId: string | null;
+  status: PickupRequestStatus;
+  failureReason: string | null;
+  shipments: Array<{ orderId: string }>;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface PaginatedPickupRequests {
+  requests: PickupRequest[];
+  total: number;
+  pages: number;
+  page: number;
 }
 
 export interface AdminHomepageSection {

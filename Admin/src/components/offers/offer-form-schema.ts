@@ -79,6 +79,8 @@ export const offerFormSchema = z
     getProductId: z.string().optional(),
     // FREE_SHIPPING
     minOrderValue: z.coerce.number().min(0).optional(),
+    // Curated opt-in for the storefront's site-wide "Suggested Offers" widget.
+    showInSuggestions: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
     switch (data.reward) {
@@ -145,7 +147,7 @@ export function buildOfferConfig(values: OfferFormShape): OfferConfig {
 
 /** Inverse of `buildOfferConfig` — used to seed the flattened form defaults when editing an existing offer. */
 export function offerToFormDefaults(offer?: Offer): Partial<OfferFormShape> {
-  if (!offer) return { behavior: 'DISPLAY_ONLY', reward: 'DISPLAY_MESSAGE', scope: 'SPECIFIC_PRODUCTS' };
+  if (!offer) return { behavior: 'DISPLAY_ONLY', reward: 'DISPLAY_MESSAGE', scope: 'SPECIFIC_PRODUCTS', showInSuggestions: false };
 
   const base: Partial<OfferFormShape> = {
     title: offer.title,
@@ -156,6 +158,7 @@ export function offerToFormDefaults(offer?: Offer): Partial<OfferFormShape> {
     category: offer.category ?? '',
     productIds: offer.productIds,
     conditionMinOrderValue: offer.minOrderValue ?? undefined,
+    showInSuggestions: offer.showInSuggestions,
   };
 
   switch (offer.reward) {

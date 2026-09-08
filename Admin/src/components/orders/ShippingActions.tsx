@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { FileText, Truck, AlertTriangle, Receipt } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { useGenerateLabel, useBookShipment, useRaisePickup, useNdrAction, useUpdateEwaybill } from '@/hooks/use-orders';
+import { useGenerateLabel, useBookShipment, useNdrAction, useUpdateEwaybill, useSetRiskFlag } from '@/hooks/use-orders';
 import { ApiError } from '@/lib/api-client';
-import { formatDate } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import type { Order } from '@/types/api.types';
 
 const inputClass =
@@ -17,21 +17,28 @@ function errMsg(err: unknown, fallback: string) {
 }
 
 // Everything here calls Delhivery's live production API — every action has a real,
-// physical-world effect (a courier gets a pickup slot booked, a shipment gets flagged
-// RTO, etc). Pickup + NDR are gated behind a confirm dialog for exactly that reason;
-// label download and saving an e-way bill number are low-risk enough not to need one.
+// physical-world effect (a shipment gets flagged RTO, etc). NDR is gated behind a
+// confirm dialog for exactly that reason; label download and saving an e-way bill
+// number are low-risk enough not to need one. Pickup is batched, not per-order — see
+// the Pickup Requests page.
 export function ShippingActions({ order }: { order: Order }) {
   const waybill = order.shipment?.delhiveryWaybill;
   const generateLabel = useGenerateLabel(order.id);
   const bookShipment = useBookShipment(order.id);
-  const raisePickup = useRaisePickup(order.id);
   const ndrAction = useNdrAction(order.id);
   const updateEwaybill = useUpdateEwaybill(order.id);
+  const setRiskFlag = useSetRiskFlag(order.id);
+  const riskFlag = order.shipment?.riskFlag ?? null;
 
-  const [pickupDate, setPickupDate] = useState(new Date().toISOString().slice(0, 10));
-  const [pickupTime, setPickupTime] = useState('14:00');
-  const [packageCount, setPackageCount] = useState(1);
-  const [confirmPickup, setConfirmPickup] = useState(false);
+  function handleToggleRiskFlag(flag: 'BAD_ADDRESS' | 'HIGH_RISK') {
+    setRiskFlag.mutate(
+      { riskFlag: riskFlag === flag ? null : flag },
+      {
+        onSuccess: () => toast.success(riskFlag === flag ? 'Flag cleared' : 'Shipment flagged'),
+        onError: (err) => toast.error(errMsg(err, 'Could not update flag')),
+      }
+    );
+  }
 
   const [ndrType, setNdrType] = useState<'REATTEMPT' | 'RTO'>('REATTEMPT');
   const [reattemptDate, setReattemptDate] = useState(new Date().toISOString().slice(0, 10));
@@ -72,17 +79,6 @@ export function ShippingActions({ order }: { order: Order }) {
     });
   }
 
-  function handleRaisePickup() {
-    raisePickup.mutate(
-      { pickupDate, pickupTime, expectedPackageCount: packageCount },
-      {
-        onSuccess: () => toast.success('Pickup requested'),
-        onError: (err) => toast.error(errMsg(err, 'Pickup request failed')),
-        onSettled: () => setConfirmPickup(false),
-      }
-    );
-  }
-
   function handleNdrAction() {
     ndrAction.mutate(
       {
@@ -120,35 +116,49 @@ export function ShippingActions({ order }: { order: Order }) {
         {generateLabel.isPending ? 'Fetching...' : 'Generate Shipping Label'}
       </button>
 
+      {order.shipment?.pickupRequestId && (
+        <p className="text-xs text-slate-500">
+          In a pickup batch — see the <a href="/pickup-requests" className="underline">Pickup Requests</a> page.
+        </p>
+      )}
+
       <div className="border-t border-slate-100 pt-4">
         <p className="text-xs font-semibold text-slate-600 mb-2 flex items-center gap-1.5">
-          <Truck className="w-3.5 h-3.5" /> Pickup
+          <AlertTriangle className="w-3.5 h-3.5" /> Risk Flag
         </p>
-        {order.shipment?.pickupRequestedAt ? (
-          <p className="text-xs text-slate-500">Requested on {formatDate(order.shipment.pickupRequestedAt)}</p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <div className="grid grid-cols-2 gap-2">
-              <input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className={inputClass} />
-              <input type="time" value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} className={inputClass} />
-            </div>
-            <input
-              type="number"
-              min={1}
-              value={packageCount}
-              onChange={(e) => setPackageCount(Number(e.target.value))}
-              placeholder="Expected package count"
-              className={inputClass}
-            />
-            <button
-              onClick={() => setConfirmPickup(true)}
-              disabled={raisePickup.isPending}
-              className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#9C5A26] hover:bg-[#6B3D19] disabled:opacity-40 transition-colors"
-            >
-              Raise Pickup Request
-            </button>
-          </div>
+        {riskFlag && (
+          <span
+            className={`inline-block mb-2 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+              riskFlag === 'BAD_ADDRESS' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+            }`}
+          >
+            {riskFlag === 'BAD_ADDRESS' ? 'Bad Address' : 'High Risk'}
+          </span>
         )}
+        {order.shipment?.riskReason && <p className="text-xs text-slate-400 mb-2">{order.shipment.riskReason}</p>}
+        <p className="text-xs text-slate-400 mb-2">Flagged shipments are excluded from pickup batches until cleared.</p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleToggleRiskFlag('BAD_ADDRESS')}
+            disabled={setRiskFlag.isPending}
+            className={cn(
+              'flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-40',
+              riskFlag === 'BAD_ADDRESS' ? 'bg-amber-600 text-white border-amber-600' : 'text-slate-700 border-slate-300 hover:border-slate-400'
+            )}
+          >
+            {riskFlag === 'BAD_ADDRESS' ? 'Clear Bad Address' : 'Mark Bad Address'}
+          </button>
+          <button
+            onClick={() => handleToggleRiskFlag('HIGH_RISK')}
+            disabled={setRiskFlag.isPending}
+            className={cn(
+              'flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-40',
+              riskFlag === 'HIGH_RISK' ? 'bg-red-600 text-white border-red-600' : 'text-slate-700 border-slate-300 hover:border-slate-400'
+            )}
+          >
+            {riskFlag === 'HIGH_RISK' ? 'Clear High Risk' : 'Mark High Risk'}
+          </button>
+        </div>
       </div>
 
       <div className="border-t border-slate-100 pt-4">
@@ -201,13 +211,6 @@ export function ShippingActions({ order }: { order: Order }) {
         </div>
       </div>
 
-      <ConfirmDialog
-        open={confirmPickup}
-        title="Raise Pickup Request"
-        message={`Request a Delhivery pickup for ${pickupDate} at ${pickupTime} (${packageCount} package${packageCount === 1 ? '' : 's'})? This books a real courier slot.`}
-        onConfirm={handleRaisePickup}
-        onCancel={() => setConfirmPickup(false)}
-      />
       <ConfirmDialog
         open={confirmNdr}
         title="Submit NDR Action"

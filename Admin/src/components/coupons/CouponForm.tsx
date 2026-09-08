@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { Coupon, CouponType } from '@/types/api.types';
 import type { CreateCouponInput, UpdateCouponInput } from '@/hooks/use-coupons';
+import { Toggle } from '@/components/ui/Toggle';
 
 const inputClass = 'w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none';
 
@@ -46,6 +47,7 @@ const couponFormSchema = z
     // field error instead of the generic top-level "Invalid input" banner.
     maxDiscount: optionalNumber(z.coerce.number().positive('Must be greater than 0')),
     expiresAt: z.string().optional(), // yyyy-mm-dd from <input type="date">, converted to ISO on submit
+    showInSuggestions: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
     if ((data.type === 'PERCENT' || data.type === 'BIRTHDAY') && data.value > 100) {
@@ -56,7 +58,7 @@ const couponFormSchema = z
 type CouponFormShape = z.infer<typeof couponFormSchema>;
 
 function couponToFormDefaults(coupon?: Coupon): Partial<CouponFormShape> {
-  if (!coupon) return { type: 'FLAT' };
+  if (!coupon) return { type: 'FLAT', showInSuggestions: false };
   return {
     code: coupon.code,
     type: coupon.type,
@@ -65,6 +67,7 @@ function couponToFormDefaults(coupon?: Coupon): Partial<CouponFormShape> {
     maxUses: coupon.maxUses ?? undefined,
     maxDiscount: coupon.maxDiscount ?? undefined,
     expiresAt: coupon.expiresAt ? coupon.expiresAt.slice(0, 10) : undefined,
+    showInSuggestions: coupon.showInSuggestions,
   };
 }
 
@@ -84,6 +87,7 @@ export function CouponForm({
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<CouponFormShape>({
     resolver: zodResolver(couponFormSchema),
@@ -97,6 +101,7 @@ export function CouponForm({
   }, [coupon, reset]);
 
   const type = watch('type');
+  const showInSuggestions = watch('showInSuggestions');
   const showMaxDiscount = type === 'PERCENT' || type === 'BIRTHDAY';
   const valueLabel = type === 'FLAT' ? 'Discount Amount (₹)' : 'Discount %';
 
@@ -109,6 +114,7 @@ export function CouponForm({
       maxUses: values.maxUses ?? null,
       maxDiscount: values.maxDiscount ?? null,
       expiresAt: values.expiresAt ? new Date(values.expiresAt).toISOString() : null,
+      showInSuggestions: values.showInSuggestions,
     });
   }
 
@@ -180,6 +186,15 @@ export function CouponForm({
         </label>
         <input type="date" {...register('expiresAt')} className={`${inputClass} max-w-[200px]`} />
         {errors.expiresAt && <p className="text-xs text-red-600 mt-1">{errors.expiresAt.message}</p>}
+      </div>
+
+      <div className="border-t border-slate-100 pt-4">
+        <Toggle
+          checked={showInSuggestions}
+          onChange={(v) => setValue('showInSuggestions', v)}
+          label="Show in Suggestions"
+          description="Surface this coupon in the storefront's site-wide Suggested Offers widget — off by default, pick a small curated set."
+        />
       </div>
 
       <button

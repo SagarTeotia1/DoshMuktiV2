@@ -183,6 +183,7 @@ export async function createCoupon(input: CreateCouponInput) {
         maxUses: input.maxUses ?? null,
         maxDiscount: input.maxDiscount ?? null,
         expiresAt: input.expiresAt ?? null,
+        showInSuggestions: input.showInSuggestions ?? false,
       },
       include: withCountInclude,
     });
@@ -219,6 +220,7 @@ export async function updateCoupon(id: string, input: UpdateCouponInput) {
           ? { expiresAt: input.expiresAt }
           : {}),
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+        ...(input.showInSuggestions !== undefined ? { showInSuggestions: input.showInSuggestions } : {}),
       },
       include: withCountInclude,
     });
@@ -228,6 +230,22 @@ export async function updateCoupon(id: string, input: UpdateCouponInput) {
       throw new CouponCodeTakenError(input.code ?? existing.code);
     throw err;
   }
+}
+
+// Public, storefront-facing — same "Suggested Offers" widget as offers/service.ts's
+// getSuggestedOffers, admin-curated (showInSuggestions) rather than every valid coupon.
+// Excludes expired coupons (an admin flagging one doesn't override that), but not
+// usage-exhausted ones — maxUses is a redemption limit, not a reason to hide the promo.
+export async function getSuggestedCoupons(limit = 8) {
+  return db.coupon.findMany({
+    where: {
+      isActive: true,
+      showInSuggestions: true,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  });
 }
 
 // ─── Validation — single source of truth ───────────────────────────────────

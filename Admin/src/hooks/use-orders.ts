@@ -59,15 +59,6 @@ export function useBookShipment(id: string) {
   });
 }
 
-export function useRaisePickup(id: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { pickupDate: string; pickupTime: string; expectedPackageCount: number }) =>
-      api.post<{ pickupId?: string }>(`/api/admin/orders/${id}/shipment/pickup`, input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-order', id] }),
-  });
-}
-
 export function useNdrAction(id: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -82,5 +73,21 @@ export function useUpdateEwaybill(id: string) {
   return useMutation({
     mutationFn: (input: { ewaybillNumber: string }) => api.post<void>(`/api/admin/orders/${id}/shipment/ewaybill`, input),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-order', id] }),
+  });
+}
+
+// Flag/unflag a shipment as bad-address or high-risk. Flagging pulls it out of the
+// pickup batch queue (see Backend pickup-requests/service.ts); passing riskFlag: null
+// clears it, same as resolving via an NDR action.
+export function useSetRiskFlag(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { riskFlag: 'BAD_ADDRESS' | 'HIGH_RISK' | null; riskReason?: string }) =>
+      api.patch<void>(`/api/admin/orders/${id}/shipment/risk-flag`, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-order', id] });
+      qc.invalidateQueries({ queryKey: ['admin-orders'] });
+      qc.invalidateQueries({ queryKey: ['admin-pickup-pending-count'] });
+    },
   });
 }

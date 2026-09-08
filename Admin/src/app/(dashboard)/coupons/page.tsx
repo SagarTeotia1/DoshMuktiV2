@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Plus, Pencil, Archive, ArchiveRestore } from 'lucide-react';
+import { Plus, Pencil, Archive, ArchiveRestore, Sparkles } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Topbar } from '@/components/layout/Topbar';
 import { DataTable } from '@/components/ui/DataTable';
@@ -105,6 +105,16 @@ export default function CouponsPage() {
     );
   }
 
+  function toggleSuggestion(coupon: Coupon) {
+    updateCoupon.mutate(
+      { id: coupon.id, input: { showInSuggestions: !coupon.showInSuggestions } },
+      {
+        onSuccess: () => toast.success(coupon.showInSuggestions ? 'Removed from Suggestions' : 'Added to Suggestions'),
+        onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to update coupon'),
+      }
+    );
+  }
+
   function restore(coupon: Coupon) {
     updateCoupon.mutate(
       { id: coupon.id, input: { isActive: true } },
@@ -175,6 +185,16 @@ export default function CouponsPage() {
           const coupon = row.original;
           return (
             <div className="flex items-center gap-1 justify-end">
+              <button
+                type="button"
+                onClick={() => toggleSuggestion(coupon)}
+                title={coupon.showInSuggestions ? 'Remove from Suggestions' : 'Show in Suggestions'}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  coupon.showInSuggestions ? 'text-[#9C5A26] hover:bg-[#9C5A26]/10' : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" fill={coupon.showInSuggestions ? 'currentColor' : 'none'} />
+              </button>
               <button
                 type="button"
                 onClick={() => setDrawer({ mode: 'edit', coupon })}

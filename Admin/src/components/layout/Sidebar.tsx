@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, Boxes, ShoppingBag, Gem, Star, Tag, Ticket, Image as ImageIcon, Receipt, Truck, Rows3 } from 'lucide-react';
+import { LayoutDashboard, Package, Boxes, ShoppingBag, Gem, Star, Tag, Ticket, Image as ImageIcon, Receipt, Truck, PackageCheck, Rows3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV = [
@@ -15,6 +15,7 @@ const NAV = [
   { href: '/inventory', label: 'Inventory', icon: Boxes },
   { href: '/orders', label: 'Orders', icon: ShoppingBag },
   { href: '/shipping', label: 'Shipping', icon: Truck },
+  { href: '/pickup-requests', label: 'Pickup Requests', icon: PackageCheck },
   { href: '/gst-report', label: 'GST Report', icon: Receipt },
   { href: '/reviews', label: 'Reviews', icon: Star },
 ];

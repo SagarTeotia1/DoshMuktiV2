@@ -12,9 +12,9 @@ import {
   gstReportHandler,
   shipmentLabelHandler,
   bookShipmentHandler,
-  raisePickupHandler,
   ndrActionHandler,
   ewaybillUpdateHandler,
+  riskFlagHandler,
 } from './controller';
 
 export async function orderRoutes(app: FastifyInstance) {
@@ -29,7 +29,7 @@ export async function orderRoutes(app: FastifyInstance) {
   app.patch('/admin/orders/:id/status', { preHandler: verifyAdmin }, updateOrderStatusHandler);
   app.get('/admin/orders/:id/shipment/label', { preHandler: verifyAdmin }, shipmentLabelHandler);
   app.post('/admin/orders/:id/shipment/book', { preHandler: verifyAdmin }, bookShipmentHandler);
-  app.post('/admin/orders/:id/shipment/pickup', { preHandler: verifyAdmin }, raisePickupHandler);
   app.post('/admin/orders/:id/shipment/ndr', { preHandler: verifyAdmin }, ndrActionHandler);
   app.post('/admin/orders/:id/shipment/ewaybill', { preHandler: verifyAdmin }, ewaybillUpdateHandler);
+  app.patch('/admin/orders/:id/shipment/risk-flag', { preHandler: verifyAdmin }, riskFlagHandler);
 }

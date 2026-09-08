@@ -14,6 +14,7 @@ import {
   findValidatedCoupon,
   resolveCouponRewardsForCheckout,
   resolveLineItemsForPreview,
+  getSuggestedCoupons,
   CouponCodeTakenError,
   CouponNotFoundError,
   CouponInactiveError,
@@ -177,6 +178,14 @@ export async function updateCouponHandler(
   } catch (err) {
     return handleAdminServiceError(err, reply);
   }
+}
+
+// Public, unauthenticated — feeds the storefront's "Suggested Offers" widget.
+export async function suggestedCouponsHandler(
+  _req: FastifyRequest,
+  reply: FastifyReply,
+) {
+  return reply.send(await getSuggestedCoupons());
 }
 
 // Public, unauthenticated — the storefront calls this interactively as the customer

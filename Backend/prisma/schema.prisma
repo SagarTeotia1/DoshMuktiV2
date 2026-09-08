@@ -101,6 +101,12 @@ model Offer {
   // two competing conditions on one redemption.
   minOrderValue Decimal? @db.Decimal(10, 2)
 
+  // Opt-in only — an admin curates a small, deliberate set to surface in the storefront's
+  // site-wide "Suggested Offers" widget (see /offers/suggestions). Independent of isActive:
+  // archiving still hides it everywhere including here, but most active offers stay off
+  // this list by default so the widget doesn't just mirror the entire offer catalog.
+  showInSuggestions Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -109,6 +115,7 @@ model Offer {
   @@index([reward])
   @@index([couponId])
   @@index([scope, category])
+  @@index([showInSuggestions])
 }
 
 enum ProductStatus {
@@ -332,14 +339,29 @@ model Shipment {
   // Government e-way bill number (GST-required above the transport value threshold) —
   // generated externally (GST portal/GSP), just attached here and pushed to Delhivery.
   ewaybillNumber    String?
-  // Set once a pickup is raised via Admin — lets the UI show "already requested" instead
-  // of letting an admin fire duplicate pickup requests for the same shipment.
-  pickupRequestedAt DateTime?
+  // Set once this shipment is swept into a batch pickup request — lets the UI show
+  // "already in a pickup batch" instead of letting an admin double-count it into a
+  // second batch. Null means "booked, still waiting to be picked up."
+  pickupRequestId   String?
+  pickupRequest     PickupRequest? @relation(fields: [pickupRequestId], references: [id])
+  // Set from Delhivery's NDR remarks (keyword match on tracking event description) or
+  // by an admin manually flagging the order — surfaces "don't sweep this into the next
+  // pickup batch, and don't retry blindly" before a courier wastes a trip on it. Cleared
+  // when an NDR action (REATTEMPT/RTO) is taken, since that's the admin resolving it.
+  riskFlag          ShipmentRiskFlag?
+  riskReason         String?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
   @@index([status])
   @@index([delhiveryWaybill])
+  @@index([pickupRequestId])
+  @@index([riskFlag])
+}
+
+enum ShipmentRiskFlag {
+  BAD_ADDRESS
+  HIGH_RISK
 }
 
 enum ShipmentStatus {
@@ -350,6 +372,31 @@ enum ShipmentStatus {
   DELIVERED
   FAILED
   RETURNED
+}
+
+// One Delhivery pickup slot covering every BOOKED-but-not-yet-picked-up shipment at
+// request time (see pickup-requests/service.ts) — never one row per order. A single
+// courier visit collects the whole day's bag, so `expectedPackageCount` is the count
+// of Shipments swept into this batch, not a per-order number.
+model PickupRequest {
+  id                    String              @id @default(cuid())
+  pickupDate            String // YYYY-MM-DD
+  pickupTime            String // HH:MM
+  expectedPackageCount  Int
+  delhiveryPickupId     String?
+  status                PickupRequestStatus @default(REQUESTED)
+  failureReason         String?
+  shipments             Shipment[]
+  createdAt             DateTime            @default(now())
+  createdBy             String
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum PickupRequestStatus {
+  REQUESTED
+  FAILED
 }
 
 // ─── Coupons ──────────────────────────────────────────────────────────────────
@@ -369,8 +416,13 @@ model Coupon {
   offers      Offer[] // offers with behavior = COUPON_BASED that activate when this code is redeemed
   createdAt   DateTime   @default(now())
 
+  // Same opt-in "curated, not everything" rule as Offer.showInSuggestions — a standalone
+  // coupon (no linked Offer) can also surface in the suggestions widget on its own.
+  showInSuggestions Boolean @default(false)
+
   @@index([code])
   @@index([isActive, expiresAt])
+  @@index([showInSuggestions])
 }
 
 enum CouponType {

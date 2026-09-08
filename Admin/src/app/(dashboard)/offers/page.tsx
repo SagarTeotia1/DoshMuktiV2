@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Plus, Copy, Pencil, Archive, ArchiveRestore } from 'lucide-react';
+import { Plus, Copy, Pencil, Archive, ArchiveRestore, Sparkles } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Topbar } from '@/components/layout/Topbar';
 import { DataTable } from '@/components/ui/DataTable';
@@ -148,6 +148,16 @@ export default function OffersPage() {
     );
   }
 
+  function toggleSuggestion(offer: Offer) {
+    updateOffer.mutate(
+      { id: offer.id, input: { showInSuggestions: !offer.showInSuggestions } },
+      {
+        onSuccess: () => toast.success(offer.showInSuggestions ? 'Removed from Suggestions' : 'Added to Suggestions'),
+        onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to update offer'),
+      }
+    );
+  }
+
   function restore(offer: Offer) {
     updateOffer.mutate(
       { id: offer.id, input: { isActive: true } },
@@ -226,6 +236,16 @@ export default function OffersPage() {
           const offer = row.original;
           return (
             <div className="flex items-center gap-1 justify-end">
+              <button
+                type="button"
+                onClick={() => toggleSuggestion(offer)}
+                title={offer.showInSuggestions ? 'Remove from Suggestions' : 'Show in Suggestions'}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  offer.showInSuggestions ? 'text-[#9C5A26] hover:bg-[#9C5A26]/10' : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" fill={offer.showInSuggestions ? 'currentColor' : 'none'} />
+              </button>
               <button
                 type="button"
                 onClick={() => setDrawer({ mode: 'edit', offer })}

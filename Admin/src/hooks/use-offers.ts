@@ -41,6 +41,7 @@ export interface CreateOfferInput {
   category?: string | null; // required iff scope === 'CATEGORY'
   productIds?: string[]; // only meaningful when scope === 'SPECIFIC_PRODUCTS'
   minOrderValue?: number | null; // spend-threshold condition; always null for COUPON_BASED
+  showInSuggestions?: boolean;
 }
 
 export function useCreateOffer() {
@@ -62,6 +63,7 @@ export interface UpdateOfferInput {
   category?: string | null;
   productIds?: string[];
   minOrderValue?: number | null;
+  showInSuggestions?: boolean;
 }
 
 export function useUpdateOffer() {

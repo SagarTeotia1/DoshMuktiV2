@@ -6,9 +6,9 @@ import {
   updateOrderStatusSchema,
   idParamSchema,
   gstReportQuerySchema,
-  raisePickupSchema,
   ndrActionSchema,
   ewaybillUpdateSchema,
+  riskFlagSchema,
 } from './schema';
 import {
   getOrderByNumber,
@@ -20,9 +20,9 @@ import {
   getGstReport,
   computeOrderGst,
   getShipmentLabel,
-  raiseOrderPickup,
   takeOrderNdrAction,
   updateOrderEwaybill,
+  setShipmentRiskFlag,
   bookOrderShipment,
   resumeOrder,
   OrderNotResumableError,
@@ -187,20 +187,6 @@ export async function bookShipmentHandler(req: FastifyRequest, reply: FastifyRep
   }
 }
 
-export async function raisePickupHandler(req: FastifyRequest, reply: FastifyReply) {
-  const idParsed = idParamSchema.safeParse(req.params);
-  if (!idParsed.success) return reply.code(400).send({ error: 'Invalid id' });
-  const bodyParsed = raisePickupSchema.safeParse(req.body);
-  if (!bodyParsed.success) return reply.code(400).send({ error: 'Invalid input', details: bodyParsed.error.flatten().fieldErrors });
-
-  try {
-    const result = await raiseOrderPickup(idParsed.data.id, bodyParsed.data);
-    return reply.send(result);
-  } catch (err) {
-    return shippingErrorReply(reply, err);
-  }
-}
-
 export async function ndrActionHandler(req: FastifyRequest, reply: FastifyReply) {
   const idParsed = idParamSchema.safeParse(req.params);
   if (!idParsed.success) return reply.code(400).send({ error: 'Invalid id' });
@@ -209,6 +195,20 @@ export async function ndrActionHandler(req: FastifyRequest, reply: FastifyReply)
 
   try {
     await takeOrderNdrAction(idParsed.data.id, bodyParsed.data);
+    return reply.code(204).send();
+  } catch (err) {
+    return shippingErrorReply(reply, err);
+  }
+}
+
+export async function riskFlagHandler(req: FastifyRequest, reply: FastifyReply) {
+  const idParsed = idParamSchema.safeParse(req.params);
+  if (!idParsed.success) return reply.code(400).send({ error: 'Invalid id' });
+  const bodyParsed = riskFlagSchema.safeParse(req.body);
+  if (!bodyParsed.success) return reply.code(400).send({ error: 'Invalid input', details: bodyParsed.error.flatten().fieldErrors });
+
+  try {
+    await setShipmentRiskFlag(idParsed.data.id, bodyParsed.data);
     return reply.code(204).send();
   } catch (err) {
     return shippingErrorReply(reply, err);

@@ -97,6 +97,34 @@ export const productSchema = z.object({
 });
 export type Product = z.infer<typeof productSchema>;
 
+// Storefront-wide "Suggested Offers" widget — admin-curated (Offer.showInSuggestions),
+// not tied to any one product page. Same offer shape as Product['offers'] above, since
+// it's the same underlying Offer row, just fetched from a different endpoint.
+// Mirrors Backend/src/modules/offers/service.ts's getSuggestedOffers.
+export const suggestedOfferSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  behavior: z.enum(['DISPLAY_ONLY', 'AUTO_APPLIED', 'COUPON_BASED']),
+  reward: z.enum(['DISPLAY_MESSAGE', 'PERCENTAGE_DISCOUNT', 'FLAT_DISCOUNT', 'FREE_GIFT', 'BUY_X_GET_Y', 'FREE_SHIPPING']),
+  config: z.record(z.string(), z.unknown()),
+  minOrderValue: z.number().nullable(),
+  coupon: z.object({ code: z.string() }).nullable(),
+});
+export type SuggestedOffer = z.infer<typeof suggestedOfferSchema>;
+
+// Standalone coupon suggestions — a coupon can be surfaced here even with no linked
+// Offer (e.g. a birthday code). Mirrors Backend's getSuggestedCoupons.
+export const suggestedCouponSchema = z.object({
+  id: z.string(),
+  code: z.string(),
+  type: z.enum(['FLAT', 'PERCENT', 'BIRTHDAY']),
+  value: z.number(),
+  minOrder: z.number().nullable(),
+  maxDiscount: z.number().nullable(),
+  expiresAt: z.string().nullable(),
+});
+export type SuggestedCoupon = z.infer<typeof suggestedCouponSchema>;
+
 export const paginatedProductsSchema = z.object({
   products: z.array(productSchema),
   total: z.number(),

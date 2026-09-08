@@ -17,6 +17,7 @@ import { REWARD_FIELD_COMPONENTS } from './reward-fields';
 import { CouponPicker } from './CouponPicker';
 import { ProductScopePicker } from './ProductScopePicker';
 import { useCategories } from '@/hooks/use-categories';
+import { Toggle } from '@/components/ui/Toggle';
 import type { CreateOfferInput, UpdateOfferInput } from '@/hooks/use-offers';
 
 const inputClass = 'w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none';
@@ -54,6 +55,7 @@ export function OfferForm({
   const reward = watch('reward');
   const scope = watch('scope');
   const productIds = watch('productIds');
+  const showInSuggestions = watch('showInSuggestions');
 
   const RewardFields = REWARD_FIELD_COMPONENTS[reward];
   const { data: categories } = useCategories();
@@ -72,6 +74,7 @@ export function OfferForm({
       // Cleared to null when behavior === COUPON_BASED even if a value was previously
       // typed in — the linked Coupon's own minOrder covers that case instead.
       minOrderValue: values.behavior === 'COUPON_BASED' ? null : values.conditionMinOrderValue ?? null,
+      showInSuggestions: values.showInSuggestions,
     });
   }
 
@@ -182,6 +185,15 @@ export function OfferForm({
       <div>
         <label className="text-xs font-semibold text-slate-600 mb-2 block">4. Reward details</label>
         <RewardFields register={register} errors={errors} />
+      </div>
+
+      <div className="border-t border-slate-100 pt-4">
+        <Toggle
+          checked={showInSuggestions}
+          onChange={(v) => setValue('showInSuggestions', v)}
+          label="Show in Suggestions"
+          description="Surface this offer in the storefront's site-wide Suggested Offers widget — off by default, pick a small curated set."
+        />
       </div>
 
       <button

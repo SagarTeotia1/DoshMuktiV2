@@ -291,6 +291,7 @@ export async function createOffer(input: CreateOfferInput) {
       // a stray value for the "wrong" scope, see schema.ts's refine for the intake rule.
       category: input.scope === 'CATEGORY' ? (input.category ?? null) : null,
       minOrderValue: input.minOrderValue ?? null,
+      showInSuggestions: input.showInSuggestions,
       products:
         input.scope === 'SPECIFIC_PRODUCTS' && input.productIds && input.productIds.length > 0
           ? { connect: input.productIds.map((id) => ({ id })) }
@@ -361,6 +362,7 @@ export async function updateOffer(id: string, input: UpdateOfferInput) {
       // whenever scope isn't CATEGORY" invariant even on updates that never touch scope.
       category: mergedScope === 'CATEGORY' ? mergedCategory : null,
       ...(input.minOrderValue !== undefined ? { minOrderValue: input.minOrderValue } : {}),
+      ...(input.showInSuggestions !== undefined ? { showInSuggestions: input.showInSuggestions } : {}),
       ...(productsUpdate ? { products: productsUpdate } : {}),
     },
     include: listInclude,
@@ -393,6 +395,19 @@ export async function duplicateOffer(id: string) {
   });
   const counts = await computeProductCounts([created]);
   return withProductCount(created, counts.get(created.id) ?? 0);
+}
+
+// Public, storefront-facing — the site-wide "Suggested Offers" widget (not tied to any
+// one product page). Deliberately capped small and admin-curated (showInSuggestions),
+// not "every active offer" — that list can get long and most offers only make sense in
+// the context of the product they're scoped to.
+export async function getSuggestedOffers(limit = 8) {
+  return db.offer.findMany({
+    where: { isActive: true, showInSuggestions: true },
+    include: { coupon: { select: { code: true } } },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  });
 }
 
 // ─── Checkout integration ───────────────────────────────────────────────────

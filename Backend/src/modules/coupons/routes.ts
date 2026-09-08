@@ -6,6 +6,7 @@ import {
   createCouponHandler,
   updateCouponHandler,
   previewCouponHandler,
+  suggestedCouponsHandler,
 } from './controller';
 
 export async function couponsRoutes(app: FastifyInstance) {
@@ -16,4 +17,5 @@ export async function couponsRoutes(app: FastifyInstance) {
 
   // Public, unauthenticated — same tier as /serviceability, /products.
   app.post('/coupon/preview', previewCouponHandler);
+  app.get('/coupons/suggestions', suggestedCouponsHandler);
 }
