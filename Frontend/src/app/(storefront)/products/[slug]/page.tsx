@@ -285,7 +285,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           wrapper instead, which keeps its natural short height (gallery + accordion) and pins
           within the tall outer box for the full scroll, releasing only when that box ends. */}
       <div className="grid lg:grid-cols-2 gap-8 lg:gap-14">
-        <div>
+        {/* min-w-0 — without it, a grid item's default min-width is content-based, so the
+            thumbnail row's intrinsic width (many thumbnails × ~74px can exceed a phone's
+            viewport) forces this whole column, and with it the entire page, to overflow
+            horizontally instead of letting the row's own overflow-x-auto scroll it. */}
+        <div className="min-w-0">
           <div className="lg:sticky lg:top-24 flex flex-col gap-6">
             <ProductGallery images={product.images} name={product.name} badge={product.badge} inStock={inStock} />
 
@@ -298,7 +302,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         </div>
 
         {/* Details */}
-        <div className="flex flex-col">
+        <div className="flex flex-col min-w-0">
           <h1 className="font-heading font-black tracking-tight leading-[1.1] text-2xl sm:text-3xl text-[#2B1B0C] mb-3">
             {product.name}
           </h1>
