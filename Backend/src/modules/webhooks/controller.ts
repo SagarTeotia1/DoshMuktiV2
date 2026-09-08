@@ -34,6 +34,13 @@ export async function razorpayWebhookHandler(req: RawBodyRequest, reply: Fastify
 }
 
 export async function delhiveryWebhookHandler(req: FastifyRequest, reply: FastifyReply) {
+  const token = req.headers['x-delhivery-token'] as string | undefined;
+  const tokenBuf = Buffer.from(token ?? '');
+  const expBuf = Buffer.from(env.DELHIVERY_WEBHOOK_TOKEN);
+  if (!token || tokenBuf.length !== expBuf.length || !crypto.timingSafeEqual(tokenBuf, expBuf)) {
+    return reply.code(401).send({ error: 'Invalid token' });
+  }
+
   const body = req.body as { Shipment?: { AWB: string; Status: { Status: string; StatusLocation: string; Instructions: string; StatusDateTime: string } } };
   const shipment = body.Shipment;
   if (!shipment) return reply.code(400).send({ error: 'Invalid payload' });

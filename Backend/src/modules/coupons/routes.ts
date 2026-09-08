@@ -16,6 +16,6 @@ export async function couponsRoutes(app: FastifyInstance) {
   app.patch('/admin/coupons/:id', { preHandler: verifyAdmin }, updateCouponHandler);
 
   // Public, unauthenticated — same tier as /serviceability, /products.
-  app.post('/coupon/preview', previewCouponHandler);
+  app.post('/coupon/preview', { config: { rateLimit: { max: 15, timeWindow: '1 minute' } } }, previewCouponHandler);
   app.get('/coupons/suggestions', suggestedCouponsHandler);
 }

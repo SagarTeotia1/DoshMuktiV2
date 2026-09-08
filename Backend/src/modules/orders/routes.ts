@@ -17,12 +17,14 @@ import {
   riskFlagHandler,
 } from './controller';
 
+const publicOrderRateLimit = { rateLimit: { max: 20, timeWindow: '1 minute' } };
+
 export async function orderRoutes(app: FastifyInstance) {
   app.get('/orders/mine', { preHandler: verifyCustomer }, listMyOrdersHandler); // logged-in customer's own orders
-  app.get('/orders', listOrdersByPhoneHandler); // public — list by phone (legacy/support lookup)
-  app.get('/orders/:orderNumber', trackOrderHandler); // public — track by orderNumber
-  app.get('/orders/:orderNumber/invoice', invoiceHandler); // public — PDF invoice, gated on payment.status === 'CAPTURED'
-  app.post('/orders/:orderNumber/resume', resumeOrderHandler); // public — re-adds a PENDING_PAYMENT order's items into the caller's cart so checkout can be retried
+  app.get('/orders', { config: publicOrderRateLimit }, listOrdersByPhoneHandler); // public — list by phone (legacy/support lookup)
+  app.get('/orders/:orderNumber', { config: publicOrderRateLimit }, trackOrderHandler); // public — track by orderNumber
+  app.get('/orders/:orderNumber/invoice', { config: publicOrderRateLimit }, invoiceHandler); // public — PDF invoice, gated on payment.status === 'CAPTURED'
+  app.post('/orders/:orderNumber/resume', { config: publicOrderRateLimit }, resumeOrderHandler); // public — re-adds a PENDING_PAYMENT order's items into the caller's cart so checkout can be retried
   app.get('/admin/orders', { preHandler: verifyAdmin }, listOrdersHandler);
   app.get('/admin/orders/gst-report', { preHandler: verifyAdmin }, gstReportHandler);
   app.get('/admin/orders/:id', { preHandler: verifyAdmin }, getOrderByIdHandler);

@@ -37,6 +37,7 @@ const envSchema = z.object({
   RESEND_FROM_EMAIL: z.string().default('orders@doshmukti.com'),
 
   DELHIVERY_API_KEY: z.string().default(''),
+  DELHIVERY_WEBHOOK_TOKEN: z.string().min(1),
   DELHIVERY_BASE_URL: z.string().default('https://staging-express.delhivery.com'),
   DELHIVERY_WAREHOUSE_NAME: z.string().default('Doshhmukti Warehouse'),
   DELHIVERY_WAREHOUSE_PINCODE: z.string().default('110001'),

@@ -9,6 +9,13 @@ import { useAuth } from '@/providers/auth-provider';
 const inputClass =
   'bg-white border border-[#2B1B0C]/40 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:border-[#9C5A26] focus:outline-none font-body placeholder:text-[#6B5539] transition-colors w-full';
 
+function safeRedirect(raw: string | null): string {
+  if (!raw) return '/';
+  // Only allow same-origin relative paths — reject protocol-relative (`//evil.com`)
+  // and absolute URLs (`https://evil.com`) to prevent post-login open redirect.
+  return /^\/(?!\/)/.test(raw) ? raw : '/';
+}
+
 function normalizePhone(raw: string): string {
   let digits = raw.replace(/\D/g, '');
   if (digits.length > 10 && digits.startsWith('91')) digits = digits.slice(2);
@@ -22,7 +29,7 @@ const RESEND_COOLDOWN_SECONDS = 120;
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirect') || '/';
+  const redirectTo = safeRedirect(searchParams.get('redirect'));
   const { sendOtp, verifyOtp } = useAuth();
 
   const [step, setStep] = useState<Step>('phone');

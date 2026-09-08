@@ -2,7 +2,7 @@ import { db } from '../shared/db/client';
 import { env } from '../config/env';
 
 // Polls Delhivery for open shipments and updates tracking status. Hit by
-// Cloud Scheduler every 30 min — Delhivery's own webhook (webhooks/delhivery)
+// Cloud Scheduler every 2 hours — Delhivery's own webhook (webhooks/delhivery)
 // is the primary path, this is the fallback in case a push is missed.
 export async function syncOpenShipments(): Promise<{ synced: number }> {
   if (!env.DELHIVERY_API_KEY) return { synced: 0 };

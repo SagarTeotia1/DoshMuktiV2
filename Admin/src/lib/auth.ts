@@ -7,11 +7,13 @@ export function getToken(): string | null {
   return match?.[1] ?? null;
 }
 
+const secureFlag = typeof location !== 'undefined' && location.protocol === 'https:' ? '; Secure' : '';
+
 export function setToken(token: string): void {
   const expires = new Date(Date.now() + COOKIE_HOURS * 60 * 60 * 1000).toUTCString();
-  document.cookie = `${COOKIE_NAME}=${token}; expires=${expires}; path=/; SameSite=Lax`;
+  document.cookie = `${COOKIE_NAME}=${token}; expires=${expires}; path=/; SameSite=Lax${secureFlag}`;
 }
 
 export function clearToken(): void {
-  document.cookie = `${COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+  document.cookie = `${COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/${secureFlag}`;
 }
