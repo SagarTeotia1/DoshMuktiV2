@@ -7,6 +7,6 @@ export const PRODUCT_SORTS = ['newest', 'popular', 'price_asc', 'price_desc'] as
 export type SortId = (typeof PRODUCT_SORTS)[number];
 
 export const SHIPPING_FEE = 99; // flat fallback only — used when Delhivery's live rate is unavailable
-export const FREE_SHIPPING_ABOVE = 200;
+export const FREE_SHIPPING_ABOVE = 299;
 export const RESERVATION_MINUTES = 15;
 export const PRODUCTS_PER_PAGE = 12;
