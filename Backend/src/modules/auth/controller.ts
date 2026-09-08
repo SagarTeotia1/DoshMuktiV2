@@ -6,7 +6,6 @@ import {
   sendCustomerOtp,
   verifyCustomerOtp,
   InvalidOtpError,
-  ProfileRequiredError,
 } from './service';
 import { db } from '../../shared/db/client';
 
@@ -41,13 +40,10 @@ export async function verifyOtpHandler(req: FastifyRequest, reply: FastifyReply)
   if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? 'Invalid input' });
 
   try {
-    const user = await verifyCustomerOtp(parsed.data.phone, parsed.data.otp, parsed.data.name);
+    const user = await verifyCustomerOtp(parsed.data.phone, parsed.data.otp);
     const token = await reply.jwtSign({ sub: user.id, phone: user.phone, role: 'customer' }, { expiresIn: '180d' });
     return reply.send({ token, user: { id: user.id, name: user.name, phone: user.phone, dob: user.dob } });
   } catch (err) {
-    if (err instanceof ProfileRequiredError) {
-      return reply.code(422).send({ error: err.message, code: 'PROFILE_REQUIRED' });
-    }
     if (err instanceof InvalidOtpError) {
       return reply.code(400).send({ error: err.message });
     }

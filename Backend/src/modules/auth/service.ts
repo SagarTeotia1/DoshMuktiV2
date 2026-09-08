@@ -31,13 +31,6 @@ export class InvalidOtpError extends Error {
   }
 }
 
-export class ProfileRequiredError extends Error {
-  constructor() {
-    super('New account — name is required');
-    this.name = 'ProfileRequiredError';
-  }
-}
-
 export async function sendCustomerOtp(rawPhone: string): Promise<void> {
   const phone = normalizePhone(rawPhone);
   const { requestId } = await sendOtp(phone);
@@ -46,11 +39,7 @@ export async function sendCustomerOtp(rawPhone: string): Promise<void> {
   });
 }
 
-export async function verifyCustomerOtp(
-  rawPhone: string,
-  otp: string,
-  name: string | undefined
-): Promise<User> {
+export async function verifyCustomerOtp(rawPhone: string, otp: string): Promise<User> {
   const phone = normalizePhone(rawPhone);
 
   // The profile step (name) resubmits the same phone+otp after the OTP was already
@@ -76,14 +65,7 @@ export async function verifyCustomerOtp(
   }
 
   const existing = await db.user.findUnique({ where: { phone } });
-  if (existing) {
-    if (!name) return existing;
-    return db.user.update({
-      where: { id: existing.id },
-      data: { name },
-    });
-  }
+  if (existing) return existing;
 
-  if (!name) throw new ProfileRequiredError();
-  return db.user.create({ data: { phone, name } });
+  return db.user.create({ data: { phone } });
 }

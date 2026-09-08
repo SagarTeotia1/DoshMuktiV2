@@ -73,7 +73,7 @@ export default function OrdersPage() {
         Your Orders
       </h1>
       <p className="font-body text-sm text-[#8A7A63] mb-8">
-        {user ? `Signed in as ${user.name}, +91 ${user.phone.replace(/^\+91/, '')}` : ''}
+        {user ? `Signed in as +91 ${user.phone.replace(/^\+91/, '')}${user.name ? `, ${user.name}` : ''}` : ''}
       </p>
 
       {orders.length === 0 ? (

@@ -6,7 +6,7 @@ import { getToken, setToken, clearToken } from '@/lib/auth';
 
 export interface CustomerUser {
   id: string;
-  name: string;
+  name: string | null;
   phone: string;
   dob: string | null;
 }
@@ -21,7 +21,7 @@ interface AuthContextValue {
   loading: boolean;
   isAuthenticated: boolean;
   sendOtp: (phone: string) => Promise<void>;
-  verifyOtp: (phone: string, otp: string, name?: string) => Promise<CustomerUser>;
+  verifyOtp: (phone: string, otp: string) => Promise<CustomerUser>;
   logout: () => void;
   refresh: () => Promise<void>;
 }
@@ -70,8 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.post('/api/auth/otp/send', { phone });
   }
 
-  async function verifyOtp(phone: string, otp: string, name?: string) {
-    const result = await api.post<VerifyOtpResponse>('/api/auth/otp/verify', { phone, otp, name });
+  async function verifyOtp(phone: string, otp: string) {
+    const result = await api.post<VerifyOtpResponse>('/api/auth/otp/verify', { phone, otp });
     setToken(result.token);
     setUser(result.user);
     return result.user;
@@ -93,8 +93,4 @@ export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
-}
-
-export function isProfileRequired(err: unknown): boolean {
-  return err instanceof ApiError && err.body.code === 'PROFILE_REQUIRED';
 }

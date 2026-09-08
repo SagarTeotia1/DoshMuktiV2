@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { ShieldCheck } from 'lucide-react';
-import { useAuth, isProfileRequired } from '@/providers/auth-provider';
+import { useAuth } from '@/providers/auth-provider';
 
 const inputClass =
   'bg-white border border-[#2B1B0C]/40 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:border-[#9C5A26] focus:outline-none font-body placeholder:text-[#6B5539] transition-colors w-full';
@@ -28,7 +28,6 @@ function LoginForm() {
   const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const cooldownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -75,14 +74,10 @@ function LoginForm() {
 
     setSubmitting(true);
     try {
-      await verifyOtp(phone, otp, name.trim() || undefined);
+      await verifyOtp(phone, otp);
       router.push(redirectTo);
-    } catch (err) {
-      if (isProfileRequired(err)) {
-        toast.error('New here — enter your name above and verify again');
-      } else {
-        toast.error('Invalid or expired OTP');
-      }
+    } catch {
+      toast.error('Invalid or expired OTP');
     } finally {
       setSubmitting(false);
     }
@@ -108,14 +103,6 @@ function LoginForm() {
           onChange={(e) => setPhone(normalizePhone(e.target.value))}
           placeholder="10-digit mobile number"
           className={`${inputClass} disabled:opacity-60 disabled:bg-[#2B1B0C]/5`}
-        />
-
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Full Name (if you're new here)"
-          className={inputClass}
         />
 
         {step === 'otp' && (

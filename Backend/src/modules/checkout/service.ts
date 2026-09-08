@@ -143,6 +143,11 @@ export async function calculateShippingFee(
 }
 
 export async function initiateCheckout(input: CheckoutInput, userId: string) {
+  // Name is no longer collected at login — this is the first place it's ever known for a
+  // new customer, so backfill it onto their account the first time they check out.
+  // `where: { name: null }` makes this a no-op for every later order, no read needed.
+  await db.user.updateMany({ where: { id: userId, name: null }, data: { name: input.customerName } });
+
   const cached = await redis.get<string>(
     cacheKeys.pincode(input.shippingAddress.pincode),
   );

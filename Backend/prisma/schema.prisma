@@ -188,7 +188,7 @@ model CustomerAddress {
 model User {
   id        String    @id @default(cuid())
   phone     String    @unique // normalized +91XXXXXXXXXX
-  name      String
+  name      String? // null until the customer's first checkout — no longer collected at login
   dob       DateTime?
   orders    Order[]
   createdAt DateTime  @default(now())

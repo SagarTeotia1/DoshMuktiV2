@@ -22,7 +22,6 @@ export async function createShipment(params: {
   customerName: string;
   customerPhone: string;
   address: { line1: string; line2?: string; city: string; state: string; pincode: string };
-  totalAmount: number;
   weight: number;
 }): Promise<{ waybill: string } | null> {
   if (!env.DELHIVERY_API_KEY) return null; // graceful degrade in dev
@@ -39,7 +38,11 @@ export async function createShipment(params: {
         phone: params.customerPhone,
         order: params.orderNumber,
         payment_mode: 'Prepaid',
-        total_amount: params.totalAmount,
+        // 0, not the real order total — Delhivery prints total_amount as a Product/Price
+        // table on the shipping label. That's meant for COD (courier needs to know what
+        // to collect); on Prepaid it just exposes the order value to whoever handles the
+        // package for no reason. Every order here is Prepaid (see payment_mode above).
+        total_amount: 0,
         weight: params.weight,
       },
     ],

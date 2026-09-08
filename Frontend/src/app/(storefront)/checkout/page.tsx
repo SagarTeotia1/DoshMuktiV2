@@ -8,7 +8,7 @@ import { ShieldCheck } from 'lucide-react';
 import { useCart, type CartScope } from '@/hooks/use-cart';
 import { usePincodeCheck } from '@/hooks/use-pincode-check';
 import { useRazorpay } from '@/hooks/use-razorpay';
-import { useAuth, isProfileRequired } from '@/providers/auth-provider';
+import { useAuth } from '@/providers/auth-provider';
 import { useAddresses, useSaveAddress, useUpdateAddress } from '@/hooks/use-addresses';
 import { useShippingEstimate } from '@/hooks/use-shipping-estimate';
 import { api, ApiError } from '@/lib/api-client';
@@ -71,15 +71,11 @@ function InlineLogin({
   verifyOtp,
 }: {
   sendOtp: (phone: string) => Promise<void>;
-  verifyOtp: (phone: string, otp: string, name?: string) => Promise<unknown>;
+  verifyOtp: (phone: string, otp: string) => Promise<unknown>;
 }) {
   const [step, setStep] = useState<OtpStep>('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  const [name, setName] = useState('');
-  // Only known once verify actually fails with PROFILE_REQUIRED (new phone, no account
-  // yet) — an existing customer never sees a name field at all, just phone -> OTP.
-  const [needsName, setNeedsName] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const cooldownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -123,20 +119,14 @@ function InlineLogin({
   async function handleOtpSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!/^\d{4,6}$/.test(otp)) return toast.error('Enter the OTP');
-    if (needsName && !name.trim()) return toast.error('Enter your name');
 
     setSubmitting(true);
     try {
-      await verifyOtp(phone, otp, name.trim() || undefined);
+      await verifyOtp(phone, otp);
       // No router.push — useAuth's isAuthenticated flips true and CheckoutPageContent
       // re-renders the real form in place, same page, same scroll position.
-    } catch (err) {
-      if (isProfileRequired(err)) {
-        setNeedsName(true);
-        toast.error("New here — what's your name?");
-      } else {
-        toast.error('Invalid or expired OTP');
-      }
+    } catch {
+      toast.error('Invalid or expired OTP');
     } finally {
       setSubmitting(false);
     }
@@ -156,17 +146,6 @@ function InlineLogin({
           placeholder="10-digit mobile number"
           className={`${inputClass} disabled:opacity-60 disabled:bg-[#2B1B0C]/5`}
         />
-
-        {needsName && (
-          <input
-            type="text"
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Full Name"
-            className={inputClass}
-          />
-        )}
 
         {step === 'otp' && (
           <>
@@ -244,7 +223,7 @@ function CheckoutPageContent() {
     if (!user) return;
     setForm((f) => ({
       ...f,
-      customerName: f.customerName || user.name,
+      customerName: f.customerName || user.name || '',
       customerPhone: f.customerPhone || user.phone.replace(/^\+91/, ''),
     }));
   }, [user]);

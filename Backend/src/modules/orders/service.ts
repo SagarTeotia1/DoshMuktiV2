@@ -116,7 +116,6 @@ export async function bookOrderShipment(orderId: string): Promise<{ waybill: str
     customerName: order.customerName,
     customerPhone: order.customerPhone,
     address: order.shippingAddress as unknown as BookableAddress,
-    totalAmount: Number(order.total),
     weight: order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0),
   });
   if (!shipment) throw new Error('Delhivery rejected the shipment — check wallet balance and address details');

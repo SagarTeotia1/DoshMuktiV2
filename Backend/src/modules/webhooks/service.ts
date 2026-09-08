@@ -45,7 +45,6 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
     customerName: payment.order.customerName,
     customerPhone: payment.order.customerPhone,
     address: addr,
-    totalAmount: Number(payment.order.total),
     weight: payment.order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0),
   }).then(async (shipment) => {
     if (shipment) {

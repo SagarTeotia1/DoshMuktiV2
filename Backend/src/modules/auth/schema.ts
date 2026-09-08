@@ -14,6 +14,5 @@ export type SendOtpInput = z.infer<typeof sendOtpSchema>;
 export const verifyOtpSchema = z.object({
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number'),
   otp: z.string().regex(/^\d{4,6}$/, 'Invalid OTP'),
-  name: z.string().min(1).max(100).optional(),
 });
 export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>;

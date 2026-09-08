@@ -109,7 +109,7 @@ export function Navbar() {
               >
                 <User className="w-4 h-4" />
                 <span className="font-body text-xs font-semibold text-[#2B1B0C] max-w-[100px] truncate">
-                  {user?.name.split(' ')[0]}
+                  {user?.name?.split(' ')[0] ?? 'Account'}
                 </span>
               </Link>
               <button

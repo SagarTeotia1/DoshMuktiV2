@@ -53,7 +53,7 @@ export default function ProfilePage() {
       <p className="font-body text-sm text-[#8A7A63] mb-8">Signed in with OTP — no password on file.</p>
 
       <div className="bg-white border border-[#2B1B0C] rounded-2xl p-5 sm:p-6 mb-6">
-        <Row icon={User} label="Name" value={user.name} />
+        <Row icon={User} label="Name" value={user.name ?? 'Not added yet'} />
         <Row icon={Phone} label="Phone" value={`+91 ${user.phone.replace(/^\+91/, '')}`} />
         <Row icon={Cake} label="Date of Birth" value={user.dob ? formatDate(user.dob) : 'Not added yet'} />
         {latestOrder && (
