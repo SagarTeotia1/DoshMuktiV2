@@ -166,9 +166,9 @@ export function ChatWidget() {
           <form onSubmit={handleSubmit} className="flex items-center gap-2 p-3 sm:p-4 border-t border-[#2B1B0C]/10 flex-shrink-0">
             {voice.supported && (
               <div className="relative flex-shrink-0">
-                {showMicHint && !voice.listening && (
+                {(showMicHint || voice.listening) && (
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[160px] bg-[#2B1B0C] text-[#E6D3AE] text-[10px] font-body rounded-lg px-2.5 py-1.5 shadow-lg animate-fade-in-up">
-                    Tap to speak, tap again to stop
+                    {voice.listening ? 'Listening — tap again to stop' : 'Tap to speak, tap again to stop'}
                     <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#2B1B0C]" />
                   </div>
                 )}

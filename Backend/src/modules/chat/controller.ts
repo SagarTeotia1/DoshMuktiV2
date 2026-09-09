@@ -30,7 +30,12 @@ export async function chatHandler(req: FastifyRequest, reply: FastifyReply) {
     });
   }
 
-  const result = await sendMessage(parsed.data, sessionIdOf(req));
+  // Global per-day volume counter for the admin trend chart — one INCR, dated by UTC day
+  // so it self-buckets without any read-modify-write on our end.
+  const today = new Date().toISOString().slice(0, 10);
+  void redis.incr(cacheKeys.chatDailyVolume(today), CACHE_TTL.CHAT_DAILY_VOLUME).catch(() => {});
+
+  const result = await sendMessage(parsed.data, sessionIdOf(req), req.ip);
   return reply.send({
     reply: result.reply,
     recommendedProducts: result.recommendedProducts,

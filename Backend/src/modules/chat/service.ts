@@ -1,22 +1,36 @@
 import { chatCompletion, GroqNotConfiguredError, type ChatMessage } from '../../shared/integrations/groq/client';
 import { redis } from '../../shared/cache/client';
 import { cacheKeys, CACHE_TTL } from '../../shared/cache/keys';
+import { lookupGeo } from '../../shared/integrations/geoip/client';
 import { getProductsForChatRecommendation } from '../products/service';
 import { retrieveRelevantChunks, type RetrievedChunk } from './bookRetrieval';
-import { EMPTY_PROFILE, llmTurnSchema, type ChatProfile, type ChatRequestInput } from './schema';
+import { EMPTY_PROFILE, llmTurnSchema, type ChatProfile, type ChatRequestInput, type ChatSessionRecord } from './schema';
 
 const FALLBACK_REPLY =
   "Acharya Madhav is resting for a moment — please try again shortly, or reach us on WhatsApp for immediate guidance.";
 
 async function loadProfile(sessionId: string | null): Promise<ChatProfile> {
   if (!sessionId) return EMPTY_PROFILE;
-  const cached = await redis.get<ChatProfile>(cacheKeys.chatProfile(sessionId));
-  return cached ?? EMPTY_PROFILE;
+  try {
+    const cached = await redis.get<ChatProfile>(cacheKeys.chatProfile(sessionId));
+    return cached ?? EMPTY_PROFILE;
+  } catch (err) {
+    // Degrade to a fresh profile rather than failing the whole turn over a Redis hiccup —
+    // worst case the model re-asks something it already knew.
+    console.error('[chat] failed to load profile', err);
+    return EMPTY_PROFILE;
+  }
 }
 
 async function saveProfile(sessionId: string | null, profile: ChatProfile): Promise<void> {
   if (!sessionId) return;
-  await redis.set(cacheKeys.chatProfile(sessionId), profile, { ex: CACHE_TTL.CHAT_PROFILE });
+  try {
+    await redis.set(cacheKeys.chatProfile(sessionId), profile, { ex: CACHE_TTL.CHAT_PROFILE });
+  } catch (err) {
+    // A Redis hiccup here means the next turn re-asks something already answered —
+    // annoying, not a reason to fail a reply that was already generated successfully.
+    console.error('[chat] failed to persist profile', err);
+  }
 }
 
 // Only ever widen the stored profile — a turn where the model didn't extract a field
@@ -110,7 +124,47 @@ export interface ChatTurnResult {
   recommendationReason: string | null;
 }
 
-export async function sendMessage(input: ChatRequestInput, sessionId: string | null): Promise<ChatTurnResult> {
+const MAX_LOGGED_MESSAGES = 40;
+
+// Admin visibility only (see the "god's eye view" ask) — a capped, TTL'd transcript +
+// one geo lookup per session, best-effort and never allowed to affect the actual chat
+// reply. Skipped entirely when there's no sessionId (nothing to key the record under —
+// same rule loadProfile/saveProfile already follow).
+async function recordChatTurn(sessionId: string | null, ip: string, userMessage: string, assistantReply: string): Promise<void> {
+  if (!sessionId) return;
+  try {
+    const key = cacheKeys.chatSession(sessionId);
+    const existing = await redis.get<ChatSessionRecord>(key);
+    const now = new Date().toISOString();
+    const geo = existing ? { city: existing.city, country: existing.country } : await lookupGeo(ip);
+
+    const record: ChatSessionRecord = {
+      sessionId,
+      ip,
+      city: geo.city,
+      country: geo.country,
+      startedAt: existing?.startedAt ?? now,
+      lastMessageAt: now,
+      messages: [
+        ...(existing?.messages ?? []),
+        { role: 'user' as const, content: userMessage, at: now },
+        { role: 'assistant' as const, content: assistantReply, at: now },
+      ].slice(-MAX_LOGGED_MESSAGES),
+    };
+    await redis.set(key, record, { ex: CACHE_TTL.CHAT_SESSION });
+  } catch (err) {
+    console.error('[chat] failed to record session transcript', err);
+  }
+}
+
+export async function sendMessage(input: ChatRequestInput, sessionId: string | null, ip = 'unknown'): Promise<ChatTurnResult> {
+  const result = await sendMessageInner(input, sessionId);
+  const lastUserMessage = input.messages[input.messages.length - 1];
+  if (lastUserMessage) void recordChatTurn(sessionId, ip, lastUserMessage.content, result.reply);
+  return result;
+}
+
+async function sendMessageInner(input: ChatRequestInput, sessionId: string | null): Promise<ChatTurnResult> {
   const existingProfile = await loadProfile(sessionId);
   const bookChunks = await retrieveRelevantChunks(existingProfile.problem);
 
@@ -145,7 +199,13 @@ export async function sendMessage(input: ChatRequestInput, sessionId: string | n
 
   let recommendedProducts: RecommendedProduct[] = [];
   if (turn.readyForProducts && turn.purpose) {
-    recommendedProducts = await getProductsForChatRecommendation(turn.purpose);
+    try {
+      recommendedProducts = await getProductsForChatRecommendation(turn.purpose);
+    } catch (err) {
+      // A DB hiccup fetching product cards must never fail the whole chat turn — the
+      // remedy/mantra text is still valid and worth showing on its own.
+      console.error('[chat] product recommendation lookup failed, replying without cards', err);
+    }
   }
 
   return {

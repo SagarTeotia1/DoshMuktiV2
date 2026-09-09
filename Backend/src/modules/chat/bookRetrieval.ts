@@ -80,20 +80,30 @@ interface VectorChunkRow {
 export async function retrieveRelevantChunks(problem: string | null | undefined): Promise<RetrievedChunk[]> {
   if (!problem || !problem.trim()) return [];
 
-  const totalChunks = await db.bookChunk.count();
-  if (totalChunks === 0) return [];
-
+  // Every DB call in this function — the count included — is inside this one guard.
+  // A Neon cold-start hiccup or transient pool error here used to throw straight up
+  // through sendMessage uncaught, 500ing the whole chat turn the moment a `problem` was
+  // known (the count only runs once one is). Book grounding is a nice-to-have; the chat
+  // must degrade to ungrounded advice rather than fail outright.
   try {
-    const vectorResults = await retrieveByVector(problem);
-    if (vectorResults.length > 0) return vectorResults;
-  } catch (err) {
-    // Embedding pipeline failed to load/run (e.g. first-load model download issue) — fall
-    // through to keyword search rather than surfacing an error to the chat user.
-    // eslint-disable-next-line no-console
-    console.error('Vector retrieval failed, falling back to keyword search:', err);
-  }
+    const totalChunks = await db.bookChunk.count();
+    if (totalChunks === 0) return [];
 
-  return retrieveByKeyword(problem);
+    try {
+      const vectorResults = await retrieveByVector(problem);
+      if (vectorResults.length > 0) return vectorResults;
+    } catch (err) {
+      // Embedding pipeline failed to load/run (e.g. first-load model download issue) — fall
+      // through to keyword search rather than surfacing an error to the chat user.
+      // eslint-disable-next-line no-console
+      console.error('Vector retrieval failed, falling back to keyword search:', err);
+    }
+
+    return await retrieveByKeyword(problem);
+  } catch (err) {
+    console.error('[chat] book retrieval failed entirely, answering without grounding:', err);
+    return [];
+  }
 }
 
 // Primary path: embed the problem text with the same model used at ingestion time, then

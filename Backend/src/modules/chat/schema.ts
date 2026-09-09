@@ -42,3 +42,21 @@ export const llmTurnSchema = z.object({
   recommendationReason: z.string().max(400).nullable().default(null),
 });
 export type LlmTurn = z.infer<typeof llmTurnSchema>;
+
+// Admin visibility only — a capped, TTL'd transcript + geo snapshot per session, stored
+// as a single Redis JSON blob (see cacheKeys.chatSession). Not the LLM-facing shape.
+export interface ChatLoggedMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  at: string; // ISO timestamp
+}
+
+export interface ChatSessionRecord {
+  sessionId: string;
+  ip: string;
+  city: string | null;
+  country: string | null;
+  startedAt: string;
+  lastMessageAt: string;
+  messages: ChatLoggedMessage[];
+}

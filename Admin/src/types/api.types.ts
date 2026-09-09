@@ -1,3 +1,35 @@
+export interface ChatVolumePoint {
+  date: string;
+  count: number;
+}
+
+export interface ChatSessionSummary {
+  sessionId: string;
+  ip: string;
+  city: string | null;
+  country: string | null;
+  startedAt: string;
+  lastMessageAt: string;
+  messageCount: number;
+  lastMessagePreview: string;
+}
+
+export interface ChatLoggedMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  at: string;
+}
+
+export interface ChatSessionDetail {
+  sessionId: string;
+  ip: string;
+  city: string | null;
+  country: string | null;
+  startedAt: string;
+  lastMessageAt: string;
+  messages: ChatLoggedMessage[];
+}
+
 export type OfferBehavior = 'DISPLAY_ONLY' | 'AUTO_APPLIED' | 'COUPON_BASED';
 
 export type OfferReward =
