@@ -3,8 +3,15 @@
 # Built for a single VM (Compute Engine), not Cloud Run — nginx binds real ports 80/443.
 
 # ── Backend build ────────────────────────────────────────────────────────────
-FROM node:22-alpine AS backend-build
-RUN apk add --no-cache openssl libc6-compat
+# glibc base, not alpine: @xenova/transformers' onnxruntime-node native binary is built
+# against glibc and segfaults/aborts under musl (Alpine's libc) with an uncatchable
+# "Ort::Exception" — a native abort, not a JS error, so it takes the whole Node process
+# down (and with it Frontend/Admin, since all three run in one container) the moment a
+# chat turn actually reaches the embedding step. The final runtime stage below must match
+# this base for the same reason — building against glibc but running under musl fails
+# identically.
+FROM node:22-bookworm-slim AS backend-build
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app/backend
 COPY Backend/package*.json ./
 RUN npm ci
@@ -51,8 +58,9 @@ COPY Admin/ ./
 RUN npm run build
 
 # ── Final runtime image ────────────────────────────────────────────────────────
-FROM node:22-alpine
-RUN apk add --no-cache openssl libc6-compat nginx bash
+# Must be glibc (matching backend-build above) for onnxruntime-node — see the comment there.
+FROM node:22-bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends openssl nginx bash ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Backend — compiled dist + pruned node_modules + prisma schema/migrations for `migrate deploy`
 WORKDIR /app/backend
