@@ -14,9 +14,10 @@ const outfit = Outfit({
   display: 'swap',
 });
 
-// Title kept under ~60 chars and description under ~160 — both were previously
-// 86/247 chars and got truncated mid-sentence in the Google SERP.
-const TITLE_DEFAULT = 'Doshhmukti — Gemstones & Astrology Remedies';
+// Title kept in the 50-60 char sweet spot and description under ~160 — both were
+// previously 86/247 chars (truncated mid-sentence) then over-corrected to 43 chars
+// (too short to carry secondary keywords) in the Google SERP.
+const TITLE_DEFAULT = 'Doshhmukti — Authentic Gemstones for Love, Wealth & Health';
 const DESCRIPTION =
   'Authentic, energized gemstones, rudraksha malas and bracelets chosen with Vedic astrology guidance. Shop remedies for love, wealth, health & protection.';
 
@@ -58,6 +59,14 @@ export const viewport: Viewport = {
   themeColor: '#E6D3AE',
 };
 
+const businessAddress = {
+  '@type': 'PostalAddress',
+  streetAddress: 'Rohini Sector 11',
+  addressLocality: 'New Delhi',
+  addressRegion: 'Delhi',
+  addressCountry: 'IN',
+};
+
 const organizationJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
@@ -67,7 +76,22 @@ const organizationJsonLd = {
   alternateName: 'Dosh Mukti',
   description:
     'Doshhmukti (dosh mukti — freedom from planetary doshas) sells authentic, ritually-energized gemstones, rudraksha malas and pooja accessories, chosen for the customer using Vedic astrology and numerology, for goals spanning love, wealth, health, success, protection and clarity.',
+  telephone: '+91-88823-86868',
+  address: businessAddress,
   sameAs: [SOCIAL_LINKS.instagram, SOCIAL_LINKS.youtube],
+};
+
+// Satisfies the "Local Business Schema" SEO check — separate from Organization
+// above since crawlers look for the LocalBusiness type specifically.
+const localBusinessJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'LocalBusiness',
+  name: 'Doshhmukti',
+  url: SITE_URL,
+  telephone: '+91-88823-86868',
+  address: businessAddress,
+  image: `${SITE_URL}/icon`,
+  priceRange: '₹₹',
 };
 
 const websiteJsonLd = {
@@ -86,9 +110,16 @@ const websiteJsonLd = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={outfit.variable}>
+      <head>
+        {/* Discovered and fetched in parallel with the document, instead of chained
+            behind globals.css's old @import (see globals.css comment). */}
+        <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="" />
+        <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" />
+      </head>
       <body>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }} />
         <QueryProvider>
           <AuthProvider>
             <FirebaseProvider />

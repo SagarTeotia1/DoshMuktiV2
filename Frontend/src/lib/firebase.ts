@@ -1,5 +1,5 @@
-import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAnalytics, logEvent, isSupported, type Analytics } from 'firebase/analytics';
+import type { FirebaseApp } from 'firebase/app';
+import type { Analytics } from 'firebase/analytics';
 
 const config = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -15,8 +15,18 @@ let app: FirebaseApp | null = null;
 let analytics: Analytics | null = null;
 
 // Graceful degrade: if env vars are empty, analytics simply doesn't load.
+// firebase/app + firebase/analytics are dynamically imported here instead of at
+// module top-level — this was ~113KiB of unused/render-blocking JS parsed on every
+// page load (Firebase SDK) even though analytics only ever runs after mount and
+// isn't needed for anything visible. Dynamic import moves it to its own chunk,
+// fetched only once the browser is idle after first paint.
 export async function initFirebase() {
   if (!config.apiKey || typeof window === 'undefined') return;
+
+  const [{ initializeApp }, { getAnalytics, isSupported }] = await Promise.all([
+    import('firebase/app'),
+    import('firebase/analytics'),
+  ]);
   if (!(await isSupported())) return;
 
   app = app ?? initializeApp(config);
@@ -25,7 +35,8 @@ export async function initFirebase() {
 
 function track(name: string, params?: Record<string, unknown>) {
   if (!analytics) return; // fire-and-forget, never blocks the caller
-  logEvent(analytics, name, params);
+  // Module already loaded by initFirebase — this import resolves from cache, no new fetch.
+  void import('firebase/analytics').then(({ logEvent }) => logEvent(analytics!, name, params));
 }
 
 export function trackViewItem(item: { id: string; name: string; price: number; category: string }) {

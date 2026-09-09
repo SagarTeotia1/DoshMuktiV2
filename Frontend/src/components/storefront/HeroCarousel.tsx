@@ -27,14 +27,30 @@ export function HeroCarousel({ banners }: { banners: Banner[] }) {
       {/* Desktop: plain <img>, no `fill`/object-fit — height is the image's own natural
           ratio at 100% width, so nothing is ever cropped. Mobile: fixed-ratio crop via
           object-cover — uses `mobileImage` when the admin uploaded one, else crops the
-          desktop image itself so a wide desktop banner never renders thin/flat on phones. */}
+          desktop image itself so a wide desktop banner never renders thin/flat on phones.
+          width/height below are a placeholder 2.4:1 ratio, not the real banner size —
+          Backend doesn't store per-banner dimensions yet. With only `w-full h-auto` in
+          CSS, browsers use these attributes purely to reserve layout space before the
+          image loads (CLS was 0.709 with zero reservation); once it loads, actual
+          intrinsic size still governs final height. A banner far from 2.4:1 still
+          shifts some — real fix is Backend capturing width/height at upload time. */}
       <Link key={banner.id} href={banner.link} aria-label="View banner" className="block w-full">
         <div className="relative w-full aspect-[4/3] overflow-hidden sm:hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={banner.mobileImage?.full ?? banner.image.full} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <img
+            src={banner.mobileImage?.full ?? banner.image.full}
+            alt="Doshhmukti gemstone and astrology remedy promotion"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
         </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={banner.image.full} alt="" className="hidden sm:block w-full h-auto" />
+        <img
+          src={banner.image.full}
+          alt="Doshhmukti gemstone and astrology remedy promotion"
+          width={1920}
+          height={800}
+          className="hidden sm:block w-full h-auto"
+        />
       </Link>
 
       {banners.length > 1 && (
@@ -68,17 +84,23 @@ export function HeroCarousel({ banners }: { banners: Banner[] }) {
             </button>
           </div>
 
-          {/* Dot indicators — right side vertical */}
-          <div className="absolute right-5 sm:right-8 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2.5">
+          {/* Dot indicators — right side vertical. Visual dot stays 3px wide (design),
+              but the button's own box is padded out to a ~24px hit area so the tap
+              target isn't just the visible sliver (was flagged by Lighthouse). */}
+          <div className="absolute right-5 sm:right-8 top-1/2 -translate-y-1/2 z-30 flex flex-col">
             {banners.map((_, idx) => (
               <button
                 key={idx}
                 onClick={() => setActive(idx)}
-                className={`transition-all duration-400 block ${
-                  idx === active ? 'h-8 w-[3px] rounded-full bg-[#9C5A26]' : 'h-2.5 w-[3px] rounded-full bg-white/25 hover:bg-white/50'
-                }`}
+                className="group flex items-center justify-center py-1.5 px-2.5"
                 aria-label={`Go to slide ${idx + 1}`}
-              />
+              >
+                <span
+                  className={`block transition-all duration-400 rounded-full ${
+                    idx === active ? 'h-8 w-[3px] bg-[#9C5A26]' : 'h-2.5 w-[3px] bg-white/25 group-hover:bg-white/50'
+                  }`}
+                />
+              </button>
             ))}
           </div>
         </>

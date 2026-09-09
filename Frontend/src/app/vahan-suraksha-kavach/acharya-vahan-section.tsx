@@ -50,8 +50,7 @@ export function AcharyaVahanSection() {
   return (
     <section className="relative py-14 sm:py-20 bg-[#2B1B0C] overflow-hidden">
       <div
-        className="absolute inset-0 opacity-60"
-        style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(156,90,38,0.22), transparent 55%)' }}
+        className="absolute inset-0 opacity-60 warm-glow-bg"
       />
       <div className="pointer-events-none absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-[#9C5A26]/10 blur-[100px]" />
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#9C5A26]/40 to-transparent" />

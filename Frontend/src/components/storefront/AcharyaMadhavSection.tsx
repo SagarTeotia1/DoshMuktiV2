@@ -51,12 +51,7 @@ function KundliChart() {
 export function AcharyaMadhavSection() {
   return (
     <section className="relative py-10 sm:py-14 bg-[#2B1B0C] overflow-hidden">
-      <div
-        className="absolute inset-0 opacity-60"
-        style={{
-          backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(156,90,38,0.22), transparent 55%)',
-        }}
-      />
+      <div className="absolute inset-0 opacity-60 warm-glow-bg" />
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#9C5A26]/40 to-transparent" />
       <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#9C5A26]/40 to-transparent" />
       <MandalaMotif className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] text-[#C9863F]/[0.04] animate-[spin_60s_linear_infinite]" />

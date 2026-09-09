@@ -60,8 +60,7 @@ export default function AboutPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }} />
       <section className="relative bg-[#2B1B0C] overflow-hidden py-16 sm:py-24">
         <div
-          className="absolute inset-0 opacity-60"
-          style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(156,90,38,0.22), transparent 55%)' }}
+          className="absolute inset-0 opacity-60 warm-glow-bg"
         />
         <MandalaMotif className="pointer-events-none absolute -bottom-24 -right-24 w-72 h-72 text-[#C9863F]/[0.06]" />
 
