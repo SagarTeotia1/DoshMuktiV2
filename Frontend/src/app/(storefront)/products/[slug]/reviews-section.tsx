@@ -109,6 +109,38 @@ function WriteReviewForm({ productId, onDone }: { productId: string; onDone: () 
   );
 }
 
+function RatingBreakdown({ reviews, averageRating, totalReviews }: { reviews: { rating: number }[]; averageRating: number; totalReviews: number }) {
+  const counts = [5, 4, 3, 2, 1].map((star) => reviews.filter((r) => r.rating === star).length);
+
+  return (
+    <div className="flex flex-col sm:flex-row gap-6 sm:gap-10 bg-[#FFFDF8] border border-[#2B1B0C]/10 rounded-2xl p-5 sm:p-6 mb-6">
+      <div className="flex sm:flex-col items-center sm:items-start gap-2 sm:gap-1 sm:w-32 flex-shrink-0">
+        <p className="font-heading font-black text-4xl text-[#2B1B0C] leading-none">{averageRating.toFixed(1)}</p>
+        <div className="flex flex-col gap-1">
+          <Stars rating={Math.round(averageRating)} />
+          <p className="font-body text-xs text-[#8A7A63]">{totalReviews} review{totalReviews === 1 ? '' : 's'}</p>
+        </div>
+      </div>
+
+      <div className="flex-1 flex flex-col gap-1.5 justify-center">
+        {[5, 4, 3, 2, 1].map((star, i) => {
+          const pct = totalReviews ? Math.round((counts[i]! / totalReviews) * 100) : 0;
+          return (
+            <div key={star} className="flex items-center gap-2.5">
+              <span className="font-body text-[11px] font-bold text-[#6B5539] w-3 flex-shrink-0">{star}</span>
+              <Star width={11} height={11} className="fill-[#9C5A26] text-[#9C5A26] flex-shrink-0" />
+              <div className="flex-1 h-1.5 rounded-full bg-[#2B1B0C]/10 overflow-hidden">
+                <div className="h-full rounded-full bg-[#9C5A26] transition-all duration-500" style={{ width: `${pct}%` }} />
+              </div>
+              <span className="font-body text-[10px] text-[#8A7A63] w-7 text-right flex-shrink-0">{counts[i]}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function ReviewsSection({ productId, productSlug }: { productId: string; productSlug: string }) {
   const [showForm, setShowForm] = useState(false);
 
@@ -118,24 +150,15 @@ export function ReviewsSection({ productId, productSlug }: { productId: string; 
   });
 
   return (
-    <section className="mt-16 sm:mt-24 max-w-5xl">
+    <section className="mt-16 sm:mt-24 max-w-5xl" itemScope itemType="https://schema.org/Product">
       <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-[#9C5A26] mb-2">
             From Our Customers
           </p>
-          <div className="flex items-center gap-3">
-            <h2 className="font-heading text-2xl sm:text-3xl font-black tracking-tighter uppercase text-[#2B1B0C]">Reviews</h2>
-            {!!data?.totalReviews && (
-              <div className="flex items-center gap-2 bg-[#F6E4C2]/50 border border-[#2B1B0C]/10 rounded-full pl-2.5 pr-3 py-1">
-                <Stars rating={Math.round(data.averageRating)} />
-                <span className="font-heading font-bold text-xs text-[#2B1B0C]">{data.averageRating.toFixed(1)}</span>
-                <span className="font-body text-xs text-[#8A7A63]">
-                  ({data.totalReviews} review{data.totalReviews === 1 ? '' : 's'})
-                </span>
-              </div>
-            )}
-          </div>
+          <h2 className="font-heading text-2xl sm:text-3xl font-black tracking-tighter uppercase text-[#2B1B0C]">
+            Customer Reviews
+          </h2>
         </div>
 
         {!showForm && (
@@ -168,33 +191,48 @@ export function ReviewsSection({ productId, productSlug }: { productId: string; 
           </p>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 gap-4">
-          {data.reviews.map((review) => (
-            <div
-              key={review.id}
-              className="relative bg-[#FFFDF8] border border-[#2B1B0C]/10 rounded-2xl p-5 sm:p-6 shadow-neo-sm hover:shadow-neo-md transition-shadow duration-200"
-            >
-              <Quote className="absolute top-4 right-4 w-6 h-6 text-[#9C5A26]/15 fill-[#9C5A26]/10" />
+        <>
+          <RatingBreakdown reviews={data.reviews} averageRating={data.averageRating} totalReviews={data.totalReviews} />
 
-              <div className="flex items-center gap-2.5 mb-3">
-                <span className="w-8 h-8 rounded-full bg-[#9C5A26] flex items-center justify-center font-heading font-black text-xs text-white flex-shrink-0">
-                  {review.customerName.charAt(0).toUpperCase()}
-                </span>
-                <div className="min-w-0">
-                  <p className="font-heading font-bold text-xs text-[#2B1B0C] truncate">{review.customerName}</p>
-                  <p className="font-body text-[10px] text-[#8A7A63]">{formatDate(review.createdAt)}</p>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {data.reviews.map((review) => (
+              <div
+                key={review.id}
+                itemProp="review"
+                itemScope
+                itemType="https://schema.org/Review"
+                className="relative bg-[#FFFDF8] border border-[#2B1B0C]/10 rounded-2xl p-5 sm:p-6 shadow-neo-sm hover:shadow-neo-md hover:-translate-y-0.5 transition-all duration-250"
+              >
+                <Quote className="absolute top-4 right-4 w-6 h-6 text-[#9C5A26]/15 fill-[#9C5A26]/10" />
+
+                <div className="flex items-center gap-2.5 mb-3">
+                  <span className="w-8 h-8 rounded-full bg-[#9C5A26] flex items-center justify-center font-heading font-black text-xs text-white flex-shrink-0">
+                    {review.customerName.charAt(0).toUpperCase()}
+                  </span>
+                  <div className="min-w-0">
+                    <p itemProp="author" className="font-heading font-bold text-xs text-[#2B1B0C] truncate">
+                      {review.customerName}
+                    </p>
+                    <p className="font-body text-[10px] text-[#8A7A63]">{formatDate(review.createdAt)}</p>
+                  </div>
                 </div>
+
+                <div itemProp="reviewRating" itemScope itemType="https://schema.org/Rating">
+                  <meta itemProp="ratingValue" content={String(review.rating)} />
+                  <meta itemProp="bestRating" content="5" />
+                  <Stars rating={review.rating} />
+                </div>
+
+                {review.title && (
+                  <p className="font-heading font-bold text-sm text-[#2B1B0C] mt-2.5 mb-1">{review.title}</p>
+                )}
+                <p itemProp="reviewBody" className="font-body text-sm text-[#6B5539] leading-relaxed mt-1">
+                  {review.body}
+                </p>
               </div>
-
-              <Stars rating={review.rating} />
-
-              {review.title && (
-                <p className="font-heading font-bold text-sm text-[#2B1B0C] mt-2.5 mb-1">{review.title}</p>
-              )}
-              <p className="font-body text-sm text-[#6B5539] leading-relaxed mt-1">{review.body}</p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       )}
     </section>
   );
