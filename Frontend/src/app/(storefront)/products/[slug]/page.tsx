@@ -484,7 +484,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      <ReviewsSection productId={product.id} productSlug={product.slug} />
+      <ReviewsSection productId={product.id} productSlug={product.slug} initialData={reviewsData ?? undefined} />
 
       {related.length > 0 && <RelatedProductsRail products={related} />}
     </div>

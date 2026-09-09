@@ -141,12 +141,26 @@ function RatingBreakdown({ reviews, averageRating, totalReviews }: { reviews: { 
   );
 }
 
-export function ReviewsSection({ productId, productSlug }: { productId: string; productSlug: string }) {
+export function ReviewsSection({
+  productId,
+  productSlug,
+  initialData,
+}: {
+  productId: string;
+  productSlug: string;
+  initialData?: ProductReviewsResponse;
+}) {
   const [showForm, setShowForm] = useState(false);
 
+  // Server already fetched this same 60s-ISR'd endpoint for JSON-LD (see page.tsx) — seeding
+  // it here as initialData skips the client fetch waterfall, so reviews paint immediately
+  // instead of the skeleton flashing on every load. staleTime matches that ISR window so
+  // TanStack Query won't immediately re-fetch behind it.
   const { data, isLoading } = useQuery({
     queryKey: ['product-reviews', productId],
     queryFn: () => api.get<ProductReviewsResponse>(`/api/products/${productSlug}/reviews`),
+    initialData,
+    staleTime: 60_000,
   });
 
   return (
