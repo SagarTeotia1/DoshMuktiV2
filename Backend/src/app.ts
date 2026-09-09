@@ -30,7 +30,12 @@ import { addressRoutes } from './modules/addresses/routes';
 import { jobRoutes } from './jobs/routes';
 
 export async function buildApp() {
-  const app = Fastify({ loggerInstance: logger, bodyLimit: 10 * 1024 * 1024 });
+  // trustProxy: true — every deploy sits behind nginx (see nginx/nginx.conf's proxy_pass),
+  // so req.ip/req.headers would otherwise always resolve to nginx's own loopback address
+  // rather than the real visitor's IP. Without this, the per-IP chat rate limit and daily
+  // cap both collapse onto one shared bucket (everyone looks like 127.0.0.1), and the
+  // admin chat-sessions geo lookup shows nginx's address instead of the customer's.
+  const app = Fastify({ loggerInstance: logger, bodyLimit: 10 * 1024 * 1024, trustProxy: true });
 
   await app.register(helmet);
   await app.register(cors, {
