@@ -34,9 +34,15 @@ export const EMPTY_PROFILE: ChatProfile = {
 // gets wrong just fails this parse and we fall back to treating the raw text as the reply.
 export const llmTurnSchema = z.object({
   reply: z.string().min(1),
-  profile: chatProfileSchema.partial().default({}),
+  // Gemini (unlike the Groq model this was written against) sometimes emits explicit
+  // "profile": null instead of omitting the field entirely — .default({}) only kicks in
+  // for undefined, not null, so that used to fail this whole parse and dump the raw JSON
+  // object to the user as the reply text. Treat null the same as "nothing new this turn".
+  profile: chatProfileSchema.partial().nullable().default({}).transform((v) => v ?? {}),
   purpose: z.enum(PURPOSE_IDS).nullable().default(null),
-  readyForProducts: z.boolean().default(false),
+  // Same null-vs-undefined gap as `profile` above — .default(false) alone doesn't catch
+  // an explicit "readyForProducts": null.
+  readyForProducts: z.boolean().nullable().default(false).transform((v) => v ?? false),
   // Short, personal explanation of WHY this category of remedy fits them — shown next to
   // the product cards. Required whenever readyForProducts is true.
   recommendationReason: z.string().max(400).nullable().default(null),
