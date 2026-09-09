@@ -119,18 +119,22 @@ export default function CartPage() {
         {(cart?.freeItems ?? []).map((item) => (
           <div
             key={item.variantId}
-            className="flex items-center gap-3 sm:gap-4 bg-[#F6E4C2]/40 border border-dashed border-[#9C5A26] rounded-2xl p-3 sm:p-4"
+            className="relative flex items-center gap-3 sm:gap-4 bg-gradient-to-r from-[#FCEFE0] to-[#F6E4C2]/60 border border-[#9C5A26]/40 rounded-2xl p-3 sm:p-4 overflow-hidden"
           >
-            <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-[#F6E4C2] border border-[#2B1B0C]/20 flex items-center justify-center">
-              <span className="text-xl" role="img" aria-label="Gift">🎁</span>
+            <span className="absolute -top-3 -left-3 w-14 h-14 rotate-[-20deg] bg-[#9C5A26]/10 rounded-full" aria-hidden="true" />
+            <div className="relative flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-white border border-[#9C5A26]/30 flex items-center justify-center shadow-[2px_2px_0_0_rgba(156,90,38,0.25)]">
+              <span className="text-2xl" role="img" aria-label="Gift">🎁</span>
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="relative flex-1 min-w-0">
+              <span className="inline-block bg-[#9C5A26] text-white text-[9px] font-body font-bold uppercase tracking-widest rounded-full px-2 py-0.5 mb-1">
+                Free Gift
+              </span>
               <p className="font-heading font-bold text-xs sm:text-sm text-[#2B1B0C] truncate">
                 {item.productName} {item.quantity > 1 ? `× ${item.quantity}` : ''}
               </p>
-              <p className="font-body text-[10px] sm:text-xs text-[#9C5A26] font-semibold">Free gift with your order</p>
+              <p className="font-body text-[10px] sm:text-xs text-[#8A7A63]">On the house, with your order 🙏</p>
             </div>
-            <p className="font-heading font-bold text-xs sm:text-sm text-[#9C5A26] flex-shrink-0">FREE</p>
+            <p className="relative font-heading font-black text-sm sm:text-base text-[#9C5A26] flex-shrink-0">FREE</p>
           </div>
         ))}
       </div>

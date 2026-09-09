@@ -397,6 +397,21 @@ export async function duplicateOffer(id: string) {
   return withProductCount(created, counts.get(created.id) ?? 0);
 }
 
+// A product configured as an active FREE_GIFT offer's target must never be independently
+// addable to a customer's real cart — it ships automatically (see resolveAutoAppliedRewardsForCheckout),
+// so letting a customer also add it as a normal paid line item is how the free-gift tag and
+// a real, separately-priced line item for the same product both ended up in one cart, and
+// (worse) let anyone buy it directly at whatever the admin priced that variant for its
+// gift role, quantity uncapped. FREE_GIFT config is a small, admin-curated table — a full
+// scan is cheap and avoids a second JSON-path query dialect for what's a rare check.
+export async function isActiveFreeGiftTarget(productId: string): Promise<boolean> {
+  const offers = await db.offer.findMany({
+    where: { isActive: true, reward: 'FREE_GIFT' },
+    select: { config: true },
+  });
+  return offers.some((o) => (o.config as { productId?: string } | null)?.productId === productId);
+}
+
 // Public, storefront-facing — the site-wide "Suggested Offers" widget (not tied to any
 // one product page). Deliberately capped small and admin-curated (showInSuggestions),
 // not "every active offer" — that list can get long and most offers only make sense in

@@ -16,10 +16,17 @@ const VOICE_ERROR_MESSAGES: Record<string, string> = {
   'no-speech': "Couldn't hear anything — try again a little closer to the mic.",
 };
 
+// Shown once, the first time the mic button appears, so a first-time user knows this is
+// tap-to-start/tap-to-stop (not press-and-hold, which the Web Speech API doesn't need) —
+// without this, people either held it down uselessly or never realized it was still
+// recording once they let go.
+const MIC_HINT_SEEN_KEY = 'acharya-mic-hint-seen';
+
 export function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [showPop, setShowPop] = useState(false);
   const [input, setInput] = useState('');
+  const [showMicHint, setShowMicHint] = useState(false);
   const { messages, sendMessage, isSending } = useAcharyaChat();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -31,6 +38,19 @@ export function ChatWidget() {
     toast.error(VOICE_ERROR_MESSAGES[error] ?? 'Voice input failed — try typing instead.');
   }, []);
   const voice = useVoiceInput({ lang: 'hi-IN', onResult: handleVoiceResult, onError: handleVoiceError });
+
+  useEffect(() => {
+    if (voice.supported && !localStorage.getItem(MIC_HINT_SEEN_KEY)) setShowMicHint(true);
+  }, [voice.supported]);
+
+  function handleMicClick() {
+    if (showMicHint) {
+      setShowMicHint(false);
+      localStorage.setItem(MIC_HINT_SEEN_KEY, '1');
+    }
+    if (voice.listening) voice.stop();
+    else voice.start();
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setShowPop(true), 2500);
@@ -145,16 +165,33 @@ export function ChatWidget() {
           {/* Input */}
           <form onSubmit={handleSubmit} className="flex items-center gap-2 p-3 sm:p-4 border-t border-[#2B1B0C]/10 flex-shrink-0">
             {voice.supported && (
-              <button
-                type="button"
-                onClick={voice.listening ? voice.stop : voice.start}
-                aria-label={voice.listening ? 'Stop recording' : 'Speak instead of typing'}
-                className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
-                  voice.listening ? 'bg-red-500 animate-pulse' : 'bg-[#2B1B0C]/10 hover:bg-[#2B1B0C]/20'
-                }`}
-              >
-                <Mic className={`w-4 h-4 ${voice.listening ? 'text-white' : 'text-[#2B1B0C]'}`} />
-              </button>
+              <div className="relative flex-shrink-0">
+                {showMicHint && !voice.listening && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[160px] bg-[#2B1B0C] text-[#E6D3AE] text-[10px] font-body rounded-lg px-2.5 py-1.5 shadow-lg animate-fade-in-up">
+                    Tap to speak, tap again to stop
+                    <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#2B1B0C]" />
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handleMicClick}
+                  aria-label={voice.listening ? 'Stop recording' : 'Speak instead of typing'}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+                    voice.listening ? 'bg-red-500' : 'bg-[#2B1B0C]/10 hover:bg-[#2B1B0C]/20'
+                  }`}
+                >
+                  {voice.listening ? (
+                    <span className="flex items-end gap-0.5 h-4" aria-hidden="true">
+                      <span className="w-[3px] bg-white rounded-full animate-mic-wave [animation-delay:0ms]" />
+                      <span className="w-[3px] bg-white rounded-full animate-mic-wave [animation-delay:150ms]" />
+                      <span className="w-[3px] bg-white rounded-full animate-mic-wave [animation-delay:300ms]" />
+                      <span className="w-[3px] bg-white rounded-full animate-mic-wave [animation-delay:450ms]" />
+                    </span>
+                  ) : (
+                    <Mic className="w-4 h-4 text-[#2B1B0C]" />
+                  )}
+                </button>
+              </div>
             )}
             <input
               value={input}

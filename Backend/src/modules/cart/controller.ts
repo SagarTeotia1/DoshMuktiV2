@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { cartItemSchema, updateQuantitySchema } from './schema';
-import { getCart, addItemToCart, updateItemQuantity, removeItemFromCart, clearCart, computeCartPricing, VariantNotFoundError, OutOfStockError } from './service';
+import { getCart, addItemToCart, updateItemQuantity, removeItemFromCart, clearCart, computeCartPricing, VariantNotFoundError, OutOfStockError, FreeGiftNotPurchasableError } from './service';
 import type { Cart } from './schema';
 
 function sessionIdOf(req: FastifyRequest): string | null {
@@ -37,6 +37,9 @@ export async function addItemHandler(req: FastifyRequest, reply: FastifyReply) {
   } catch (err) {
     if (err instanceof VariantNotFoundError) return reply.code(404).send({ error: err.message });
     if (err instanceof OutOfStockError) return reply.code(409).send({ error: 'Item out of stock', code: 'OUT_OF_STOCK', variantId: err.variantId });
+    if (err instanceof FreeGiftNotPurchasableError) {
+      return reply.code(409).send({ error: 'This item ships free with a qualifying order and cannot be bought directly', code: 'FREE_GIFT_ONLY', variantId: err.variantId });
+    }
     throw err;
   }
 }
@@ -54,6 +57,9 @@ export async function updateItemHandler(req: FastifyRequest, reply: FastifyReply
     return cartResponse(cart, reply);
   } catch (err) {
     if (err instanceof OutOfStockError) return reply.code(409).send({ error: 'Item out of stock', code: 'OUT_OF_STOCK', variantId: err.variantId });
+    if (err instanceof FreeGiftNotPurchasableError) {
+      return reply.code(409).send({ error: 'This item ships free with a qualifying order and cannot be bought directly', code: 'FREE_GIFT_ONLY', variantId: err.variantId });
+    }
     throw err;
   }
 }

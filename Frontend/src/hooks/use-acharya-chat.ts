@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { api } from '@/lib/api-client';
+import { api, ApiError } from '@/lib/api-client';
 import { getSessionId } from '@/lib/session';
 import type { ChatMessage, ChatRecommendedProduct, ChatResponse } from '@/types/api.types';
 
@@ -13,7 +13,7 @@ export type DisplayMessage = ChatMessage & {
 const GREETING: DisplayMessage = {
   role: 'assistant',
   content:
-    "Namaste, dear seeker 🙏 I am Acharya Madhav. Tell me what's on your mind — love, money, career, health — and I shall guide you through Vedic astrology and numerology.",
+    "Hello, kaise hain aap? 🙏 Main hoon Acharya Madhav. Batayein — dil ki baat ho, career ho, paisa ho ya sehat — jo bhi chal raha hai, khulke bataiye, main sun raha hoon.",
 };
 
 // Cap what we send — mirrors the Backend's own 20-message limit, keeps requests small.
@@ -43,11 +43,12 @@ export function useAcharyaChat() {
           ...curr,
           { role: 'assistant', content: reply, recommendedProducts, recommendationReason },
         ]);
-      } catch {
-        setMessages((curr) => [
-          ...curr,
-          { role: 'assistant', content: "I couldn't reach the stars just now — please try again in a moment." },
-        ]);
+      } catch (err) {
+        const content =
+          err instanceof ApiError && err.body.code === 'CHAT_DAILY_LIMIT'
+            ? err.body.error
+            : "I couldn't reach the stars just now — please try again in a moment.";
+        setMessages((curr) => [...curr, { role: 'assistant', content }]);
       } finally {
         setIsSending(false);
       }

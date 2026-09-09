@@ -8,6 +8,10 @@ export const cacheKeys = {
   categoryThumbnails: () => `products:category-thumbs` as const,
   cronLock: (job: string) => `cron:lock:${job}` as const,
   chatProfile: (sessionId: string) => `chat:profile:${sessionId}` as const,
+  // Per-session daily cap — the per-IP burst limit in chat/routes.ts stops rapid-fire
+  // spam but not a single determined user grinding away steadily over hours (or behind
+  // a shared/rotating IP), which is what actually runs up the LLM bill over a day.
+  chatDailyCount: (sessionId: string) => `chat:daily-count:${sessionId}` as const,
   activeBanners: () => `banners:active` as const,
   activeHomepageSections: () => `homepage:sections:active` as const,
   // originPincode|destPincode|weightGrams — same route+weight always prices the same,
@@ -26,6 +30,7 @@ export const CACHE_TTL = {
   CATEGORY_THUMBS: 60 * 15,
   CRON_LOCK: 60,
   CHAT_PROFILE: 60 * 60 * 24 * 30,
+  CHAT_DAILY_LIMIT: 60 * 60 * 24,
   BANNERS: 60 * 10,
   HOMEPAGE_SECTIONS: 60 * 10,
   SHIPPING_RATE: 60 * 60, // 1h — rates don't move minute to minute, and this is hit on every cart/PDP view

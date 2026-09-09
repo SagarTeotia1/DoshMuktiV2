@@ -49,8 +49,10 @@ const envSchema = z.object({
 
   TWOFACTOR_API_KEY: z.string().default(''),
 
-  GROQ_API_KEY: z.string().default(''),
-  GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
+  // Flash-tier model: fast latency for a chat UX, cheap, solid Hinglish output.
+  // Override per-deployment via env without a code change.
+  OPENROUTER_API_KEY: z.string().default(''),
+  OPENROUTER_MODEL: z.string().default('google/gemini-2.5-flash'),
 
   CRON_SECRET: z.string().min(32),
 });

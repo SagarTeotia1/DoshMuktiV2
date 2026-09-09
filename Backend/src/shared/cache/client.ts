@@ -6,6 +6,11 @@ interface CacheClient {
   set(key: string, value: unknown, opts?: { ex?: number }): Promise<unknown>;
   del(key: string): Promise<unknown>;
   keys(pattern: string): Promise<string[]>;
+  // Atomic increment for counters (e.g. per-session daily rate limits) — returns the
+  // count AFTER incrementing. ttlSeconds is only applied the first time a key is
+  // created (count === 1), same semantics as Redis's INCR + conditional EXPIRE, so a
+  // window resets from first-hit time rather than sliding on every request.
+  incr(key: string, ttlSeconds: number): Promise<number>;
 }
 
 // Falls back to an in-process cache when Upstash creds aren't set — same
@@ -40,10 +45,30 @@ function createMemoryCache(): CacheClient {
       const prefix = pattern.replace(/\*$/, '');
       return [...store.keys()].filter((k) => k.startsWith(prefix));
     },
+    async incr(key, ttlSeconds) {
+      const isNew = !isLive(key);
+      const current = isNew ? 0 : ((store.get(key)!.value as number) ?? 0);
+      const next = current + 1;
+      store.set(key, { value: next, expiresAt: isNew ? Date.now() + ttlSeconds * 1000 : store.get(key)!.expiresAt });
+      return next;
+    },
+  };
+}
+
+function createUpstashCache(): CacheClient {
+  const client = new Redis({ url: env.UPSTASH_REDIS_REST_URL, token: env.UPSTASH_REDIS_REST_TOKEN });
+  return {
+    get: (key) => client.get(key),
+    set: (key, value, opts) => client.set(key, value, opts?.ex ? { ex: opts.ex } : undefined),
+    del: (key) => client.del(key),
+    keys: (pattern) => client.keys(pattern),
+    async incr(key, ttlSeconds) {
+      const count = await client.incr(key);
+      if (count === 1) await client.expire(key, ttlSeconds);
+      return count;
+    },
   };
 }
 
 export const redis: CacheClient =
-  env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN
-    ? (new Redis({ url: env.UPSTASH_REDIS_REST_URL, token: env.UPSTASH_REDIS_REST_TOKEN }) as unknown as CacheClient)
-    : createMemoryCache();
+  env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN ? createUpstashCache() : createMemoryCache();

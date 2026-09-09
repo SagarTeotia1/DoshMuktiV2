@@ -1,8 +1,9 @@
 import { env } from '../../../config/env';
 
-// Groq's chat completions API is OpenAI-compatible — swapping to OpenRouter later
-// is a base-URL + model-name change here, nothing downstream needs to know.
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+// OpenRouter's chat completions API is OpenAI-compatible, same shape Groq used —
+// this file (and its old "groq" folder name, kept to avoid a churny rename across every
+// importer) only ever needed a base-URL + model-name + header change to move providers.
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -11,7 +12,7 @@ export interface ChatMessage {
 
 export class GroqNotConfiguredError extends Error {
   constructor() {
-    super('Groq API key not configured');
+    super('OpenRouter API key not configured');
     this.name = 'GroqNotConfiguredError';
   }
 }
@@ -20,14 +21,18 @@ async function requestCompletion(
   messages: ChatMessage[],
   opts: { jsonMode?: boolean; maxTokens: number },
 ): Promise<{ ok: true; content: string } | { ok: false; status: number; body: string }> {
-  const res = await fetch(GROQ_URL, {
+  const res = await fetch(OPENROUTER_URL, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${env.GROQ_API_KEY}`,
+      Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
       'Content-Type': 'application/json',
+      // OpenRouter uses these purely for its own public leaderboard attribution — no
+      // functional effect on the request, but the docs ask every caller to set them.
+      'HTTP-Referer': env.FRONTEND_ORIGIN[0] ?? 'https://doshhmukti.com',
+      'X-Title': 'Doshhmukti',
     },
     body: JSON.stringify({
-      model: env.GROQ_MODEL,
+      model: env.OPENROUTER_MODEL,
       messages,
       temperature: 0.7,
       max_tokens: opts.maxTokens,
@@ -48,19 +53,25 @@ export async function chatCompletion(
   messages: ChatMessage[],
   opts?: { jsonMode?: boolean },
 ): Promise<string> {
-  if (!env.GROQ_API_KEY) throw new GroqNotConfiguredError();
+  if (!env.OPENROUTER_API_KEY) throw new GroqNotConfiguredError();
 
   const first = await requestCompletion(messages, { jsonMode: opts?.jsonMode, maxTokens: 2048 });
   if (first.ok) return first.content || "I'm not able to answer that right now — try again in a moment.";
 
-  // json_object mode can 400 with "json_validate_failed" when the model runs out of
-  // budget mid-document — retry once with a bigger cap before giving up, so a single
-  // verbose turn doesn't fall all the way back to the canned reply.
-  if (first.status === 400 && first.body.includes('json_validate_failed')) {
+  // json_object mode can 400 with "json_validate_failed"/"invalid_json" when the model
+  // runs out of budget mid-document, or a free/rate-limited model on OpenRouter returns
+  // a transient 429/502 for an otherwise-fine request — retry once with a bigger token
+  // cap before giving up, so a single verbose or momentarily-flaky turn doesn't fall all
+  // the way back to the canned reply.
+  const retryable =
+    (first.status === 400 && /json_validate_failed|invalid_json/i.test(first.body)) ||
+    first.status === 429 ||
+    first.status >= 500;
+  if (retryable) {
     const retry = await requestCompletion(messages, { jsonMode: opts?.jsonMode, maxTokens: 4096 });
     if (retry.ok) return retry.content || "I'm not able to answer that right now — try again in a moment.";
-    throw new Error(`Groq request failed: ${retry.status} ${retry.body}`);
+    throw new Error(`OpenRouter request failed: ${retry.status} ${retry.body}`);
   }
 
-  throw new Error(`Groq request failed: ${first.status} ${first.body}`);
+  throw new Error(`OpenRouter request failed: ${first.status} ${first.body}`);
 }

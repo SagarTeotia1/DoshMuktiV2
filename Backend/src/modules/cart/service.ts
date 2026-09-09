@@ -2,7 +2,7 @@ import { db } from "../../shared/db/client";
 import { redis } from "../../shared/cache/client";
 import { cacheKeys, CACHE_TTL } from "../../shared/cache/keys";
 import { env } from "../../config/env";
-import { resolveAutoAppliedRewardsForCheckout } from "../offers/service";
+import { resolveAutoAppliedRewardsForCheckout, isActiveFreeGiftTarget } from "../offers/service";
 import type { CheckoutLineItem } from "../offers/service";
 import { calculateShippingFee } from "../checkout/service";
 import type { Cart, CartItem } from "./schema";
@@ -18,6 +18,13 @@ export class OutOfStockError extends Error {
   constructor(public variantId: string) {
     super(`Out of stock: ${variantId}`);
     this.name = "OutOfStockError";
+  }
+}
+
+export class FreeGiftNotPurchasableError extends Error {
+  constructor(public variantId: string) {
+    super(`Variant is an active free-gift target and cannot be purchased directly: ${variantId}`);
+    this.name = "FreeGiftNotPurchasableError";
   }
 }
 
@@ -77,6 +84,7 @@ export async function addItemToCart(
     include: { product: { select: { name: true, basePrice: true, images: true, gstRate: true } } },
   });
   if (!variant) throw new VariantNotFoundError(input.variantId);
+  if (await isActiveFreeGiftTarget(variant.productId)) throw new FreeGiftNotPurchasableError(input.variantId);
   // Previously this fell through to the Math.min(...) clamps below, which silently
   // inserted a quantity-0 line for a genuinely out-of-stock variant — invisible in the
   // cart total, but then failed checkout's schema (quantity min 1) with no clear reason,
@@ -141,8 +149,13 @@ export async function updateItemQuantity(
   // on an item that's actually sold out since. Re-checking live stock here matches
   // what addItemToCart already enforces on a fresh add.
   const item = cart.items[index]!;
-  const variant = await db.productVariant.findFirst({ where: { id: variantId, isActive: true }, select: { stockQuantity: true } });
+  const variant = await db.productVariant.findFirst({ where: { id: variantId, isActive: true }, select: { stockQuantity: true, productId: true } });
   if (!variant || variant.stockQuantity <= 0) throw new OutOfStockError(variantId);
+  // Only blocks raising the quantity — a stale line added before this guard existed can
+  // still be removed entirely (quantity <= 0 above), just never increased.
+  if (quantity > item.quantity && (await isActiveFreeGiftTarget(variant.productId))) {
+    throw new FreeGiftNotPurchasableError(variantId);
+  }
 
   cart.items[index] = { ...item, maxStock: variant.stockQuantity, quantity: Math.min(quantity, variant.stockQuantity) };
   return saveCart(cart);

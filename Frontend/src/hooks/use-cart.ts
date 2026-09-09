@@ -29,10 +29,17 @@ export function useCart(scope: CartScope = 'cart') {
     staleTime: 30_000,
   });
 
+  function cartErrorMessage(err: unknown, fallback: string): string {
+    if (err instanceof ApiError && err.body.code === 'OUT_OF_STOCK') return 'No more of this item in stock';
+    if (err instanceof ApiError && err.body.code === 'FREE_GIFT_ONLY') return "This item ships free with a qualifying order — it can't be bought on its own";
+    return fallback;
+  }
+
   const addMutation = useMutation({
     mutationFn: (item: { variantId: string; quantity: number }) =>
       api.post<CartResponse>('/api/cart/items', item, sessionHeaders(scope)),
     onSuccess: (data) => queryClient.setQueryData(queryKey, data),
+    onError: (err) => toast.error(cartErrorMessage(err, 'Could not add item — try again')),
   });
 
   const updateMutation = useMutation({
@@ -43,7 +50,7 @@ export function useCart(scope: CartScope = 'cart') {
     // "+" on it — the request then fails with OUT_OF_STOCK, and without this the click
     // just silently did nothing (no optimistic update to roll back, no error surfaced).
     onError: (err) => {
-      toast.error(err instanceof ApiError && err.body.code === 'OUT_OF_STOCK' ? 'No more of this item in stock' : 'Could not update quantity — try again');
+      toast.error(cartErrorMessage(err, 'Could not update quantity — try again'));
       queryClient.invalidateQueries({ queryKey });
     },
   });

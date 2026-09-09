@@ -23,21 +23,13 @@ export async function checkoutHandler(req: FastifyRequest, reply: FastifyReply) 
     const userId = (req.user as { sub: string }).sub;
     const result = await initiateCheckout(parsed.data, userId);
 
-    // Best-effort: only clear the isolated Buy Now pseudo-cart (":buynow" suffix) —
-    // it's always safe to drop immediately since it's disposable and re-cleared before
-    // every future Buy Now attempt anyway. The real cart is deliberately NOT cleared
-    // here: at this point the order is only PENDING_PAYMENT (see initiateCheckout) —
-    // the customer hasn't paid yet, and may dismiss the Razorpay modal or have the
-    // payment fail. Wiping their real cart before payment is confirmed would lose
-    // those items for nothing. Clearing the real cart on actual payment success would
-    // need to happen from the payment-captured webhook instead, which doesn't have a
-    // session id to key off today.
-    const sessionId = sessionIdOf(req);
-    if (sessionId?.endsWith(':buynow')) {
-      clearCart(sessionId).catch((err) => {
-        logger.warn({ err, sessionId }, 'Failed to clear cart after successful checkout');
-      });
-    }
+    // Buy Now pseudo-cart is intentionally left untouched here — the order created by
+    // initiateCheckout is only PENDING_PAYMENT, and the customer may still dismiss the
+    // Razorpay modal or have the payment fail. Clearing it at this point (as this used
+    // to do) emptied the checkout page's item list the moment "Pay Now" was pressed,
+    // so a cancelled/failed payment left the Buy Now screen showing nothing to retry —
+    // see verifyPaymentHandler below, which now clears it only once payment actually
+    // succeeds, matching how the real cart is already handled.
 
     return reply.code(201).send(result);
   } catch (err) {
@@ -82,6 +74,16 @@ export async function verifyPaymentHandler(req: FastifyRequest, reply: FastifyRe
   }
 
   await handlePaymentCaptured(razorpayOrderId, razorpayPaymentId);
+
+  // Only now — payment actually confirmed — is it safe to drop the Buy Now pseudo-cart.
+  // The real cart is still deliberately left alone (see handlePaymentCaptured's webhook
+  // counterpart, which doesn't have a session id to key off).
+  const sessionId = sessionIdOf(req);
+  if (sessionId?.endsWith(':buynow')) {
+    clearCart(sessionId).catch((err) => {
+      logger.warn({ err, sessionId }, 'Failed to clear cart after successful checkout');
+    });
+  }
 
   return reply.code(200).send({ verified: true });
 }
