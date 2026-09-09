@@ -14,9 +14,11 @@ const outfit = Outfit({
   display: 'swap',
 });
 
-const TITLE_DEFAULT = 'Doshhmukti — Dosh Mukti Gemstones & Astrology Remedies for Love, Wealth & Protection';
+// Title kept under ~60 chars and description under ~160 — both were previously
+// 86/247 chars and got truncated mid-sentence in the Google SERP.
+const TITLE_DEFAULT = 'Doshhmukti — Gemstones & Astrology Remedies';
 const DESCRIPTION =
-  'Doshhmukti (dosh mukti — freedom from planetary doshas) sells authentic, energized gemstones, rudraksha malas and bracelets chosen for you with Vedic astrology guidance. Shop remedies for love, wealth, health, success, protection and clarity.';
+  'Authentic, energized gemstones, rudraksha malas and bracelets chosen with Vedic astrology guidance. Shop remedies for love, wealth, health & protection.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

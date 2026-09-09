@@ -30,7 +30,9 @@ const VALUES = [
   },
 ];
 
-const TITLE = 'About Doshhmukti — Authentic Astrology-Guided Gemstones';
+// No "Doshhmukti" here — root layout's `%s — Doshhmukti` template already appends
+// the brand, so including it in the page title doubled it up in the rendered <title>.
+const TITLE = 'About — Authentic Astrology-Guided Gemstones';
 const DESCRIPTION =
   'Doshhmukti sources authentic, ritually-energized gemstones and rudraksha directly from verified artisans, with Vedic-astrology guidance from Acharya Madhav for every purchase.';
 
@@ -46,6 +48,7 @@ const personJsonLd = {
   '@type': 'Person',
   name: 'Acharya Madhav',
   jobTitle: 'Vedic Astrologer',
+  url: `${SITE_URL}/about`,
   worksFor: { '@type': 'Organization', name: 'Doshhmukti' },
   description:
     'Acharya Madhav is Doshhmukti\'s in-house Vedic astrologer, recommending gemstones and remedies based on birth-chart (kundli) and numerology readings for love, wealth, health, career, and protection.',

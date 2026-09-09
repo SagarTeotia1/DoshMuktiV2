@@ -67,6 +67,10 @@ export default async function LandingPage() {
 
   return (
     <>
+      {/* Homepage had zero <h1> in markup — Google and AEO/GEO extraction lean on this for
+          the "what is this page about" anchor. sr-only since the visual hero already
+          carries the brand cue; this exists purely for the DOM. */}
+      <h1 className="sr-only">Doshhmukti — Gemstones & Astrology Remedies for Love, Wealth & Protection</h1>
       <CategoryStrip items={categoryThumbs} />
       <HeroCarousel banners={banners} />
       <PurposeGrid />

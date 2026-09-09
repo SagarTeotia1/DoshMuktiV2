@@ -298,10 +298,30 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     ],
   };
 
+  // AEO target: "how to wear a [product]" is a real query pattern, and this content
+  // already exists as a real numbered list on the page — just missing the markup
+  // that tells Google/AI extractors it's a HowTo, not prose.
+  const howToJsonLd =
+    product.howToWear.length > 0
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'HowTo',
+          name: `How to Wear & Recharge ${product.name}`,
+          step: product.howToWear.map((step, i) => ({
+            '@type': 'HowToStep',
+            position: i + 1,
+            text: step,
+          })),
+        }
+      : null;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      {howToJsonLd && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }} />
+      )}
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 font-body text-[11px] text-[#8A7A63] mb-6 sm:mb-8">
         <Link href="/" className="hover:text-[#9C5A26] transition-colors">Home</Link>
