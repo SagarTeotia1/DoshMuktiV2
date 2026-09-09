@@ -186,11 +186,22 @@ async function sendMessageInner(input: ChatRequestInput, sessionId: string | nul
     return { reply: FALLBACK_REPLY, recommendedProducts: [], recommendationReason: null };
   }
 
-  const parsed = llmTurnSchema.safeParse(unwrapDoubleEncoded(safeJsonParse(raw)));
+  const parsedInput = unwrapDoubleEncoded(safeJsonParse(raw));
+  const parsed = llmTurnSchema.safeParse(parsedInput);
   if (!parsed.success) {
-    // Model didn't honor the JSON contract this turn — degrade to plain text rather
-    // than surfacing a broken reply, don't touch the stored profile.
-    return { reply: raw || FALLBACK_REPLY, recommendedProducts: [], recommendationReason: null };
+    // Model didn't honor the JSON contract this turn (an unexpected field shape, a bad
+    // enum value, etc). With response_format:json_object forced, `raw` is always a JSON
+    // object, never freeform text — falling back to it directly (as this used to) shows
+    // the customer a raw JSON blob instead of a sentence, the same class of bug the
+    // profile/readyForProducts null-handling above just fixed for one specific field.
+    // Salvage just the "reply" text if the object at least has that much; otherwise use
+    // the in-character fallback line. Never the raw JSON itself.
+    console.error('[chat] LLM response failed schema validation', parsed.error.flatten());
+    const salvagedReply =
+      parsedInput && typeof parsedInput === 'object' && typeof (parsedInput as { reply?: unknown }).reply === 'string'
+        ? ((parsedInput as { reply: string }).reply.trim() || null)
+        : null;
+    return { reply: salvagedReply ?? FALLBACK_REPLY, recommendedProducts: [], recommendationReason: null };
   }
 
   const turn = parsed.data;
