@@ -73,7 +73,7 @@ const organizationJsonLd = {
   '@type': 'Organization',
   name: 'Doshhmukti',
   url: SITE_URL,
-  logo: `${SITE_URL}/icon`,
+  logo: `${SITE_URL}/icon.png`,
   alternateName: 'Dosh Mukti',
   description:
     'Doshhmukti (dosh mukti — freedom from planetary doshas) sells authentic, ritually-energized gemstones, rudraksha malas and pooja accessories, chosen for the customer using Vedic astrology and numerology, for goals spanning love, wealth, health, success, protection and clarity.',
