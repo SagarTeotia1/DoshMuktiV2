@@ -14,15 +14,29 @@ export const revalidate = 3600;
 
 const STATIC_ROUTES = ['', '/shop', '/about', '/contact', '/faq', '/privacy', '/terms'];
 
+// Backend caps `limit` at 100 (products/schema.ts) — requesting more 400s. A prior
+// version requested limit=500 in one shot; the 400 was swallowed by the catch below
+// and silently produced an empty product sitemap for months. Paginate at the real cap.
+const BACKEND_PAGE_LIMIT = 100;
+
 async function getAllProductSlugs(): Promise<Array<{ slug: string }>> {
-  try {
-    // Backend caps nothing on `limit` server-side today — 500 comfortably covers
-    // current + near-term catalog size without paginating the sitemap build.
-    const data = await api.get<PaginatedProducts>('/api/products?limit=500', undefined, 3600);
-    return data.products.map((p) => ({ slug: p.slug }));
-  } catch {
-    return [];
+  const slugs: Array<{ slug: string }> = [];
+  let page = 1;
+
+  while (true) {
+    let data: PaginatedProducts;
+    try {
+      data = await api.get<PaginatedProducts>(`/api/products?limit=${BACKEND_PAGE_LIMIT}&page=${page}`, undefined, 3600);
+    } catch (err) {
+      console.error(`sitemap: failed to fetch products page ${page}`, err);
+      break;
+    }
+    slugs.push(...data.products.map((p) => ({ slug: p.slug })));
+    if (page >= data.pages) break;
+    page += 1;
   }
+
+  return slugs;
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

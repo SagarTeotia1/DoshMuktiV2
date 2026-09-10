@@ -69,6 +69,7 @@ export function Navbar() {
             src={logo}
             alt="Doshhmukti"
             priority
+            sizes="180px"
             className="h-10 sm:h-12 md:h-14 w-auto group-hover:scale-105 transition-transform duration-300"
           />
         </Link>

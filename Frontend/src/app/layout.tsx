@@ -6,6 +6,7 @@ import { QueryProvider } from '@/providers/query-provider';
 import { FirebaseProvider } from '@/providers/firebase-provider';
 import { FacebookPixelProvider } from '@/providers/facebook-pixel-provider';
 import { AuthProvider } from '@/providers/auth-provider';
+import { DeferredFontStylesheet } from '@/components/layout/deferred-font-stylesheet';
 import { SITE_URL, SOCIAL_LINKS } from '@/lib/constants';
 
 const outfit = Outfit({
@@ -113,9 +114,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning className={outfit.variable}>
       <head>
         {/* Discovered and fetched in parallel with the document, instead of chained
-            behind globals.css's old @import (see globals.css comment). */}
+            behind globals.css's old @import (see globals.css comment). Actual
+            stylesheet is loaded non-blocking via DeferredFontStylesheet below —
+            Satoshi has font-display: swap upstream, so text isn't invisible while
+            it loads, just rendered in the fallback font briefly. */}
         <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="" />
-        <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" />
+        <DeferredFontStylesheet />
+        <noscript>
+          <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" />
+        </noscript>
       </head>
       <body>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />

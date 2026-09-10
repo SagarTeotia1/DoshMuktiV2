@@ -41,6 +41,7 @@ export function HeroCarousel({ banners }: { banners: Banner[] }) {
             src={banner.mobileImage?.full ?? banner.image.full}
             alt="Doshhmukti gemstone and astrology remedy promotion"
             className="absolute inset-0 w-full h-full object-cover"
+            fetchPriority="high"
           />
         </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -50,6 +51,7 @@ export function HeroCarousel({ banners }: { banners: Banner[] }) {
           width={1920}
           height={800}
           className="hidden sm:block w-full h-auto"
+          fetchPriority="high"
         />
       </Link>
 
