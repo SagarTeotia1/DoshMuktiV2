@@ -7,6 +7,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Search, ShoppingCart, Menu, X, User, LogOut } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { useAuth } from '@/providers/auth-provider';
+import { trackSearch } from '@/lib/firebase';
 import logo from '@/assets/Logo.png';
 
 const NAV_LINKS = [
@@ -51,8 +52,10 @@ export function Navbar() {
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    if (!searchQuery.trim()) return;
-    router.push(`/shop?q=${encodeURIComponent(searchQuery.trim())}`);
+    const term = searchQuery.trim();
+    if (!term) return;
+    trackSearch(term);
+    router.push(`/shop?q=${encodeURIComponent(term)}`);
     setSearchOpen(false);
     setSearchQuery('');
   }

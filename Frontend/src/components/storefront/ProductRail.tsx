@@ -1,4 +1,5 @@
 import { ProductCard } from './ProductCard';
+import { ImpressionTracker } from './ImpressionTracker';
 import { Reveal } from '@/components/motion/Reveal';
 import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
 import { BlobMotif } from '@/components/motion/BlobMotif';
@@ -58,6 +59,7 @@ export function ProductRail({
     <section
       className={`relative overflow-hidden ${tightTop ? 'pt-6 sm:pt-8' : 'pt-10 sm:pt-14 md:pt-20'} ${tightBottom ? 'pb-6 sm:pb-8' : 'pb-10 sm:pb-14 md:pb-20'} ${tinted ? 'bg-[#F6E4C2]/50' : ''}`}
     >
+      <ImpressionTracker listName={title} products={products} />
       {tinted && (
         <BlobMotif
           variant={blobVariant}
@@ -72,7 +74,7 @@ export function ProductRail({
       <StaggerGroup className="flex gap-4 sm:gap-6 overflow-x-auto hide-scrollbar snap-x snap-mandatory py-2 px-4 sm:px-6 lg:px-12 [scroll-padding-left:1rem] sm:[scroll-padding-left:1.5rem] lg:[scroll-padding-left:3rem]">
         {products.map((product) => (
           <StaggerItem key={product.id} className="flex-shrink-0 snap-start w-[42vw] xs:w-[38vw] sm:w-[220px] md:w-[240px]">
-            <ProductCard product={product} />
+            <ProductCard product={product} listName={title} />
           </StaggerItem>
         ))}
       </StaggerGroup>

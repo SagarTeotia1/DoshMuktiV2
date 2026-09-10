@@ -8,11 +8,15 @@ import { toast } from 'sonner';
 import { Tag, ShoppingBag, Eye } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { formatCurrency } from '@/lib/formatters';
+import { trackSelectItem } from '@/lib/firebase';
 import type { Product } from '@/types/api.types';
 
 const MotionLink = motion.create(Link);
 
-export function ProductCard({ product }: { product: Product }) {
+// `listName` identifies which rail/grid this card was clicked from (e.g. "Shop All",
+// "Handpicked This Week") for GA4's select_item event — callers that don't pass one
+// just get a generic bucket instead of losing the event entirely.
+export function ProductCard({ product, listName = 'product_grid' }: { product: Product; listName?: string }) {
   const router = useRouter();
   const { addItemAsync, isAdding } = useCart();
   const href = `/products/${product.slug}`;
@@ -47,6 +51,7 @@ export function ProductCard({ product }: { product: Product }) {
       href={href}
       onMouseEnter={prefetch}
       onTouchStart={prefetch}
+      onClick={() => trackSelectItem(listName, { id: product.id, name: product.name, price })}
       className="neo-card group relative block h-full rounded-2xl flex flex-col bg-[#F3EBDC] shadow-neo-sm pt-3 pl-3 pr-4 pb-4 sm:pt-4 sm:pl-4 sm:pr-5 sm:pb-5"
       whileHover={{ y: -5, x: -2 }}
       whileTap={{ scale: 0.97 }}

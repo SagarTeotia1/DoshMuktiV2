@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api-client';
 import { getSessionId, getBuyNowSessionId } from '@/lib/session';
+import { trackRemoveFromCart } from '@/lib/firebase';
 import type { CartResponse } from '@/types/api.types';
 
 export type CartScope = 'cart' | 'buyNow';
@@ -58,7 +59,13 @@ export function useCart(scope: CartScope = 'cart') {
   const removeMutation = useMutation({
     mutationFn: (variantId: string) =>
       api.delete<CartResponse>(`/api/cart/items/${variantId}`, sessionHeaders(scope)),
-    onSuccess: (data) => queryClient.setQueryData(queryKey, data),
+    onSuccess: (data, variantId) => {
+      queryClient.setQueryData(queryKey, data);
+      const removed = cart?.items.find((i) => i.variantId === variantId);
+      if (removed) {
+        trackRemoveFromCart({ id: removed.variantId, name: removed.productName, price: removed.price, quantity: removed.quantity });
+      }
+    },
   });
 
   const clearMutation = useMutation({

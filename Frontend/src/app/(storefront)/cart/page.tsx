@@ -1,16 +1,31 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { formatCurrency } from '@/lib/formatters';
+import { trackViewCart } from '@/lib/firebase';
 import { SHIPPING_FEE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
 
 export default function CartPage() {
   const { cart, isLoading, updateQuantity, removeItem, isUpdating, isRemoving } = useCart();
   const items = cart?.items ?? [];
   const subtotal = cart?.subtotal ?? 0;
+  const viewCartFired = useRef(false);
+
+  useEffect(() => {
+    if (viewCartFired.current || isLoading || items.length === 0) return;
+    viewCartFired.current = true;
+    trackViewCart(
+      items.map((i) => ({ id: i.variantId, name: i.productName, price: i.price, quantity: i.quantity })),
+      subtotal
+    );
+    // Fire once per page load using the cart state as it first arrives, not on every
+    // qty/remove update after — those already have their own dedicated events.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, items.length]);
   // Backend-computed (see cart/service.ts's computeCartPricing) — same resolution path
   // checkout itself uses for AUTO_APPLIED offer discounts, so this preview total can
   // never drift from what checkout actually charges.
