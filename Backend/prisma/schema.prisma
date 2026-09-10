@@ -33,6 +33,12 @@ model Product {
   sidhiPrice               Int? // ₹ price for the Sidhi/Energizing service add-on; null = feature hidden. Syncs to a "-SIDHI" ProductVariant — see products/service.ts
   selfEnergizeInstructions String?          @db.Text // DIY energizing steps, shown as the "Energize It Yourself" tab
   gstRate                  Decimal?         @db.Decimal(5, 2) // GST %, e.g. 18.00; admin-set per product, null = no GST line on invoice. Snapshotted into OrderItem.variantSnapshot.gstRate at checkout — see checkout/service.ts
+  // Admin override for the 7-day return policy. null = default rule (basePrice >=
+  // RETURN_ELIGIBLE_ABOVE is returnable, below it is final sale — see products/service.ts's
+  // resolveReturnEligible). true/false lets an admin force a specific product either way
+  // regardless of price, e.g. allow returns on a sub-₹299 item or block them on an
+  // expensive one that's non-returnable for other reasons.
+  returnEligibleOverride   Boolean?
   offers                   Offer[]          @relation("OfferProducts") // universal, admin-managed offers enabled on this product — see Offer model
   variants                 ProductVariant[]
   reviews                  Review[]

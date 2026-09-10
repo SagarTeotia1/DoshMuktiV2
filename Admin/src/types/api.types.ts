@@ -217,6 +217,10 @@ export interface Product {
   sidhiPrice: number | null;
   selfEnergizeInstructions: string | null;
   gstRate: number | null;
+  // null = default price-based rule (see RETURN_ELIGIBLE_ABOVE), true/false = admin override.
+  returnEligibleOverride: boolean | null;
+  // Server-computed effective status (override if set, else price threshold) — read-only.
+  returnEligible: boolean;
   offers: Offer[];
   variants: ProductVariant[];
   createdAt: string;

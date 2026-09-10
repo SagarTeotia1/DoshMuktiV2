@@ -3,8 +3,22 @@ import type { Prisma } from '@prisma/client';
 import { db } from '../../shared/db/client';
 import { redis } from '../../shared/cache/client';
 import { cacheKeys, CACHE_TTL } from '../../shared/cache/keys';
+import { RETURN_ELIGIBLE_ABOVE } from '../../shared/constants/purposes';
 import { attachApplicableOffers, type OfferWithCoupon } from '../offers/service';
 import type { ListProductsQuery, DescriptionBlock } from './schema';
+
+// Single source of truth for whether a product is returnable: an admin override always
+// wins, otherwise it falls back to the price threshold — see Product.returnEligibleOverride.
+export function resolveReturnEligible(basePrice: Prisma.Decimal | number, override: boolean | null): boolean {
+  if (override !== null) return override;
+  return Number(basePrice) >= RETURN_ELIGIBLE_ABOVE;
+}
+
+function withReturnEligibility<T extends { basePrice: Prisma.Decimal; returnEligibleOverride: boolean | null }>(
+  products: T[]
+): Array<T & { returnEligible: boolean }> {
+  return products.map((p) => ({ ...p, returnEligible: resolveReturnEligible(p.basePrice, p.returnEligibleOverride) }));
+}
 
 // Short plain-text teaser derived from the first text block of the structured
 // description — used for product-card excerpts. Never stored; always computed
@@ -35,14 +49,14 @@ export async function withOffers<T extends { id: string; categories: string[] }>
 }
 
 type ProductWithVariants = Prisma.ProductGetPayload<{ include: { variants: { where: { isActive: true } } } }>;
-export type ProductWithRating = ProductWithVariants & { rating: { average: number; count: number }; excerpt: string };
+export type ProductWithRating = ProductWithVariants & { rating: { average: number; count: number }; excerpt: string; returnEligible: boolean };
 
 // Storefront-facing products always get both a rating summary and a derived plain-text
 // excerpt attached in the same pass — every caller of attachRatings is a storefront read,
 // so this is the one place to compute `excerpt` without touching each call site.
-export async function attachRatings<T extends { id: string; description: unknown }>(
-  products: T[]
-): Promise<Array<T & { rating: { average: number; count: number }; excerpt: string }>> {
+export async function attachRatings<
+  T extends { id: string; description: unknown; basePrice: Prisma.Decimal; returnEligibleOverride: boolean | null },
+>(products: T[]): Promise<Array<T & { rating: { average: number; count: number }; excerpt: string; returnEligible: boolean }>> {
   if (products.length === 0) return [];
   const grouped = await db.review.groupBy({
     by: ['productId'],
@@ -52,7 +66,7 @@ export async function attachRatings<T extends { id: string; description: unknown
   });
   const byId = new Map(grouped.map((g) => [g.productId, { average: g._avg.rating ?? 0, count: g._count }]));
   const withRating = products.map((p) => ({ ...p, rating: byId.get(p.id) ?? { average: 0, count: 0 } }));
-  return withExcerpt(withRating);
+  return withExcerpt(withReturnEligibility(withRating));
 }
 
 export async function listProducts(query: ListProductsQuery) {
@@ -278,7 +292,8 @@ export async function getProductByIdForAdmin(id: string) {
   const product = await db.product.findUnique({ where: { id }, include: { variants: true } });
   if (!product) return null;
   const [withOffersApplied] = await withAllOffers([product]);
-  return withOffersApplied;
+  const [withReturn] = withReturnEligibility([withOffersApplied!]);
+  return withReturn;
 }
 
 export async function listProductsForAdmin(query: ListAdminProductsQuery) {
@@ -304,7 +319,7 @@ export async function listProductsForAdmin(query: ListAdminProductsQuery) {
     db.product.count({ where }),
   ]);
   const withOffersApplied = await withAllOffers(products);
-  return { products: withOffersApplied, total, pages: Math.ceil(total / query.limit), page: query.page };
+  return { products: withReturnEligibility(withOffersApplied), total, pages: Math.ceil(total / query.limit), page: query.page };
 }
 
 export class DuplicateSlugError extends Error {

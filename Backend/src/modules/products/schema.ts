@@ -66,6 +66,9 @@ export const createProductSchema = z.object({
   selfEnergizeInstructions: z.string().max(5000).nullable().optional(),
   gstRate: z.number().min(0).max(100).multipleOf(0.01).nullable().optional(),
   offerIds: z.array(z.string()).default([]),
+  // null = default price-based rule, true/false = admin-forced override — see
+  // Product.returnEligibleOverride in schema.prisma.
+  returnEligibleOverride: z.boolean().nullable().optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial().extend({

@@ -208,7 +208,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const inStock = activeVariants.some((v) => v.stockQuantity > 0);
   const mrp = product.compareAtPrice && product.compareAtPrice > price ? product.compareAtPrice : null;
   const discountPct = mrp ? Math.round(((mrp - price) / mrp) * 100) : null;
-  const eligibleForReturn = price >= RETURN_ELIGIBLE_ABOVE;
+  // Backend resolves this (admin override if set, else the price threshold) — see
+  // Backend/src/modules/products/service.ts's resolveReturnEligible.
+  const eligibleForReturn = product.returnEligible;
   const policySections = getPolicySections(eligibleForReturn);
 
   // COUPON_BASED offers live exclusively in the Exclusive Offers card section below (they need

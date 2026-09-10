@@ -94,6 +94,8 @@ export const productSchema = z.object({
     .default([]),
   rating: z.object({ average: z.number(), count: z.number() }).default({ average: 0, count: 0 }),
   variants: z.array(productVariantSchema),
+  // Server-computed: admin override (if set) else basePrice >= RETURN_ELIGIBLE_ABOVE.
+  returnEligible: z.boolean().default(false),
 });
 export type Product = z.infer<typeof productSchema>;
 

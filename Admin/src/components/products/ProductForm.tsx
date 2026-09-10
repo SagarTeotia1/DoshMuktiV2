@@ -5,7 +5,7 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, X, Eye, EyeOff } from 'lucide-react';
-import { PURPOSE_IDS, PRODUCT_STATUSES } from '@/lib/constants';
+import { PURPOSE_IDS, PRODUCT_STATUSES, RETURN_ELIGIBLE_ABOVE } from '@/lib/constants';
 import type { Offer, Product } from '@/types/api.types';
 import { useOffers } from '@/hooks/use-offers';
 import { useCategories } from '@/hooks/use-categories';
@@ -42,6 +42,9 @@ const productFormSchema = z.object({
   selfEnergizeInstructions: z.string().optional(),
   gstRate: z.coerce.number().min(0).max(100).default(0), // 0 = not set, mapped to null on submit
   offerIds: z.array(z.string()).default([]),
+  // String tri-state for the <select> — 'auto' = null (price-based rule), mapped to
+  // boolean | null on submit. See Product.returnEligibleOverride.
+  returnEligibleOverride: z.enum(['auto', 'yes', 'no']).default('auto'),
 });
 
 type FormShape = z.infer<typeof productFormSchema>;
@@ -49,11 +52,12 @@ type FormShape = z.infer<typeof productFormSchema>;
 // howToWear is stored internally as {text}[] because react-hook-form's
 // useFieldArray requires array items to be objects — flattened to string[]
 // at the submit boundary so consumers/Backend only ever see string[].
-export type ProductFormValues = Omit<FormShape, 'howToWear' | 'compareAtPrice' | 'sidhiPrice' | 'gstRate'> & {
+export type ProductFormValues = Omit<FormShape, 'howToWear' | 'compareAtPrice' | 'sidhiPrice' | 'gstRate' | 'returnEligibleOverride'> & {
   howToWear: string[];
   compareAtPrice: number | null;
   sidhiPrice: number | null;
   gstRate: number | null;
+  returnEligibleOverride: boolean | null;
 };
 
 const inputClass = 'w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none';
@@ -102,6 +106,8 @@ export function ProductForm({
       selfEnergizeInstructions: defaultValues?.selfEnergizeInstructions ?? '',
       gstRate: defaultValues?.gstRate ?? 0,
       offerIds: defaultValues?.offers?.map((o) => o.id) ?? [],
+      returnEligibleOverride:
+        defaultValues?.returnEligibleOverride === true ? 'yes' : defaultValues?.returnEligibleOverride === false ? 'no' : 'auto',
     },
   });
 
@@ -185,6 +191,7 @@ export function ProductForm({
       compareAtPrice: values.compareAtPrice > 0 ? values.compareAtPrice : null,
       sidhiPrice: values.sidhiPrice > 0 ? values.sidhiPrice : null,
       gstRate: values.gstRate > 0 ? values.gstRate : null,
+      returnEligibleOverride: values.returnEligibleOverride === 'yes' ? true : values.returnEligibleOverride === 'no' ? false : null,
     });
   }
 
@@ -387,6 +394,25 @@ export function ProductForm({
           </label>
           <input type="number" min={0} max={100} step={0.01} {...register('gstRate')} className={`${inputClass} max-w-[140px]`} />
           {errors.gstRate && <p className="text-xs text-red-600 mt-1">{errors.gstRate.message}</p>}
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-slate-600 mb-1 block">
+            7-Day Return Policy{' '}
+            <span className="text-slate-400 font-normal">
+              (default: only orders ₹{RETURN_ELIGIBLE_ABOVE}+ are returnable — override it for this product here)
+            </span>
+          </label>
+          <select {...register('returnEligibleOverride')} className={`${inputClass} max-w-[280px]`}>
+            <option value="auto">Auto — follow ₹{RETURN_ELIGIBLE_ABOVE}+ rule</option>
+            <option value="yes">Force returnable (even below ₹{RETURN_ELIGIBLE_ABOVE})</option>
+            <option value="no">Force non-returnable (final sale)</option>
+          </select>
+          {defaultValues && (
+            <p className="text-xs text-slate-400 mt-1">
+              Currently showing as: <span className="font-semibold">{defaultValues.returnEligible ? 'Returnable (7-day window)' : 'Non-returnable (final sale)'}</span>
+            </p>
+          )}
         </div>
 
         {defaultValues && (

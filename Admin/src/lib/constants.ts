@@ -37,3 +37,7 @@ export const ORDER_STATUS_COLORS: Record<string, string> = {
 };
 
 export const PRODUCT_STATUSES = ['DRAFT', 'ACTIVE', 'ARCHIVED'] as const;
+
+// Default 7-day return eligibility threshold — mirrors Backend's RETURN_ELIGIBLE_ABOVE.
+// A product's returnEligibleOverride can force it either way regardless of price.
+export const RETURN_ELIGIBLE_ABOVE = 299;
