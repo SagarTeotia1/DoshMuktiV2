@@ -173,11 +173,34 @@ export default async function VahanSurakshaKavachPage() {
       availability: soldOut ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
       url: `${SITE_URL}/products/${product.slug}`,
     },
+    // Google requires an actual review count for aggregateRating — omitting it
+    // entirely (rather than sending 0/0) avoids a "missing field" rich-results error
+    // on products that don't have reviews yet.
+    ...(product.rating.count > 0 && {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: product.rating.average,
+        reviewCount: product.rating.count,
+      },
+    }),
+  };
+
+  // FAQ_ITEMS is already rendered as a visible accordion below — this schema is
+  // what makes it eligible for Google's FAQ rich-result snippet under the SERP entry.
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: FAQ_ITEMS.map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: { '@type': 'Answer', text: item.a },
+    })),
   };
 
   return (
     <div className={`${fraunces.variable} bg-[#FFFDF8] text-[#2B1B0C] overflow-x-hidden`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
       {variant && <CampaignHeader variantId={variant.id} productName={product.name} price={price} />}
 

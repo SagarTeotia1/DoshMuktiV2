@@ -16,7 +16,7 @@ import { RelatedProductsRail } from './related-products-rail';
 import { ExclusiveOffers } from '@/components/storefront/ExclusiveOffers';
 import { api } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
-import { SITE_URL, RETURN_ELIGIBLE_ABOVE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
+import { SITE_URL, RETURN_ELIGIBLE_ABOVE, FREE_SHIPPING_ABOVE, CAMPAIGN_PAGE_SLUGS } from '@/lib/constants';
 import type { Product, ProductReviewsResponse } from '@/types/api.types';
 
 // No searchParams/cookies/headers() on this route, so with the ISR pieces below, each
@@ -162,7 +162,7 @@ export async function generateMetadata({
   const description =
     product.excerpt ||
     `${product.name} — authentic, ritually energized ${primaryCategory.toLowerCase()}${purposeText ? ` for ${purposeText.toLowerCase()}` : ''}. Vedic astrology guidance included. Free shipping over ₹${FREE_SHIPPING_ABOVE}.`;
-  const canonical = `/products/${product.slug}`;
+  const canonical = CAMPAIGN_PAGE_SLUGS[product.slug] ?? `/products/${product.slug}`;
   const image = product.images[0]?.card;
 
   return {
@@ -281,7 +281,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       : undefined,
     offers: {
       '@type': 'Offer',
-      url: `${SITE_URL}/products/${product.slug}`,
+      url: `${SITE_URL}${CAMPAIGN_PAGE_SLUGS[product.slug] ?? `/products/${product.slug}`}`,
       priceCurrency: 'INR',
       price,
       availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',

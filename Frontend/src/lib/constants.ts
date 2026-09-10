@@ -8,6 +8,15 @@ export const PRODUCTS_PER_PAGE = 12;
 
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
 
+// Products with a dedicated marketing campaign page live at two URLs: the campaign
+// page itself and the generic /products/[slug] PDP. Both are real, crawlable pages —
+// this map lets the PDP's canonical point at the campaign page instead of
+// self-canonicalizing, so Google consolidates ranking signal onto one URL instead of
+// treating them as competing duplicates.
+export const CAMPAIGN_PAGE_SLUGS: Record<string, string> = {
+  'vahan-suraksha-kavach': '/vahan-suraksha-kavach',
+};
+
 export const SOCIAL_LINKS = {
   instagram: 'https://instagram.com/doshhmukti',
   youtube: 'https://youtube.com/@doshhmukti',
