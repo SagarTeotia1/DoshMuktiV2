@@ -115,28 +115,6 @@ export default async function LandingPage() {
         />
       ))}
 
-      {/* Homepage had 669 words of visible text — thin content by SEO crawler standards.
-          This section adds real, unique prose (not boilerplate) describing what
-          Doshhmukti sells and for whom, carrying the same keywords used in the
-          title/meta/H1 so ranking signals reinforce each other across tags. */}
-      <section className="bg-[#FBF6EC] py-14 sm:py-20">
-        <div className="max-w-3xl mx-auto px-6 text-center">
-          <h2 className="font-heading text-xl sm:text-2xl font-black tracking-tight text-[#2B1B0C] mb-4">
-            Authentic Gemstones & Rudraksha, Chosen for Your Chart
-          </h2>
-          <p className="font-body text-sm sm:text-base text-[#6B5539] leading-relaxed">
-            Doshhmukti sells authentic, ritually-energized gemstones, Nepali rudraksha malas and bracelets, sourced
-            directly from verified artisans rather than mass-produced imitations. Every product is matched to a
-            purpose — love, wealth, health, success, protection or clarity — using Vedic astrology and numerology
-            guidance from Acharya Madhav, so you buy the mala or bracelet that actually suits your birth chart
-            instead of whatever is trending. The catalog spans 2 to 9 Mukhi Nepali rudraksha, rose quartz and tiger
-            eye bracelets, pyrite and citrine pieces for money and career, and dhoop sticks and attar for daily
-            pooja. Every order ships pan-India with free shipping above ₹299 and a 7-day return window, and every
-            gemstone arrives pre-energized and ready to wear.
-          </p>
-        </div>
-      </section>
-
       <TestimonialsCarousel />
     </>
   );
