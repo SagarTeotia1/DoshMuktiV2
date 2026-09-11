@@ -6,7 +6,7 @@ export default function Loading() {
         <div className="w-40 h-7 rounded bg-[#DCC89E]" />
       </div>
 
-      <div className="grid md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
         <div className="flex flex-col gap-8">
           <div className="bg-brand-paper rounded-2xl p-5 sm:p-6">
             <div className="w-32 h-3 rounded bg-[#DCC89E] mb-4" />

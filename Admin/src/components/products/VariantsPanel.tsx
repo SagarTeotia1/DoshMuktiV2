@@ -11,12 +11,25 @@ import type { Product, ProductVariant } from '@/types/api.types';
 function VariantRow({ variant, productId }: { variant: ProductVariant; productId: string }) {
   const updateVariant = useUpdateVariant(productId);
   const [stock, setStock] = useState(variant.stockQuantity);
+  // Ships to Delhivery as the real parcel weight for every order containing this variant
+  // (see Backend's PACKAGING_WEIGHT_GRAMS + checkout/service.ts) — the schema defaults
+  // this to 500g when nobody sets it, which silently overstates light items and pushes
+  // orders into a pricier Delhivery rate slab than they should ever hit.
+  const [weight, setWeight] = useState(variant.weight);
 
   function saveStock() {
     if (stock === variant.stockQuantity) return;
     updateVariant.mutate(
       { variantId: variant.id, input: { stockQuantity: stock } },
       { onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to update stock') }
+    );
+  }
+
+  function saveWeight() {
+    if (weight === variant.weight || weight < 1) return;
+    updateVariant.mutate(
+      { variantId: variant.id, input: { weight } },
+      { onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to update weight') }
     );
   }
 
@@ -33,6 +46,22 @@ function VariantRow({ variant, productId }: { variant: ProductVariant; productId
           onBlur={saveStock}
           className="w-20 border border-slate-300 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none"
         />
+      </td>
+      <td className="px-4 py-2.5">
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            min={1}
+            value={weight}
+            onChange={(e) => setWeight(Number(e.target.value))}
+            onBlur={saveWeight}
+            className={`w-20 border rounded px-2 py-1 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none ${
+              variant.weight === 500 ? 'border-amber-400 bg-amber-50' : 'border-slate-300'
+            }`}
+            title={variant.weight === 500 ? 'Still at the 500g default — confirm this is the real packed weight' : undefined}
+          />
+          <span className="text-xs text-slate-400">g</span>
+        </div>
       </td>
       <td className="px-4 py-2.5">
         <button
@@ -54,6 +83,7 @@ export function VariantsPanel({ product }: { product: Product }) {
   const [sku, setSku] = useState('');
   const [attrs, setAttrs] = useState('');
   const [stock, setStock] = useState(0);
+  const [weight, setWeight] = useState(500);
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -66,7 +96,7 @@ export function VariantsPanel({ product }: { product: Product }) {
     }
 
     addVariant.mutate(
-      { sku, attributes, stockQuantity: stock },
+      { sku, attributes, stockQuantity: stock, weight },
       {
         onSuccess: () => {
           toast.success('Variant added');
@@ -74,6 +104,7 @@ export function VariantsPanel({ product }: { product: Product }) {
           setSku('');
           setAttrs('');
           setStock(0);
+          setWeight(500);
         },
         onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to add variant'),
       }
@@ -109,6 +140,17 @@ export function VariantsPanel({ product }: { product: Product }) {
             <label className="text-xs font-semibold text-slate-600 block mb-1">Stock</label>
             <input type="number" value={stock} onChange={(e) => setStock(Number(e.target.value))} className="border border-slate-300 rounded px-2 py-1.5 text-sm w-24" />
           </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-600 block mb-1">Weight (g)</label>
+            <input
+              type="number"
+              min={1}
+              required
+              value={weight}
+              onChange={(e) => setWeight(Number(e.target.value))}
+              className="border border-slate-300 rounded px-2 py-1.5 text-sm w-24"
+            />
+          </div>
           <button type="submit" disabled={addVariant.isPending} className="bg-[#9C5A26] text-white text-xs font-semibold px-4 py-2 rounded hover:bg-[#6B3D19] disabled:opacity-50">
             Add
           </button>
@@ -122,13 +164,14 @@ export function VariantsPanel({ product }: { product: Product }) {
             <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-slate-500">Attributes</th>
             <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-slate-500">Price Override</th>
             <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-slate-500">Stock</th>
+            <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-slate-500">Weight</th>
             <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-slate-500">Status</th>
           </tr>
         </thead>
         <tbody>
           {product.variants.length === 0 ? (
             <tr>
-              <td colSpan={5} className="px-4 py-6 text-center text-slate-400 text-sm">
+              <td colSpan={6} className="px-4 py-6 text-center text-slate-400 text-sm">
                 No variants yet
               </td>
             </tr>

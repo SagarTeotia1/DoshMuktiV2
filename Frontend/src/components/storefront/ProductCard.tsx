@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Tag, ShoppingBag, Eye } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
+import { useActiveCartScope } from '@/hooks/use-active-cart-scope';
 import { formatCurrency } from '@/lib/formatters';
 import { trackSelectItem } from '@/lib/firebase';
 import type { Product } from '@/types/api.types';
@@ -18,7 +19,7 @@ const MotionLink = motion.create(Link);
 // just get a generic bucket instead of losing the event entirely.
 export function ProductCard({ product, listName = 'product_grid' }: { product: Product; listName?: string }) {
   const router = useRouter();
-  const { addItemAsync, isAdding } = useCart();
+  const { addItemAsync, isAdding } = useCart(useActiveCartScope());
   const href = `/products/${product.slug}`;
   const prefetch = () => router.prefetch(href);
   const image = product.images[0]?.card ?? null;

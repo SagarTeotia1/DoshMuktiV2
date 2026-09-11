@@ -76,6 +76,18 @@ export function useUpdateEwaybill(id: string) {
   });
 }
 
+// Overrides the declared parcel weight used when this order's shipment gets booked
+// (manual retry or the payment.captured auto-book) — null clears it back to the
+// auto-calculated item-sum + packaging estimate. Only takes effect before booking;
+// Delhivery doesn't support editing a shipment's declared weight after the fact.
+export function useUpdatePackageWeight(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (weight: number | null) => api.patch<void>(`/api/admin/orders/${id}/package-weight`, { weight }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-order', id] }),
+  });
+}
+
 // Flag/unflag a shipment as bad-address or high-risk. Flagging pulls it out of the
 // pickup batch queue (see Backend pickup-requests/service.ts); passing riskFlag: null
 // clears it, same as resolving via an NDR action.

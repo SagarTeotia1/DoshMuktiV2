@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
 import { getSessionId } from '@/lib/session';
@@ -11,6 +12,7 @@ import { getSessionId } from '@/lib/session';
 // them through checkout again, instead of a dead-end order they can never pay for.
 export function CompletePaymentButton({ orderNumber }: { orderNumber: string }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
 
   async function completePayment() {
@@ -33,6 +35,11 @@ export function CompletePaymentButton({ orderNumber }: { orderNumber: string }) 
       if (skippedCount > 0) {
         toast.warning(`${skippedCount} item${skippedCount === 1 ? '' : 's'} in this order ${skippedCount === 1 ? 'is' : 'are'} no longer available and were left out.`);
       }
+      // resumeOrder adds items straight into the cart server-side — the checkout page's
+      // own cart query has no idea that happened and, under its 30s staleTime, can still
+      // be sitting on a stale (possibly empty) cart fetched before this button was even
+      // clicked. Without invalidating here, checkout renders a ₹0 total on arrival.
+      await queryClient.invalidateQueries({ queryKey: ['cart', getSessionId(), 'cart'] });
       router.push('/checkout');
     } catch {
       toast.error('Could not resume this order — try adding the items to your cart again.');

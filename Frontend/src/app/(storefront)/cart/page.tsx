@@ -38,6 +38,7 @@ export default function CartPage() {
   // charge), same math the invoice PDF uses. 0 when nothing in the cart carries a GST rate.
   const gstAmount = cart?.gstAmount ?? 0;
   const taxableValue = cart?.taxableValue ?? subtotal;
+  const savings = cart?.savings ?? 0;
 
   if (isLoading) {
     return <div className="max-w-4xl mx-auto px-4 py-16 text-center text-[#8A7A63] font-body text-sm">Loading cart...</div>;
@@ -97,7 +98,14 @@ export default function CartPage() {
             <div className="flex-1 min-w-0">
               <p className="font-heading font-bold text-xs sm:text-sm text-[#2B1B0C] truncate">{item.productName}</p>
               <p className="font-body text-[10px] sm:text-xs text-[#8A7A63]">{item.sku}</p>
-              <p className="font-heading font-bold text-xs sm:text-sm text-[#2B1B0C] mt-1">{formatCurrency(item.price)}</p>
+              <p className="flex items-center gap-1.5 mt-1">
+                <span className="font-heading font-bold text-xs sm:text-sm text-[#2B1B0C]">{formatCurrency(item.price)}</span>
+                {item.compareAtPrice && item.compareAtPrice > item.price && (
+                  <span className="font-body text-[10px] sm:text-xs text-[#8A7A63] line-through">
+                    {formatCurrency(item.compareAtPrice)}
+                  </span>
+                )}
+              </p>
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 border border-[#2B1B0C] rounded-full bg-white/60 p-0.5">
@@ -159,6 +167,12 @@ export default function CartPage() {
           <span>Subtotal</span>
           <span>{formatCurrency(subtotal)}</span>
         </div>
+        {savings > 0 && (
+          <div className="flex justify-between font-body text-sm text-brand-success font-semibold">
+            <span>You Saved</span>
+            <span>{formatCurrency(savings)}</span>
+          </div>
+        )}
         <div className="flex justify-between font-body text-sm text-[#6B5539]">
           <span>Shipping</span>
           {shippingFee === 0 ? (

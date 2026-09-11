@@ -10,6 +10,7 @@ import {
   SHIPPING_FEE,
   FREE_SHIPPING_ABOVE,
   RESERVATION_MINUTES,
+  PACKAGING_WEIGHT_GRAMS,
 } from "../../shared/constants/purposes";
 import { resolveAutoAppliedRewardsForCheckout } from "../offers/service";
 import {
@@ -242,7 +243,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
   }, 0);
   const { fee: shippingFee } = await calculateShippingFee(
     subtotal,
-    paidWeight + freeWeight,
+    paidWeight + freeWeight + PACKAGING_WEIGHT_GRAMS,
     input.shippingAddress.pincode
   );
   const reservedUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);

@@ -24,6 +24,10 @@ export interface CartItem {
   // Grams, snapshotted at add-time — feeds the live Delhivery shipping-rate estimate
   // shown on the cart/checkout pages. Optional/backfilled the same way gstRate is.
   weight?: number;
+  // Product.compareAtPrice ("MRP") snapshotted at add-time, same reasoning as price —
+  // feeds the "You saved ₹X" line on cart/checkout. Null/absent means no strikethrough
+  // MRP was ever set for this product. Optional/backfilled the same way gstRate is.
+  compareAtPrice?: number | null;
 }
 
 export interface Cart {

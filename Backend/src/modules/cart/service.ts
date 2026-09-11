@@ -5,6 +5,7 @@ import { env } from "../../config/env";
 import { resolveAutoAppliedRewardsForCheckout, isActiveFreeGiftTarget } from "../offers/service";
 import type { CheckoutLineItem } from "../offers/service";
 import { calculateShippingFee } from "../checkout/service";
+import { PACKAGING_WEIGHT_GRAMS } from "../../shared/constants/purposes";
 import type { Cart, CartItem } from "./schema";
 
 export class VariantNotFoundError extends Error {
@@ -47,16 +48,24 @@ export async function getCart(sessionId: string): Promise<Cart> {
   // outlive most sessions and the item is never re-added. Backfill both here instead of
   // making the customer clear and re-add their cart.
   const staleIds = cached.items
-    .filter((i) => i.imageUrl === undefined || i.gstRate === undefined || i.weight === undefined)
+    .filter(
+      (i) => i.imageUrl === undefined || i.gstRate === undefined || i.weight === undefined || i.compareAtPrice === undefined
+    )
     .map((i) => i.variantId);
   if (staleIds.length === 0) return cached;
 
   const variants = await db.productVariant.findMany({
     where: { id: { in: staleIds } },
-    include: { product: { select: { images: true, gstRate: true } } },
+    include: { product: { select: { images: true, gstRate: true, compareAtPrice: true } } },
   });
   cached.items = cached.items.map((item) => {
-    if (item.imageUrl !== undefined && item.gstRate !== undefined && item.weight !== undefined) return item;
+    if (
+      item.imageUrl !== undefined &&
+      item.gstRate !== undefined &&
+      item.weight !== undefined &&
+      item.compareAtPrice !== undefined
+    )
+      return item;
     const v = variants.find((x) => x.id === item.variantId);
     return {
       ...item,
@@ -64,6 +73,12 @@ export async function getCart(sessionId: string): Promise<Cart> {
       gstRate:
         item.gstRate !== undefined ? item.gstRate : v && v.product.gstRate !== null ? Number(v.product.gstRate) : null,
       weight: item.weight !== undefined ? item.weight : (v?.weight ?? 500),
+      compareAtPrice:
+        item.compareAtPrice !== undefined
+          ? item.compareAtPrice
+          : v && v.product.compareAtPrice !== null
+            ? Number(v.product.compareAtPrice)
+            : null,
     };
   });
   return saveCart(cached);
@@ -81,7 +96,7 @@ export async function addItemToCart(
 ): Promise<Cart> {
   const variant = await db.productVariant.findFirst({
     where: { id: input.variantId, isActive: true },
-    include: { product: { select: { name: true, basePrice: true, images: true, gstRate: true } } },
+    include: { product: { select: { name: true, basePrice: true, images: true, gstRate: true, compareAtPrice: true } } },
   });
   if (!variant) throw new VariantNotFoundError(input.variantId);
   if (await isActiveFreeGiftTarget(variant.productId)) throw new FreeGiftNotPurchasableError(input.variantId);
@@ -108,6 +123,7 @@ export async function addItemToCart(
     imageUrl: firstThumb(variant.product.images),
     gstRate: variant.product.gstRate !== null ? Number(variant.product.gstRate) : null,
     weight: variant.weight,
+    compareAtPrice: variant.product.compareAtPrice !== null ? Number(variant.product.compareAtPrice) : null,
   };
 
   if (existingIndex >= 0) {
@@ -183,6 +199,10 @@ export interface CartFreeItem {
   productName: string;
   sku: string;
   quantity: number;
+  // Grams — a free-gift line still physically ships, so its weight must feed the
+  // shipping-rate estimate the same way a paid item's does (see computeCartPricing
+  // below and checkout/service.ts's initiateCheckout, which already includes it).
+  weight: number;
 }
 
 export interface CartPricing {
@@ -208,6 +228,18 @@ export interface CartPricing {
   // entirely rather than show a misleading "GST: Rs. 0.00".
   taxableValue: number;
   gstAmount: number;
+  // Sum of (compareAtPrice - price) × quantity across every line that has a compareAtPrice
+  // set above its actual price — the "MRP savings" shown on cart/checkout, computed once
+  // here so the number can never drift between the two pages.
+  savings: number;
+}
+
+function computeCartSavings(cart: Cart): number {
+  return cart.items.reduce((sum, item) => {
+    const mrp = item.compareAtPrice;
+    if (typeof mrp !== 'number' || mrp <= item.price) return sum;
+    return sum + (mrp - item.price) * item.quantity;
+  }, 0);
 }
 
 function computeItemGst(lineTotal: number, gstRate: number): { taxableValue: number; gstAmount: number } {
@@ -241,16 +273,16 @@ function computeCartGst(cart: Cart): { taxableValue: number; gstAmount: number }
 // second reimplementation of the discount math.
 export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
   const subtotal = cartSubtotal(cart);
-  const weightGrams = cart.items.reduce((sum, item) => sum + (item.weight ?? 500) * item.quantity, 0);
-  // No destination pincode pre-checkout — origin-to-origin is the closest available
-  // estimate (see the field comment on shippingFeeOriginal above).
-  const { fee: shippingFee, originalFee: shippingFeeOriginal } = await calculateShippingFee(
-    subtotal,
-    weightGrams,
-    env.DELHIVERY_WAREHOUSE_PINCODE
-  );
+  const paidWeightGrams = cart.items.reduce((sum, item) => sum + (item.weight ?? 500) * item.quantity, 0);
 
   if (cart.items.length === 0) {
+    // No destination pincode pre-checkout — origin-to-origin is the closest available
+    // estimate (see the field comment on shippingFeeOriginal above).
+    const { fee: shippingFee, originalFee: shippingFeeOriginal } = await calculateShippingFee(
+      subtotal,
+      paidWeightGrams + PACKAGING_WEIGHT_GRAMS,
+      env.DELHIVERY_WAREHOUSE_PINCODE
+    );
     return {
       subtotal,
       autoAppliedDiscount: 0,
@@ -260,6 +292,7 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
       total: subtotal + shippingFee,
       taxableValue: 0,
       gstAmount: 0,
+      savings: 0,
     };
   }
 
@@ -307,9 +340,20 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
             freeItems.flatMap((f) => {
               const v = giftVariants.find((x) => x.id === f.variantId);
               if (!v) return [];
-              return [{ variantId: f.variantId, productName: v.product.name, sku: v.sku, quantity: f.quantity }];
+              return [{ variantId: f.variantId, productName: v.product.name, sku: v.sku, quantity: f.quantity, weight: v.weight }];
             })
           );
+
+  // A free gift still physically ships — its weight must count toward the shipping-rate
+  // estimate the same way initiateCheckout's paidWeight+freeWeight does, or a gift that
+  // tips the order into a heavier rate slab shows a preview total lower than what checkout
+  // actually charges (the estimate was quietly under-weighting the parcel).
+  const freeWeightGrams = freeItemDetails.reduce((sum, item) => sum + item.weight * item.quantity, 0);
+  const { fee: shippingFee, originalFee: shippingFeeOriginal } = await calculateShippingFee(
+    subtotal,
+    paidWeightGrams + freeWeightGrams + PACKAGING_WEIGHT_GRAMS,
+    env.DELHIVERY_WAREHOUSE_PINCODE
+  );
 
   const { taxableValue, gstAmount } = computeCartGst(cart);
 
@@ -324,5 +368,6 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
     total: Math.max(subtotal + shippingFee - totalDiscount, 0),
     taxableValue,
     gstAmount,
+    savings: computeCartSavings(cart),
   };
 }

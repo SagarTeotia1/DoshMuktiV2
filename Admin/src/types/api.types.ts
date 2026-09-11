@@ -240,6 +240,8 @@ export interface OrderItem {
   quantity: number;
   priceAtPurchase: number;
   variantSnapshot: { sku: string; attributes: Record<string, string>; productName: string };
+  // Only present on the order-detail response (listOrdersForAdmin doesn't include it).
+  variant?: { weight: number };
 }
 
 export interface Order {
@@ -253,6 +255,10 @@ export interface Order {
   subtotal: number;
   shippingFee: number;
   total: number;
+  // Grams — admin override for this order's real packed parcel weight. Null means "use
+  // the auto-calculated weight" (sum of item weights + packaging, see Backend's
+  // PACKAGING_WEIGHT_GRAMS) that checkout/booking already fall back to.
+  packageWeightOverride: number | null;
   items: OrderItem[];
   payment: {
     status: string;

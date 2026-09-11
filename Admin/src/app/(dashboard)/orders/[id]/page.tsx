@@ -1,13 +1,13 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Topbar } from '@/components/layout/Topbar';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ShippingActions } from '@/components/orders/ShippingActions';
-import { useOrder, useUpdateOrderStatus } from '@/hooks/use-orders';
+import { useOrder, useUpdateOrderStatus, useUpdatePackageWeight } from '@/hooks/use-orders';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ApiError } from '@/lib/api-client';
 
@@ -29,7 +29,32 @@ export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: order, isLoading } = useOrder(id);
   const updateStatus = useUpdateOrderStatus(id);
+  const updatePackageWeight = useUpdatePackageWeight(id);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [weightInput, setWeightInput] = useState('');
+  const [weightEdited, setWeightEdited] = useState(false);
+
+  // Syncs the input to the server value once it loads — but never after the admin has
+  // started typing this session, or a background refetch would yank their in-progress edit.
+  useEffect(() => {
+    if (!weightEdited && order) setWeightInput(order.packageWeightOverride != null ? String(order.packageWeightOverride) : '');
+  }, [order, weightEdited]);
+
+  function saveWeight() {
+    const trimmed = weightInput.trim();
+    const weight = trimmed === '' ? null : Number(trimmed);
+    if (weight !== null && (!Number.isInteger(weight) || weight < 1)) {
+      toast.error('Weight must be a whole number of grams');
+      return;
+    }
+    updatePackageWeight.mutate(weight, {
+      onSuccess: () => {
+        toast.success(weight === null ? 'Reverted to auto-calculated weight' : 'Package weight updated');
+        setWeightEdited(false);
+      },
+      onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to update weight'),
+    });
+  }
 
   function confirmStatusChange() {
     if (!pendingStatus) return;
@@ -169,6 +194,35 @@ export default function OrderDetailPage() {
                 {order.shipment.ewaybillNumber && <p className="text-xs text-slate-400 mt-1">E-way Bill: {order.shipment.ewaybillNumber}</p>}
               </div>
             )}
+
+            <div>
+              <label className="text-xs font-semibold text-slate-600 block mb-1">Package Weight (g)</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  value={weightInput}
+                  onChange={(e) => {
+                    setWeightInput(e.target.value);
+                    setWeightEdited(true);
+                  }}
+                  placeholder={`Auto: ${order.items.reduce((s, i) => s + (i.variant?.weight ?? 0) * i.quantity, 0)}g + packaging`}
+                  className="flex-1 border border-slate-300 rounded px-2 py-1.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none"
+                />
+                <button
+                  onClick={saveWeight}
+                  disabled={updatePackageWeight.isPending}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#9C5A26] hover:bg-[#6B3D19] disabled:opacity-40 transition-colors"
+                >
+                  Save
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                {order.shipment?.delhiveryWaybill
+                  ? 'Shipment already booked — this won\'t change the declared weight on that waybill.'
+                  : 'Leave blank to use the auto-calculated weight (item weights + packaging) at booking time.'}
+              </p>
+            </div>
 
             {order.payment?.status === 'CAPTURED' && (
               <a

@@ -15,7 +15,7 @@ export default function Loading() {
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-[1.4fr_1fr] gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-[1.4fr_1fr] gap-6">
         <div className="flex flex-col gap-6">
           <div className="bg-white rounded-2xl p-6 flex flex-col gap-3 h-40" />
           <div className="bg-white rounded-2xl p-6 h-28" />

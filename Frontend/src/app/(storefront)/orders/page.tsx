@@ -5,10 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { PackageSearch, FileDown, ChevronRight, Package } from 'lucide-react';
-import { toast } from 'sonner';
 import { api, invoiceUrl } from '@/lib/api-client';
 import { getToken } from '@/lib/auth';
-import { getSessionId } from '@/lib/session';
 import { useAuth } from '@/providers/auth-provider';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_TONE } from '@/lib/constants';
@@ -19,41 +17,10 @@ export default function OrdersPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [orders, setOrders] = useState<OrderTrackingResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [resuming, setResuming] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push('/login?redirect=/orders');
   }, [authLoading, isAuthenticated, router]);
-
-  // A cancelled/failed Razorpay payment leaves the order stuck at PENDING_PAYMENT with
-  // no way back in otherwise — this re-adds its items into the customer's cart and
-  // sends them through checkout again, instead of a dead-end order they can never pay.
-  async function completePayment(orderNumber: string) {
-    setResuming(orderNumber);
-    try {
-      const { addedCount, skippedCount } = await api.post<{ addedCount: number; skippedCount: number }>(
-        `/api/orders/${orderNumber}/resume`,
-        {},
-        { 'x-session-id': getSessionId() }
-      );
-      // Stock (or a deactivated variant) can genuinely change between when this order
-      // was placed and now — resume skips whatever's no longer available rather than
-      // failing the whole thing, but silently landing on checkout with fewer items than
-      // expected (or none at all) would be confusing without saying why.
-      if (addedCount === 0) {
-        toast.error('All items in this order are now out of stock.');
-        return;
-      }
-      if (skippedCount > 0) {
-        toast.warning(`${skippedCount} item${skippedCount === 1 ? '' : 's'} in this order ${skippedCount === 1 ? 'is' : 'are'} no longer available and were left out.`);
-      }
-      router.push('/checkout');
-    } catch {
-      toast.error('Could not resume this order — try adding the items to your cart again.');
-    } finally {
-      setResuming(null);
-    }
-  }
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -95,33 +62,20 @@ export default function OrdersPage() {
             const thumb = firstItem?.variant?.product?.images?.[0]?.thumb;
             const extraCount = order.items.length - 1;
             const tone = ORDER_STATUS_TONE[order.status] ?? 'bg-[#9C5A26] text-white border-[#2B1B0C]';
-            const isPending = order.status === 'PENDING_PAYMENT';
 
             return (
               <div
                 key={order.orderNumber}
                 className="relative bg-white border border-[#2B1B0C] rounded-2xl p-4 sm:p-5 hover:shadow-neo-md transition-shadow duration-200"
               >
-                {/* Stretched control — makes the whole card navigate to /track, or (for a
-                    payment that never completed) resume the order into the cart and go
-                    straight to checkout instead of a dead-end tracking page. The invoice
+                {/* Stretched control — makes the whole card navigate to /track. The invoice
                     icon below stays independently clickable via its own z-10 (avoids
                     nesting an <a> inside a <Link>, which is invalid HTML). */}
-                {isPending ? (
-                  <button
-                    type="button"
-                    onClick={() => completePayment(order.orderNumber)}
-                    disabled={resuming === order.orderNumber}
-                    className="absolute inset-0 disabled:cursor-wait"
-                    aria-label={`Complete payment for order ${order.orderNumber}`}
-                  />
-                ) : (
-                  <Link
-                    href={`/track/${order.orderNumber}`}
-                    className="absolute inset-0"
-                    aria-label={`Track order ${order.orderNumber}`}
-                  />
-                )}
+                <Link
+                  href={`/track/${order.orderNumber}`}
+                  className="absolute inset-0"
+                  aria-label={`Track order ${order.orderNumber}`}
+                />
 
                 <div className="flex items-start gap-3 sm:gap-4">
                   <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-[#F6E4C2] flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -165,7 +119,7 @@ export default function OrdersPage() {
                           </a>
                         )}
                         <span className="flex items-center gap-0.5 font-body text-xs font-bold text-[#9C5A26]">
-                          {isPending ? (resuming === order.orderNumber ? 'Loading...' : 'Complete Payment') : 'Track'}
+                          Track
                           <ChevronRight className="w-3.5 h-3.5" />
                         </span>
                       </div>

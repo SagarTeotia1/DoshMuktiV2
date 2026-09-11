@@ -39,6 +39,11 @@ export const riskFlagSchema = z.object({
   riskReason: z.string().max(500).optional(),
 });
 
+// Grams — null clears the override and falls back to the auto-calculated weight again.
+export const packageWeightSchema = z.object({
+  weight: z.number().int().min(1).max(50000).nullable(),
+});
+
 export const gstReportQuerySchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'from must be YYYY-MM-DD'),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'to must be YYYY-MM-DD'),

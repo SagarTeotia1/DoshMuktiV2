@@ -187,7 +187,7 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ ord
         )}
       </div>
 
-      <div className="grid sm:grid-cols-[1.4fr_1fr] gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-[1.4fr_1fr] gap-6">
         <div className="flex flex-col gap-6">
           {/* Items */}
           <div className="bg-white border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">

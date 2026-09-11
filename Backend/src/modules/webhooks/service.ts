@@ -4,6 +4,7 @@ import { sendOrderConfirmation, sendShipmentNotification } from '../../shared/in
 import { createShipment } from '../../shared/integrations/delhivery/client';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
+import { PACKAGING_WEIGHT_GRAMS } from '../../shared/constants/purposes';
 
 interface RazorpayShippingAddress {
   line1: string;
@@ -45,7 +46,12 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
     customerName: payment.order.customerName,
     customerPhone: payment.order.customerPhone,
     address: addr,
-    weight: payment.order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0),
+    // See PACKAGING_WEIGHT_GRAMS's comment — declared weight must match the real packed
+    // parcel (all items + packaging in ONE box on ONE waybill), same as bookOrderShipment.
+    // An admin-set packageWeightOverride wins if present, same rule as the manual retry path.
+    weight:
+      payment.order.packageWeightOverride ??
+      payment.order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS,
   }).then(async (shipment) => {
     if (shipment) {
       await db.shipment.create({ data: { orderId: payment.orderId, delhiveryWaybill: shipment.waybill, status: 'BOOKED' } });

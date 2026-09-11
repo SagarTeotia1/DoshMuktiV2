@@ -250,6 +250,14 @@ model Order {
   rewardPointsEarned   Int              @default(0)
   rewardPointsRedeemed Int              @default(0)
   reservedUntil        DateTime?
+  // Grams — admin override for the real packed parcel weight of this specific order
+  // (all items + box/padding, one order = one parcel = one waybill). Null means "use the
+  // auto-calculated weight" (sum of item weights × quantity + PACKAGING_WEIGHT_GRAMS, see
+  // shared/constants/purposes.ts) — same value the checkout rate quote already used. Set
+  // this only when the actual box differs enough to matter (odd-shaped combo, extra
+  // padding) so Delhivery's declared weight doesn't drift from the real one and risk a
+  // re-weigh charge.
+  packageWeightOverride Int?
   items                OrderItem[]
   payment              Payment?
   shipment             Shipment?

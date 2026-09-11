@@ -9,6 +9,7 @@ import {
   ndrActionSchema,
   ewaybillUpdateSchema,
   riskFlagSchema,
+  packageWeightSchema,
 } from './schema';
 import {
   getOrderByNumber,
@@ -23,6 +24,7 @@ import {
   takeOrderNdrAction,
   updateOrderEwaybill,
   setShipmentRiskFlag,
+  updateOrderPackageWeight,
   bookOrderShipment,
   resumeOrder,
   OrderNotResumableError,
@@ -213,6 +215,16 @@ export async function riskFlagHandler(req: FastifyRequest, reply: FastifyReply) 
   } catch (err) {
     return shippingErrorReply(reply, err);
   }
+}
+
+export async function packageWeightHandler(req: FastifyRequest, reply: FastifyReply) {
+  const idParsed = idParamSchema.safeParse(req.params);
+  if (!idParsed.success) return reply.code(400).send({ error: 'Invalid id' });
+  const bodyParsed = packageWeightSchema.safeParse(req.body);
+  if (!bodyParsed.success) return reply.code(400).send({ error: 'Invalid input', details: bodyParsed.error.flatten().fieldErrors });
+
+  await updateOrderPackageWeight(idParsed.data.id, bodyParsed.data.weight);
+  return reply.code(204).send();
 }
 
 export async function ewaybillUpdateHandler(req: FastifyRequest, reply: FastifyReply) {

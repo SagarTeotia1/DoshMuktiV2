@@ -15,3 +15,12 @@ export const FREE_SHIPPING_ABOVE = 299;
 export const RETURN_ELIGIBLE_ABOVE = 299;
 export const RESERVATION_MINUTES = 15;
 export const PRODUCTS_PER_PAGE = 12;
+// Box + tape + padding — added once per parcel (never per item) on top of the summed
+// product weights, both for the Delhivery rate quote and the weight actually declared
+// when booking the shipment. Every multi-item order here ships as ONE parcel on ONE
+// waybill (see checkout/service.ts's paidWeight+freeWeight and orders/service.ts's
+// booking weight — both already sum all items into a single Delhivery call, never one
+// call per item), so this overhead must also be flat per order, not multiplied by item
+// count. Under-declaring the real packed weight risks Delhivery re-weighing the parcel
+// and billing the difference — this keeps the declared weight honest.
+export const PACKAGING_WEIGHT_GRAMS = 60;

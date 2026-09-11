@@ -12,6 +12,7 @@ import { logger } from '../../shared/logger/pino';
 import { addItemToCart } from '../cart/service';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
+import { PACKAGING_WEIGHT_GRAMS } from '../../shared/constants/purposes';
 
 export class OrderNotResumableError extends Error {
   constructor() {
@@ -115,7 +116,12 @@ export async function bookOrderShipment(orderId: string): Promise<{ waybill: str
     customerName: order.customerName,
     customerPhone: order.customerPhone,
     address: order.shippingAddress as unknown as BookableAddress,
-    weight: order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0),
+    // Declared weight must match the real packed parcel (all items + packaging go into
+    // ONE box on ONE waybill) — under-declaring risks Delhivery re-weighing and billing
+    // the difference. See PACKAGING_WEIGHT_GRAMS's comment. An admin-set
+    // packageWeightOverride (see updateOrderPackageWeight) always wins — it means someone
+    // actually weighed this specific box and knows better than the item-sum estimate.
+    weight: order.packageWeightOverride ?? order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS,
   });
   if (!shipment) throw new Error('Delhivery rejected the shipment — check wallet balance and address details');
 
@@ -125,6 +131,15 @@ export async function bookOrderShipment(orderId: string): Promise<{ waybill: str
     await db.shipment.create({ data: { orderId, delhiveryWaybill: shipment.waybill, status: 'BOOKED' } });
   }
   return shipment;
+}
+
+// Grams, or null to fall back to the auto-calculated weight (item sum + packaging) again.
+// Only meaningful before booking — bookOrderShipment/the webhook auto-book read this at
+// the moment they call Delhivery, so setting it after a shipment is already booked has no
+// effect on that waybill (Delhivery doesn't support editing a shipment's declared weight
+// post-booking; cancel and rebook if it was wrong).
+export async function updateOrderPackageWeight(orderId: string, weight: number | null): Promise<void> {
+  await db.order.update({ where: { id: orderId }, data: { packageWeightOverride: weight } });
 }
 
 export async function getShipmentLabel(orderId: string): Promise<{ pdfUrl: string }> {
@@ -185,9 +200,14 @@ export async function getOrderByNumber(orderNumber: string) {
   });
 }
 
+// The customer-facing "Your Orders" list — CANCELLED and PENDING_PAYMENT are excluded
+// here deliberately: a stuck/abandoned checkout attempt or a cancelled order is not
+// something a customer needs cluttering their order history. (Support's phone-lookup
+// path, listOrdersByPhone below, intentionally shows every status — troubleshooting a
+// stuck order requires seeing it.)
 export async function listOrdersForUser(userId: string) {
   return db.order.findMany({
-    where: { userId },
+    where: { userId, status: { notIn: ['CANCELLED', 'PENDING_PAYMENT'] } },
     orderBy: { createdAt: 'desc' },
     include: { ...itemsWithProductImage, payment: true, shipment: true },
   });

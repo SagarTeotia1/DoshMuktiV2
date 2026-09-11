@@ -158,6 +158,8 @@ export interface CartItem {
   gstRate?: number | null;
   // Grams — used to recompute a real shipping rate once checkout has a destination pincode.
   weight?: number;
+  // MRP ("strikethrough" price) — feeds the "You saved ₹X" line. Null/absent = no MRP set.
+  compareAtPrice?: number | null;
 }
 
 export interface CartResponse {
@@ -171,7 +173,7 @@ export interface CartResponse {
   autoAppliedDiscount: number;
   // Full details of any auto-applied free gift(s) — enough to render an actual
   // "🎁 Attar (3ml) x1 — FREE" line, not just a count.
-  freeItems: Array<{ variantId: string; productName: string; sku: string; quantity: number }>;
+  freeItems: Array<{ variantId: string; productName: string; sku: string; quantity: number; weight: number }>;
   shippingFee: number;
   // The real (or flat-fallback) shipping cost regardless of whether it's actually being
   // charged — lets the UI show "₹99 → FREE" once the cart crosses the free-shipping
@@ -182,6 +184,9 @@ export interface CartResponse {
   // is 0 when no cart item carries a gstRate, so the UI can hide the GST line entirely.
   taxableValue: number;
   gstAmount: number;
+  // Sum of (compareAtPrice - price) × quantity across every line with an MRP above its
+  // actual price — server-computed so cart and checkout never show different numbers.
+  savings: number;
   updatedAt: string;
 }
 

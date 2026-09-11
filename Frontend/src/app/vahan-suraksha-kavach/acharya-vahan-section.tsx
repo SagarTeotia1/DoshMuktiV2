@@ -58,7 +58,7 @@ export function AcharyaVahanSection() {
       <MandalaMotif className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] text-[#C9863F]/[0.04] animate-[spin_60s_linear_infinite] motion-reduce:animate-none" />
 
       <div className="relative max-w-5xl mx-auto px-6 sm:px-10 lg:px-12">
-        <div className="grid lg:grid-cols-[auto_1fr] gap-10 lg:gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-10 lg:gap-16 items-center">
           <Reveal className="text-center lg:text-left">
             <div className="relative w-32 h-32 sm:w-40 sm:h-40 mx-auto lg:mx-0 mb-7 sm:mb-8">
               <div className="absolute inset-1 rounded-full bg-[#C9863F]/30 blur-2xl animate-pulse" />

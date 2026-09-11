@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Search, ShoppingCart, Menu, X, User, LogOut } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
+import { useActiveCartScope } from '@/hooks/use-active-cart-scope';
 import { useAuth } from '@/providers/auth-provider';
 import { trackSearch } from '@/lib/firebase';
 import logo from '@/assets/Logo.png';
@@ -28,7 +29,12 @@ export function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [scrolled, setScrolled] = useState(false);
-  const { cart } = useCart();
+  // While a "Buy Now" pseudo-cart is active (see useActiveCartScope), every plain
+  // "Add to Cart" merges into it too — so the header badge/link must follow the same
+  // cart, or it points at the empty real cart while the customer's actual pending order
+  // lives at /checkout?mode=buyNow, making it look like their items vanished.
+  const activeScope = useActiveCartScope();
+  const { cart } = useCart(activeScope);
   const { user, isAuthenticated, logout } = useAuth();
 
   useEffect(() => {
@@ -134,7 +140,11 @@ export function Navbar() {
             </Link>
           )}
 
-          <Link href="/cart" className="relative p-1.5 sm:p-2 rounded-full hover:bg-[#F6E4C2] transition-colors" aria-label="Cart">
+          <Link
+            href={activeScope === 'buyNow' ? '/checkout?mode=buyNow' : '/cart'}
+            className="relative p-1.5 sm:p-2 rounded-full hover:bg-[#F6E4C2] transition-colors"
+            aria-label="Cart"
+          >
             <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
             {cartCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-4 h-4 sm:w-5 sm:h-5 bg-[#9C5A26] text-[#2B1B0C] border border-[#2B1B0C] rounded-full text-[9px] sm:text-[10px] font-bold flex items-center justify-center leading-none">

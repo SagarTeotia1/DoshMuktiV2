@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ShieldCheck, ChevronDown, Ticket, Copy, Check } from 'lucide-react';
+import { ShieldCheck, ChevronDown, Ticket, Copy, Check, Minus, Plus } from 'lucide-react';
 import { useCart, type CartScope } from '@/hooks/use-cart';
 import { usePincodeCheck } from '@/hooks/use-pincode-check';
 import { useRazorpay } from '@/hooks/use-razorpay';
@@ -213,7 +213,7 @@ function CheckoutPageContent() {
   const searchParams = useSearchParams();
   const scope: CartScope = searchParams.get('mode') === 'buyNow' ? 'buyNow' : 'cart';
   const queryClient = useQueryClient();
-  const { cart } = useCart(scope);
+  const { cart, updateQuantity, isUpdating } = useCart(scope);
   const { openCheckout, loading: rzpLoading } = useRazorpay();
   const { user, loading: authLoading, isAuthenticated, sendOtp, verifyOtp } = useAuth();
   const [submitting, setSubmitting] = useState(false);
@@ -370,7 +370,12 @@ function CheckoutPageContent() {
   // it live — the displayed fee then updates to the actual charge instead of sitting on
   // that earlier guess. (The real order charge was always computed server-side against
   // the real pincode regardless — this only affects what's *shown* before paying.)
-  const cartWeightGrams = items.reduce((sum, item) => sum + (item.weight ?? 500) * item.quantity, 0);
+  // Free-gift lines still physically ship — must count toward weight the same way
+  // initiateCheckout's paidWeight+freeWeight does, or the live quote here understates
+  // what checkout actually charges once a gift tips the parcel into a heavier rate slab.
+  const cartWeightGrams =
+    items.reduce((sum, item) => sum + (item.weight ?? 500) * item.quantity, 0) +
+    (cart?.freeItems ?? []).reduce((sum, item) => sum + item.weight * item.quantity, 0);
   const liveShipping = useShippingEstimate(
     subtotal,
     cartWeightGrams,
@@ -398,6 +403,7 @@ function CheckoutPageContent() {
   // charge), same math the invoice PDF uses. 0 when nothing in the cart carries a GST rate.
   const gstAmount = cart?.gstAmount ?? 0;
   const taxableValue = cart?.taxableValue ?? subtotal;
+  const savings = cart?.savings ?? 0;
 
   async function handleApplyCoupon(codeOverride?: string) {
     const code = (codeOverride ?? couponInput).trim();
@@ -561,11 +567,37 @@ function CheckoutPageContent() {
       <h2 className="font-heading font-bold text-sm uppercase tracking-wide text-[#2B1B0C] mb-2">Order Summary</h2>
       <div className="flex flex-col gap-2 max-h-48 overflow-y-auto hide-scrollbar pr-1">
         {items.map((item) => (
-          <div key={item.variantId} className="flex justify-between font-body text-xs text-[#6B5539]">
-            <span className="truncate pr-2">
-              {item.productName} × {item.quantity}
+          <div key={item.variantId} className="flex items-center justify-between gap-2 font-body text-xs text-[#6B5539]">
+            <span className="truncate flex-1">{item.productName}</span>
+            <div className="flex items-center gap-1 flex-shrink-0 border border-[#2B1B0C]/20 rounded-full">
+              <button
+                type="button"
+                onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
+                disabled={isUpdating}
+                className="w-5 h-5 flex items-center justify-center hover:bg-[#F6E4C2] disabled:opacity-50 transition-colors rounded-full"
+                aria-label="Decrease quantity"
+              >
+                <Minus className="w-2.5 h-2.5" />
+              </button>
+              <span className="w-4 text-center tabular-nums font-semibold">{item.quantity}</span>
+              <button
+                type="button"
+                onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
+                disabled={isUpdating || item.quantity >= item.maxStock}
+                className="w-5 h-5 flex items-center justify-center hover:bg-[#F6E4C2] disabled:opacity-50 transition-colors rounded-full"
+                aria-label="Increase quantity"
+              >
+                <Plus className="w-2.5 h-2.5" />
+              </button>
+            </div>
+            <span className="flex-shrink-0 w-16 text-right">
+              <span className="block">{formatCurrency(item.price * item.quantity)}</span>
+              {item.compareAtPrice && item.compareAtPrice > item.price && (
+                <span className="block text-[10px] text-[#8A7A63] line-through">
+                  {formatCurrency(item.compareAtPrice * item.quantity)}
+                </span>
+              )}
             </span>
-            <span className="flex-shrink-0">{formatCurrency(item.price * item.quantity)}</span>
           </div>
         ))}
         {(cart?.freeItems ?? []).map((item) => (
@@ -582,6 +614,12 @@ function CheckoutPageContent() {
         <span>Subtotal</span>
         <span>{formatCurrency(subtotal)}</span>
       </div>
+      {savings > 0 && (
+        <div className="flex justify-between font-body text-sm text-brand-success font-semibold">
+          <span>You Saved</span>
+          <span>{formatCurrency(savings)}</span>
+        </div>
+      )}
       <div className="flex justify-between font-body text-sm text-[#6B5539]">
         <span>Shipping</span>
         {!hasResolvedPincodeRate ? (
@@ -745,14 +783,14 @@ function CheckoutPageContent() {
       </div>
 
       {!isAuthenticated ? (
-        <div className="grid md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
           <div className="flex flex-col gap-8">
             <InlineLogin sendOtp={sendOtp} verifyOtp={verifyOtp} />
           </div>
           {summaryCard}
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="grid md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
           <div className="flex flex-col gap-8">
             <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
               <StepLabel n={2} title="Delivery Details" />

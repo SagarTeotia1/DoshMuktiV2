@@ -3,6 +3,7 @@ import { rateCalcQuerySchema, shippingEstimateQuerySchema } from './schema';
 import { calculateShippingCost } from '../../shared/integrations/delhivery/client';
 import { calculateShippingFee } from '../checkout/service';
 import { env } from '../../config/env';
+import { PACKAGING_WEIGHT_GRAMS } from '../../shared/constants/purposes';
 
 // Read-only — the warehouse is created/edited directly on Delhivery's own dashboard
 // (already done once, manually), never through this app. This just echoes the config
@@ -40,9 +41,12 @@ export async function shippingEstimateHandler(req: FastifyRequest, reply: Fastif
   const parsed = shippingEstimateQuerySchema.safeParse(req.query);
   if (!parsed.success) return reply.code(400).send({ error: 'Invalid query', details: parsed.error.flatten().fieldErrors });
 
+  // + PACKAGING_WEIGHT_GRAMS — the client only knows the sum of item weights; this must
+  // match the same declared-weight model checkout/cart pricing and shipment booking use
+  // (one box, one waybill, box weight counted once per parcel, not per item).
   const { fee, originalFee } = await calculateShippingFee(
     parsed.data.subtotal,
-    parsed.data.weightGrams,
+    parsed.data.weightGrams + PACKAGING_WEIGHT_GRAMS,
     parsed.data.destPincode ?? env.DELHIVERY_WAREHOUSE_PINCODE
   );
   return reply.send({ fee, originalFee });
