@@ -388,13 +388,17 @@ export async function updateOrderStatus(
 
   // Marks the order REFUNDED once Payment already carries a refund id — shared by both
   // the request that actually called SmartGateway and a concurrent duplicate that lost
-  // the race (see the "already refunded" branch below). Re-running this is harmless:
-  // it's the same transition either way, just logged twice if it genuinely races.
-  async function markOrderRefunded(refundId: string) {
+  // the race (see the reconciliation check in the catch block below). Re-running this is
+  // harmless: it's the same transition either way, just logged twice if it genuinely races.
+  // `status` is SmartGateway's own refund-lifecycle status (Pending/Success/Failure) —
+  // logged so admins can see this wasn't necessarily instant/final, without needing a new
+  // PaymentStatus enum value or a webhook-driven reconciliation job neither of which this
+  // migration has built yet.
+  async function markOrderRefunded(refundId: string, status: string) {
     return db.$transaction(async (tx) => {
       const updated = await tx.order.update({ where: { id: orderId }, data: { status: 'REFUNDED' } });
       await tx.orderStatusLog.create({
-        data: { orderId, from: 'CANCELLED', to: 'REFUNDED', note: `SmartGateway refund ${refundId}`, createdBy: admin },
+        data: { orderId, from: 'CANCELLED', to: 'REFUNDED', note: `SmartGateway refund ${refundId} (${status})`, createdBy: admin },
       });
       return updated;
     });
@@ -407,25 +411,25 @@ export async function updateOrderStatus(
   const uniqueRequestId = `r_${order.orderNumber}`;
 
   try {
-    const { refundId } = await refundPayment(payment.hdfcOrderId, Number(payment.amount), uniqueRequestId);
+    const { refundId, status } = await refundPayment(payment.hdfcOrderId, Number(payment.amount), uniqueRequestId);
     await db.payment.update({
       where: { orderId },
       data: { status: 'REFUNDED', hdfcRefundId: refundId, refundedAt: new Date() },
     });
-    return { order: await markOrderRefunded(refundId) };
+    return { order: await markOrderRefunded(refundId, status) };
   } catch (err) {
     const gatewayError = err instanceof APIError ? err : null;
     const reason = gatewayError?.error_message ?? (err instanceof Error ? err.message : 'Refund failed — retry from the SmartGateway dashboard');
 
     // A near-simultaneous duplicate request (double-click, double-submit) can lose this
-    // exact race: the sibling request's refund already landed at SmartGateway by the
-    // time this one's call goes out (same unique_request_id), so SmartGateway correctly
-    // rejects it — that's not a real failure, just this request losing to its sibling.
-    // Reconcile from the DB instead of reporting it as broken.
-    if (/already|duplicate/i.test(reason)) {
-      const fresh = await db.payment.findUnique({ where: { orderId } });
-      if (fresh?.hdfcRefundId) return { order: await markOrderRefunded(fresh.hdfcRefundId) };
-    }
+    // exact race: the sibling request's refund already landed at SmartGateway by the time
+    // this one's call goes out (same unique_request_id), so SmartGateway correctly rejects
+    // it — that's not a real failure, just this request losing to its sibling. Checked
+    // unconditionally (not gated on the error message, whose exact wording for this case
+    // isn't pinned down in the docs we have) — reconciling from our own DB is always safe
+    // and free, whether or not this particular error was actually the duplicate case.
+    const fresh = await db.payment.findUnique({ where: { orderId } });
+    if (fresh?.hdfcRefundId) return { order: await markOrderRefunded(fresh.hdfcRefundId, fresh.status) };
 
     logger.error({ err, orderId, orderNumber: order.orderNumber }, 'Refund failed after order cancellation');
     // Order status stays CANCELLED (never faked as REFUNDED), but the failure needs to

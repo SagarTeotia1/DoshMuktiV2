@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { checkoutSchema, returnUrlSchema } from './schema';
-import { initiateCheckout, OutOfStockError, NotServiceableError } from './service';
+import { initiateCheckout, OutOfStockError, NotServiceableError, PaymentGatewayError } from './service';
 import { mapCouponValidationError } from '../coupons/controller';
 import { clearCart } from '../cart/service';
 import { handlePaymentCaptured, handlePaymentFailed } from '../webhooks/service';
@@ -43,6 +43,10 @@ export async function checkoutHandler(req: FastifyRequest, reply: FastifyReply) 
     if (couponError) {
       return reply.code(couponError.status).send({ error: couponError.message, code: couponError.code });
     }
+    if (err instanceof PaymentGatewayError) {
+      logger.error({ err }, 'SmartGateway order session creation failed');
+      return reply.code(502).send({ error: 'Payment gateway is temporarily unavailable — please try again', code: 'PAYMENT_GATEWAY_ERROR' });
+    }
     throw err;
   }
 }
@@ -55,8 +59,16 @@ export async function checkoutHandler(req: FastifyRequest, reply: FastifyReply) 
 // check passes. handlePaymentCaptured/handlePaymentFailed are idempotent, and the
 // webhook in modules/webhooks is a durability backstop for the case where the customer
 // closes the tab before this redirect ever fires.
+// Statuses that mean "still in progress" — anything else that isn't CHARGED (declined,
+// expired, timed out, voided, or an unrecognized future status value) is treated as
+// failed rather than silently left PENDING_PAYMENT forever. An allowlist of "not done
+// yet" is safer here than an allowlist of "known failure codes": a status HDFC/Juspay
+// adds later that we've never seen defaults to failed (recoverable via the "Complete
+// Payment" retry flow) instead of defaulting to a stuck order no one notices.
+const IN_PROGRESS_STATUSES = new Set(['NEW', 'PENDING', 'PENDING_VBV', 'STARTED', 'AUTHORIZING', 'CAPTURE_INITIATED']);
+
 export async function returnUrlHandler(req: FastifyRequest, reply: FastifyReply) {
-  const query = req.query as Record<string, string | undefined>;
+  const query = req.query as Record<string, unknown>;
   const parsed = returnUrlSchema.safeParse(query);
   if (!parsed.success) {
     return reply.code(400).send({ error: 'Invalid return_url params', details: parsed.error.flatten().fieldErrors });
@@ -84,7 +96,7 @@ export async function returnUrlHandler(req: FastifyRequest, reply: FastifyReply)
           logger.warn({ err, sessionId }, 'Failed to clear cart after successful checkout');
         });
       }
-    } else if (status.status === 'AUTHORIZATION_FAILED' || status.status === 'AUTHENTICATION_FAILED') {
+    } else if (!IN_PROGRESS_STATUSES.has(status.status)) {
       await handlePaymentFailed(orderId, `SmartGateway order status: ${status.status}`);
     }
   } catch (err) {

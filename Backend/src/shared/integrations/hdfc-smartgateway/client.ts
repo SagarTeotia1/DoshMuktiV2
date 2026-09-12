@@ -82,14 +82,29 @@ export async function getOrderStatus(orderId: string): Promise<OrderStatusResult
 // partial-refund/return-one-item flow). unique_request_id must be <21 chars and never
 // reused, so a retry after a transient failure passing the SAME id is what makes this
 // idempotent — SmartGateway rejects/no-ops a duplicate request id rather than double-refunding.
-export async function refundPayment(orderId: string, amountRupees: number, uniqueRequestId: string): Promise<{ refundId: string }> {
+//
+// `status` mirrors SmartGateway's own refund lifecycle (docs: "Pending" — sent to the
+// underlying PG but not yet settled, can take up to 10 days and land in manual review;
+// "Success"; "Failure") — a 2xx from this call only means the refund request was
+// *accepted*, not that money has actually moved yet. Callers must not treat this as a
+// final "refunded" confirmation on its own.
+export async function refundPayment(orderId: string, amountRupees: number, uniqueRequestId: string): Promise<{ refundId: string; status: string }> {
   const result = await juspay.order.refund(orderId, {
     unique_request_id: uniqueRequestId,
     order_id: orderId,
     amount: amountRupees,
   });
-  const r = result as unknown as { id?: string; order_id: string };
-  return { refundId: r.id ?? orderId };
+  const r = result as unknown as {
+    id?: string;
+    order_id: string;
+    refunds?: Array<{ unique_request_id?: string; id?: string; status?: string }>;
+  };
+  // The refund block's exact shape isn't pinned down in the docs we have — refunds[] is
+  // the documented "addition of refund block" on top of an order-status-shaped response.
+  // Match this specific request by unique_request_id when more than one refund is present
+  // (e.g. a prior partial attempt) rather than assuming array order.
+  const thisRefund = r.refunds?.find((rf) => rf.unique_request_id === uniqueRequestId) ?? r.refunds?.[0];
+  return { refundId: thisRefund?.id ?? r.id ?? orderId, status: thisRefund?.status ?? 'PENDING' };
 }
 
 // RFC 3986 percent-encoding — encodeURIComponent leaves !'()* unescaped, which the
@@ -104,12 +119,16 @@ function rfc3986Encode(value: string): string {
 // HMAC'd with the dashboard Response Key — base64 output. Never trust this redirect alone
 // for order fulfillment (the browser hop is spoofable) — it only gates whether we bother
 // doing the authoritative server-to-server order-status call at all.
-export function verifyReturnUrlSignature(query: Record<string, string | undefined>): boolean {
+export function verifyReturnUrlSignature(query: Record<string, unknown>): boolean {
   const { signature, signature_algorithm: _alg, ...rest } = query;
-  if (!signature) return false;
+  // A duplicated query key (?foo=a&foo=b) parses to an array, not a string — extremely
+  // unlikely from SmartGateway itself, but a hand-crafted request could send one. Treat
+  // anything that isn't a plain string as unsignable rather than letting it reach
+  // encodeURIComponent (which would silently stringify an array via Array#toString).
+  if (typeof signature !== 'string') return false;
 
   const encodedPairs = Object.entries(rest)
-    .filter((entry): entry is [string, string] => entry[1] !== undefined)
+    .filter((entry): entry is [string, string] => typeof entry[1] === 'string')
     .map(([k, v]) => [rfc3986Encode(k), rfc3986Encode(v)] as const)
     .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
 

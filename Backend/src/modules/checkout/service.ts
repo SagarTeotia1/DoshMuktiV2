@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import type { Prisma } from "@prisma/client";
 import { db } from "../../shared/db/client";
 import { createOrderSession } from "../../shared/integrations/hdfc-smartgateway/client";
+import { handlePaymentFailed } from "../webhooks/service";
 import { redis } from "../../shared/cache/client";
 import { cacheKeys, CACHE_TTL } from "../../shared/cache/keys";
 import { env } from "../../config/env";
@@ -32,6 +33,16 @@ export class NotServiceableError extends Error {
   constructor(public pincode: string) {
     super(`Pincode not serviceable: ${pincode}`);
     this.name = "NotServiceableError";
+  }
+}
+
+// The order+reservation already committed before this can be thrown (see
+// initiateCheckout) — handlePaymentFailed has already released the stock/coupon hold and
+// cancelled the order by the time the controller sees this, so there's nothing stuck.
+export class PaymentGatewayError extends Error {
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : "Payment gateway request failed");
+    this.name = "PaymentGatewayError";
   }
 }
 
@@ -350,22 +361,33 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
 
   // SmartGateway call OUTSIDE the transaction — never hold a DB connection open across a network call
   const [firstName, ...lastNameParts] = input.customerName.trim().split(/\s+/);
-  const session = await createOrderSession({
-    orderId: order.orderNumber,
-    amount: finalTotal,
-    returnUrl: `${env.BACKEND_PUBLIC_URL}/api/checkout/return`,
-    customerId: userId,
-    customerEmail: input.customerEmail,
-    customerPhone: input.customerPhone,
-    firstName,
-    lastName: lastNameParts.join(" ") || undefined,
-  });
+  let session;
+  try {
+    session = await createOrderSession({
+      orderId: order.orderNumber,
+      amount: finalTotal,
+      returnUrl: `${env.BACKEND_PUBLIC_URL}/api/checkout/return`,
+      customerId: userId,
+      customerEmail: input.customerEmail,
+      customerPhone: input.customerPhone,
+      firstName,
+      lastName: lastNameParts.join(" ") || undefined,
+    });
+  } catch (err) {
+    // Order + Payment(PENDING) already committed above (hdfcOrderId = order.orderNumber),
+    // so a session-create failure would otherwise strand this order at PENDING_PAYMENT
+    // with no payment link and no way for the customer to retry until the release-holds
+    // cron eventually notices — same idempotent release path a failed/declined payment
+    // already goes through, just triggered immediately instead of minutes later.
+    await handlePaymentFailed(order.orderNumber, "SmartGateway order session creation failed");
+    throw new PaymentGatewayError(err);
+  }
 
   return {
     orderId: order.id,
     orderNumber: order.orderNumber,
     paymentLink: session.paymentLink,
-    amount: Math.round(finalTotal * 100),
+    amount: finalTotal,
     currency: "INR",
   };
 }

@@ -13,7 +13,11 @@ const envSchema = z.object({
   // This service's own publicly reachable base URL — needed to build the return_url
   // SmartGateway redirects the customer's browser to after payment (must be a fully
   // qualified URL the bank's servers/browser can reach, not localhost in production).
-  BACKEND_PUBLIC_URL: z.string().url(),
+  // Stripped of a trailing slash — checkout/service.ts builds return_url as
+  // `${BACKEND_PUBLIC_URL}/api/checkout/return`, and a trailing-slash value here would
+  // otherwise produce a double slash that SmartGateway's return_url validation may reject
+  // outright ("shouldn't contain ... # symbol" etc — a stray // is the same class of issue).
+  BACKEND_PUBLIC_URL: z.string().url().transform((s) => s.replace(/\/+$/, '')),
 
   DATABASE_URL: z.string().min(1),
   DIRECT_URL: z.string().min(1),
