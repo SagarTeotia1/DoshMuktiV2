@@ -95,7 +95,7 @@ export default function ContactPage() {
                         <p className="font-body text-xs text-[#8A7A63] truncate">{c.detail}</p>
                       </div>
                     </div>
-                    <span className="flex-shrink-0 font-body text-xs font-bold uppercase tracking-widest text-[#9C5A26] group-hover:text-[#2B1B0C] transition-colors duration-300 pl-16 sm:pl-0">
+                    <span className="flex-shrink-0 font-body text-xs font-bold uppercase tracking-widest text-[#9C5A26] group-hover:text-[#2B1B0C] transition-colors duration-300">
                       {c.cta} →
                     </span>
                   </Link>

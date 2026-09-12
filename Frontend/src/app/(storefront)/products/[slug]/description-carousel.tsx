@@ -40,9 +40,9 @@ export function DescriptionCarousel({ images, name }: { images: { full: string }
 
   if (images.length === 1) {
     return (
-      <div className="w-full rounded-xl overflow-hidden border border-[#2B1B0C] shadow-neo-sm">
+      <div className="w-full rounded-xl overflow-hidden border border-[#2B1B0C] shadow-neo-sm bg-[#F6E4C2]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={images[0]!.full} alt={name} className="w-full h-auto block" />
+        <img src={images[0]!.full} alt={name} loading="lazy" decoding="async" className="w-full h-auto block" />
       </div>
     );
   }
@@ -57,7 +57,13 @@ export function DescriptionCarousel({ images, name }: { images: { full: string }
         onPointerCancel={onPointerUp}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={images[active]!.full} alt={`${name} — photo ${active + 1}`} className="w-full h-auto block" />
+        <img
+          src={images[active]!.full}
+          alt={`${name} — photo ${active + 1}`}
+          loading="lazy"
+          decoding="async"
+          className="w-full h-auto block"
+        />
 
         <span className="absolute top-3 right-3 bg-[#2B1B0C]/80 text-[#E6D3AE] px-2 py-1 text-[10px] font-bold tabular-nums rounded-lg z-10">
           {active + 1} / {images.length}

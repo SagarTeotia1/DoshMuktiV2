@@ -31,6 +31,16 @@ function DirectVideoPlayer({ url }: { url: string }) {
   const [duration, setDuration] = useState(0);
   const [seeking, setSeeking] = useState(false);
   const [buffering, setBuffering] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  // Belt-and-suspenders for `duration`: onLoadedMetadata is the normal path, but if the
+  // browser already had metadata ready before this listener attached (fast cache, or a
+  // remount), the event can fire before React wires it up and the seek bar would never
+  // appear. Checking readyState on mount catches that case.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (v && v.readyState >= 1 && v.duration) setDuration(v.duration);
+  }, []);
   // Hidden while playing so the button doesn't sit over the footage — tapping the
   // video re-shows it briefly (togglePlay bumps this true) before it fades out again.
   // Always shown while paused, since that's the only way back into playback.
@@ -55,11 +65,18 @@ function DirectVideoPlayer({ url }: { url: string }) {
         setMuted(false);
         setHasStarted(true);
       }
-      v.play();
-      setPlaying(true);
+      // Playing state comes from the video's own onPlay/onPause events, not set
+      // here — play() can reject (e.g. the unmute above tripping an autoplay
+      // block) and setting playing=true regardless would desync the UI from
+      // actual playback.
+      void v.play().catch(() => {
+        // Unmuted play() got blocked — retry muted, which browsers always allow.
+        v.muted = true;
+        setMuted(true);
+        void v.play().catch(() => {});
+      });
     } else {
       v.pause();
-      setPlaying(false);
     }
   }
 
@@ -90,7 +107,6 @@ function DirectVideoPlayer({ url }: { url: string }) {
         src={url}
         muted={muted}
         playsInline
-        loop
         preload="metadata"
         className="absolute inset-0 w-full h-full object-cover"
         onPlay={() => setPlaying(true)}
@@ -102,7 +118,19 @@ function DirectVideoPlayer({ url }: { url: string }) {
         onWaiting={() => setBuffering(true)}
         onPlaying={() => setBuffering(false)}
         onCanPlay={() => setBuffering(false)}
+        onEnded={(e) => {
+          setPlaying(false);
+          e.currentTarget.currentTime = 0;
+          setCurrentTime(0);
+        }}
+        onError={() => setLoadError(true)}
       />
+
+      {loadError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#2B1B0C] px-4">
+          <p className="font-body text-xs text-[#B8A98A] text-center">Video couldn&apos;t load — try again shortly.</p>
+        </div>
+      )}
 
       {/* Soft bottom gradient so overlay controls stay legible over any footage */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/60 to-transparent" />
