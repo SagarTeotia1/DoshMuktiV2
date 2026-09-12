@@ -353,7 +353,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
   const session = await createOrderSession({
     orderId: order.orderNumber,
     amount: finalTotal,
-    returnUrl: `${env.BACKEND_PUBLIC_URL}/checkout/return`,
+    returnUrl: `${env.BACKEND_PUBLIC_URL}/api/checkout/return`,
     customerId: userId,
     customerEmail: input.customerEmail,
     customerPhone: input.customerPhone,
