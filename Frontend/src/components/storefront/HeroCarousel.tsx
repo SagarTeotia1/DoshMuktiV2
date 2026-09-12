@@ -57,17 +57,6 @@ export function HeroCarousel({ banners }: { banners: Banner[] }) {
 
       {banners.length > 1 && (
         <>
-          {/* Slide counter — top right */}
-          <div className="absolute top-5 right-6 sm:top-7 sm:right-10 z-30 flex items-center gap-2.5">
-            <span className="font-heading font-black text-[#9C5A26] text-base sm:text-lg leading-none tabular-nums">
-              {String(active + 1).padStart(2, '0')}
-            </span>
-            <div className="h-px w-6 sm:w-8 bg-white/25" />
-            <span className="font-heading font-bold text-white/25 text-xs sm:text-sm leading-none tabular-nums">
-              {String(banners.length).padStart(2, '0')}
-            </span>
-          </div>
-
           {/* Prev / Next — bottom left cluster */}
           <div className="absolute left-6 sm:left-10 md:left-14 lg:left-16 bottom-6 sm:bottom-8 z-30 flex items-center gap-2">
             <button
