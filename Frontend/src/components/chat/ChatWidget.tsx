@@ -96,7 +96,7 @@ export function ChatWidget() {
         <div className="fixed inset-0 z-50 sm:inset-auto sm:bottom-6 sm:right-6 sm:left-auto sm:top-auto w-full h-full sm:w-[420px] sm:h-[680px] sm:max-h-[85vh] bg-white sm:rounded-3xl shadow-2xl sm:border sm:border-[#2B1B0C]/15 flex flex-col overflow-hidden animate-fade-in-up">
           {/* Header */}
           <div className="flex items-center gap-3 px-4 sm:px-5 py-4 sm:py-5 bg-[#2B1B0C] flex-shrink-0">
-            <div className="relative w-10 h-10 rounded-full border border-[#9C5A26]/50 bg-gradient-to-br from-[#C9863F] to-[#6B3D19] flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <div className="relative w-10 h-10 rounded-full border border-[#9C5A26]/50 flex items-center justify-center flex-shrink-0 overflow-hidden">
               <Image src="/images/acharya-icon.webp" alt="Acharya Madhav" fill className="object-cover" sizes="40px" />
             </div>
             <div className="min-w-0 flex-1">
@@ -235,7 +235,7 @@ export function ChatWidget() {
           <button
             onClick={handleOpen}
             aria-label="Chat with Acharya Madhav"
-            className="relative w-14 h-14 rounded-full bg-[#9C5A26] shadow-neo-lg flex items-center justify-center overflow-hidden hover:bg-[#2B1B0C] transition-colors duration-300 animate-pulse-glow"
+            className="relative w-14 h-14 rounded-full shadow-neo-lg flex items-center justify-center overflow-hidden transition-transform duration-300 hover:scale-105 animate-float"
           >
             <Image src="/images/acharya-icon.webp" alt="Acharya Madhav" fill className="object-cover" sizes="56px" />
           </button>
