@@ -7,7 +7,7 @@ import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
 import { SITE_URL } from '@/lib/constants';
 
 const WHATSAPP_NUMBER = '918882386868';
-const SUPPORT_EMAIL = 'doshhmukti@gmail.com';
+const SUPPORT_EMAIL = 'support@doshmukti.com';
 
 const CHANNELS = [
   {
