@@ -290,7 +290,7 @@ export default function TermsPage() {
               <p>
                 <strong className="text-[#2B1B0C]">Grievance Officer:</strong> [Name to be designated]
                 <br />
-                <strong className="text-[#2B1B0C]">Email:</strong> support@doshmukti.com
+                <strong className="text-[#2B1B0C]">Email:</strong> doshhmukti@gmail.com
                 <br />
                 <strong className="text-[#2B1B0C]">Response time:</strong> Acknowledgement within 48 hours,
                 resolution within 30 days.
@@ -311,8 +311,8 @@ export default function TermsPage() {
                 <strong className="text-[#2B1B0C]">Digital Kalakaar Videos Private Limited</strong> (Doshhmukti)
                 <br />
                 Email:{' '}
-                <a href="mailto:support@doshmukti.com" className="text-[#9C5A26] font-semibold hover:underline">
-                  support@doshmukti.com
+                <a href="mailto:doshhmukti@gmail.com" className="text-[#9C5A26] font-semibold hover:underline">
+                  doshhmukti@gmail.com
                 </a>
                 <br />
                 WhatsApp / Contact form:{' '}

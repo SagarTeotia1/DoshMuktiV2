@@ -269,7 +269,7 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
       doc.moveTo(PAGE_LEFT, footerY).lineTo(PAGE_RIGHT, footerY).strokeColor(RULE).stroke();
       doc.font('Helvetica').fontSize(8.5).fillColor(MUTED);
       doc.text('This is a system-generated invoice and does not require a signature.', PAGE_LEFT, footerY + 10);
-      doc.text('support@doshmukti.com  ·  doshmukti.com', PAGE_LEFT, footerY + 24, { width: PAGE_RIGHT - PAGE_LEFT, align: 'right' });
+      doc.text('doshhmukti@gmail.com  ·  doshmukti.com', PAGE_LEFT, footerY + 24, { width: PAGE_RIGHT - PAGE_LEFT, align: 'right' });
 
       doc.end();
     } catch (err) {
