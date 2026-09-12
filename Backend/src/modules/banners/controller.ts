@@ -1,8 +1,10 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import { setPublicCache } from '../../shared/http/cacheControl';
 import { createBannerSchema, updateBannerSchema, idParamSchema } from './schema';
 import { getActiveBanners, listBannersForAdmin, createBanner, updateBanner, deleteBanner, BannerNotFoundError } from './service';
 
 export async function getActiveBannersHandler(_req: FastifyRequest, reply: FastifyReply) {
+  setPublicCache(reply, 120);
   return reply.send(await getActiveBanners());
 }
 

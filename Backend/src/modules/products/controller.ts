@@ -1,4 +1,5 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import { setPublicCache } from '../../shared/http/cacheControl';
 import {
   listProductsQuerySchema,
   slugParamSchema,
@@ -34,6 +35,7 @@ export async function listProductsHandler(req: FastifyRequest, reply: FastifyRep
   if (!parsed.success) {
     return reply.code(400).send({ error: 'Invalid query', details: parsed.error.flatten().fieldErrors });
   }
+  setPublicCache(reply, 60);
   return reply.send(await listProducts(parsed.data));
 }
 
@@ -45,18 +47,22 @@ export async function getProductHandler(req: FastifyRequest, reply: FastifyReply
   if (!product) return reply.code(404).send({ error: 'Product not found' });
 
   const related = await getRelatedProducts(product.id, product.purpose, 12);
+  setPublicCache(reply, 300);
   return reply.send({ product, related });
 }
 
 export async function getFeaturedHandler(req: FastifyRequest, reply: FastifyReply) {
+  setPublicCache(reply, 120);
   return reply.send(await getFeaturedProducts(12));
 }
 
 export async function getCategoriesHandler(req: FastifyRequest, reply: FastifyReply) {
+  setPublicCache(reply, 300);
   return reply.send(await getDistinctCategories());
 }
 
 export async function getCategoryThumbsHandler(req: FastifyRequest, reply: FastifyReply) {
+  setPublicCache(reply, 300);
   return reply.send(await getCategoryThumbnails());
 }
 

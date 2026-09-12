@@ -1,4 +1,5 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import { setPublicCache } from '../../shared/http/cacheControl';
 import { createSectionSchema, updateSectionSchema, setSectionItemsSchema, idParamSchema } from './schema';
 import {
   getActiveHomepageSections,
@@ -12,6 +13,7 @@ import {
 } from './service';
 
 export async function getActiveHomepageSectionsHandler(_req: FastifyRequest, reply: FastifyReply) {
+  setPublicCache(reply, 120);
   return reply.send(await getActiveHomepageSections());
 }
 
