@@ -28,6 +28,11 @@ export const metadata: Metadata = {
   title: { default: TITLE_DEFAULT, template: '%s — Doshhmukti' },
   description: DESCRIPTION,
   keywords: [
+    'doshmukti',
+    'doshhmukti',
+    'dosh mukti',
+    'dosh mukti astrology',
+    'दोष मुक्ति',
     'gemstones for wealth',
     'gemstones for love',
     'astrology remedies',
