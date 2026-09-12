@@ -317,9 +317,11 @@ model Payment {
   id                String        @id @default(cuid())
   orderId           String        @unique
   order             Order         @relation(fields: [orderId], references: [id])
-  razorpayOrderId   String        @unique
-  razorpayPaymentId String?
-  razorpaySignature String?
+  // Our own Order.orderNumber, mirrored here — this is the order_id SmartGateway's
+  // session/status/refund APIs identify the order by, so no separate gateway-side id
+  // needs tracking.
+  hdfcOrderId       String        @unique
+  hdfcTxnId         String?
   status            PaymentStatus @default(PENDING)
   amount            Decimal       @db.Decimal(10, 2)
   currency          String        @default("INR")
@@ -327,7 +329,7 @@ model Payment {
   failureReason     String?
   // Set when an admin cancels a prepaid order before delivery — see
   // orders/service.ts's updateOrderStatus. Null means never refunded.
-  razorpayRefundId  String?
+  hdfcRefundId      String?
   refundedAt        DateTime?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt

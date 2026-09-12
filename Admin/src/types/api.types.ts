@@ -262,8 +262,8 @@ export interface Order {
   items: OrderItem[];
   payment: {
     status: string;
-    razorpayPaymentId: string | null;
-    razorpayRefundId: string | null;
+    hdfcTxnId: string | null;
+    hdfcRefundId: string | null;
     refundedAt: string | null;
   } | null;
   shipment: {

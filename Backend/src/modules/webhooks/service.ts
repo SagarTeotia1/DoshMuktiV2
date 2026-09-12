@@ -6,7 +6,7 @@ import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
 import { PACKAGING_WEIGHT_GRAMS } from '../../shared/constants/purposes';
 
-interface RazorpayShippingAddress {
+interface HdfcShippingAddress {
   line1: string;
   line2?: string;
   city: string;
@@ -14,16 +14,17 @@ interface RazorpayShippingAddress {
   pincode: string;
 }
 
-export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPaymentId: string): Promise<void> {
-  // Idempotent: only rows still PENDING get updated — replayed webhooks are a no-op
+export async function handlePaymentCaptured(hdfcOrderId: string, hdfcTxnId: string): Promise<void> {
+  // Idempotent: only rows still PENDING get updated — replayed webhooks/return-url
+  // hits are a no-op
   const updated: number = await db.$executeRaw`
-    UPDATE "Payment" SET status = 'CAPTURED', "razorpayPaymentId" = ${razorpayPaymentId}, "verifiedAt" = NOW()
-    WHERE "razorpayOrderId" = ${razorpayOrderId} AND status = 'PENDING'
+    UPDATE "Payment" SET status = 'CAPTURED', "hdfcTxnId" = ${hdfcTxnId}, "verifiedAt" = NOW()
+    WHERE "hdfcOrderId" = ${hdfcOrderId} AND status = 'PENDING'
   `;
   if (updated === 0) return;
 
   const payment = await db.payment.findUnique({
-    where: { razorpayOrderId },
+    where: { hdfcOrderId },
     include: { order: { include: { items: { include: { variant: true } } } } },
   });
   if (!payment) return;
@@ -40,7 +41,7 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
   if (payment.order.customerEmail) {
     void sendOrderConfirmation(payment.order.customerEmail, payment.order.orderNumber, Number(payment.order.total));
   }
-  const addr = payment.order.shippingAddress as unknown as RazorpayShippingAddress;
+  const addr = payment.order.shippingAddress as unknown as HdfcShippingAddress;
   void createShipment({
     orderNumber: payment.order.orderNumber,
     customerName: payment.order.customerName,
@@ -80,15 +81,15 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
 // indistinguishable from a live in-progress order in Admin for up to
 // RESERVATION_MINUTES. Now it releases the reservation immediately, same
 // atomic/append-only rules as release-holds.ts.
-export async function handlePaymentFailed(razorpayOrderId: string, reason: string): Promise<void> {
+export async function handlePaymentFailed(hdfcOrderId: string, reason: string): Promise<void> {
   const updated: number = await db.$executeRaw`
     UPDATE "Payment" SET status = 'FAILED', "failureReason" = ${reason}
-    WHERE "razorpayOrderId" = ${razorpayOrderId} AND status = 'PENDING'
+    WHERE "hdfcOrderId" = ${hdfcOrderId} AND status = 'PENDING'
   `;
   if (updated === 0) return; // already processed
 
   const payment = await db.payment.findUnique({
-    where: { razorpayOrderId },
+    where: { hdfcOrderId },
     include: { order: { include: { items: true } } },
   });
   if (!payment) return;

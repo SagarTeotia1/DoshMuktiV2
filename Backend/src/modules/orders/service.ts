@@ -7,7 +7,7 @@ import {
   updateEwaybill,
   type NdrAction,
 } from '../../shared/integrations/delhivery/client';
-import { refundPayment } from '../../shared/integrations/razorpay/client';
+import { refundPayment, APIError } from '../../shared/integrations/hdfc-smartgateway/client';
 import { logger } from '../../shared/logger/pino';
 import { addItemToCart } from '../cart/service';
 import { releaseCouponUsageTx } from '../coupons/service';
@@ -377,51 +377,54 @@ export async function updateOrderStatus(
   });
 
   // Cancelling always commits regardless of what happens below — a stuck refund must
-  // never leave stock/order state in limbo. Razorpay's refund call happens outside the
-  // transaction on purpose (never hold a DB connection open across a network call).
+  // never leave stock/order state in limbo. SmartGateway's refund call happens outside
+  // the transaction on purpose (never hold a DB connection open across a network call).
   if (newStatus !== 'CANCELLED') return { order };
 
   const payment = await db.payment.findUnique({ where: { orderId } });
-  if (!payment || payment.status !== 'CAPTURED' || !payment.razorpayPaymentId || payment.refundedAt) {
+  if (!payment || payment.status !== 'CAPTURED' || !payment.hdfcOrderId || payment.refundedAt) {
     return { order }; // never paid, already refunded, or payment failed — nothing to refund
   }
 
   // Marks the order REFUNDED once Payment already carries a refund id — shared by both
-  // the request that actually called Razorpay and a concurrent duplicate that lost the
-  // race (see the "already refunded" branch below). Re-running this is harmless: it's
-  // the same transition either way, just logged twice if it genuinely races.
+  // the request that actually called SmartGateway and a concurrent duplicate that lost
+  // the race (see the "already refunded" branch below). Re-running this is harmless:
+  // it's the same transition either way, just logged twice if it genuinely races.
   async function markOrderRefunded(refundId: string) {
     return db.$transaction(async (tx) => {
       const updated = await tx.order.update({ where: { id: orderId }, data: { status: 'REFUNDED' } });
       await tx.orderStatusLog.create({
-        data: { orderId, from: 'CANCELLED', to: 'REFUNDED', note: `Razorpay refund ${refundId}`, createdBy: admin },
+        data: { orderId, from: 'CANCELLED', to: 'REFUNDED', note: `SmartGateway refund ${refundId}`, createdBy: admin },
       });
       return updated;
     });
   }
 
+  // Deterministic, not random — SmartGateway rejects a reused unique_request_id, so a
+  // RETRY of this exact refund (same order, same amount) must send the SAME id to get
+  // the idempotent no-double-refund behavior. Must be <21 chars; orderNumber (18 chars,
+  // "DOSH-YYYYMMDD-NNNN") plus a 2-char prefix fits.
+  const uniqueRequestId = `r_${order.orderNumber}`;
+
   try {
-    const { refundId } = await refundPayment(payment.razorpayPaymentId, Number(payment.amount));
+    const { refundId } = await refundPayment(payment.hdfcOrderId, Number(payment.amount), uniqueRequestId);
     await db.payment.update({
       where: { orderId },
-      data: { status: 'REFUNDED', razorpayRefundId: refundId, refundedAt: new Date() },
+      data: { status: 'REFUNDED', hdfcRefundId: refundId, refundedAt: new Date() },
     });
     return { order: await markOrderRefunded(refundId) };
   } catch (err) {
-    // Razorpay's SDK throws a plain object here (`{statusCode, error: {code, description}}`),
-    // never an Error — reading err.message on it silently produced nothing and always fell
-    // through to the generic fallback, hiding the real reason from the admin.
-    const razorpayError = (err as { error?: { description?: string; code?: string } } | null)?.error;
-    const reason = razorpayError?.description ?? (err instanceof Error ? err.message : 'Refund failed — retry from the Razorpay dashboard');
+    const gatewayError = err instanceof APIError ? err : null;
+    const reason = gatewayError?.error_message ?? (err instanceof Error ? err.message : 'Refund failed — retry from the SmartGateway dashboard');
 
     // A near-simultaneous duplicate request (double-click, double-submit) can lose this
-    // exact race: the sibling request's refund already landed at Razorpay by the time
-    // this one's call goes out, so Razorpay correctly rejects it — that's not a real
-    // failure, just this request losing to its sibling. Reconcile from the DB instead
-    // of reporting it as broken.
-    if (razorpayError?.code === 'BAD_REQUEST_ERROR' && /already.*refunded/i.test(reason)) {
+    // exact race: the sibling request's refund already landed at SmartGateway by the
+    // time this one's call goes out (same unique_request_id), so SmartGateway correctly
+    // rejects it — that's not a real failure, just this request losing to its sibling.
+    // Reconcile from the DB instead of reporting it as broken.
+    if (/already|duplicate/i.test(reason)) {
       const fresh = await db.payment.findUnique({ where: { orderId } });
-      if (fresh?.razorpayRefundId) return { order: await markOrderRefunded(fresh.razorpayRefundId) };
+      if (fresh?.hdfcRefundId) return { order: await markOrderRefunded(fresh.hdfcRefundId) };
     }
 
     logger.error({ err, orderId, orderNumber: order.orderNumber }, 'Refund failed after order cancellation');

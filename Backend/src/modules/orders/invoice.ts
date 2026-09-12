@@ -85,7 +85,7 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
       }
 
       metaCell(PAGE_LEFT + 14, 'Order Date', formatDate(order.createdAt));
-      metaCell(PAGE_LEFT + 14 + metaColWidth, 'Payment ID', order.payment?.razorpayPaymentId ?? '—');
+      metaCell(PAGE_LEFT + 14 + metaColWidth, 'Payment ID', order.payment?.hdfcTxnId ?? '—');
       metaCell(
         PAGE_LEFT + 14 + metaColWidth * 2,
         'AWB / Tracking No.',

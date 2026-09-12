@@ -145,9 +145,9 @@ export default function TermsPage() {
 
             <Section id="payments" title="6. Payments">
               <p>
-                Payments are processed by Razorpay, a third-party PCI-DSS compliant payment gateway. We do not
+                Payments are processed by HDFC Bank's SmartGateway, a third-party PCI-DSS compliant payment gateway. We do not
                 store your card, UPI, or net-banking credentials on our servers. By paying on the Site you also
-                agree to Razorpay&rsquo;s applicable terms. All payments must clear before an order is processed;
+                agree to HDFC SmartGateway&rsquo;s applicable terms. All payments must clear before an order is processed;
                 orders left unpaid past the checkout hold window are automatically released.
               </p>
             </Section>

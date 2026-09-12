@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
 import { getSessionId } from '@/lib/session';
 
-// A cancelled/failed Razorpay payment leaves the order stuck at PENDING_PAYMENT with
+// A cancelled/failed SmartGateway payment leaves the order stuck at PENDING_PAYMENT with
 // no way back in otherwise — this re-adds its items into the visitor's cart and sends
 // them through checkout again, instead of a dead-end order they can never pay for.
 export function CompletePaymentButton({ orderNumber }: { orderNumber: string }) {

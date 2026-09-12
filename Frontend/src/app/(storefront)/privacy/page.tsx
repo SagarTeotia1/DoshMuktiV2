@@ -141,7 +141,7 @@ export default function PrivacyPage() {
                 deliver your order:
               </p>
               <ul className="list-disc pl-5 space-y-1.5">
-                <li><strong className="text-[#2B1B0C]">Razorpay</strong> — payment processing (Section 6).</li>
+                <li><strong className="text-[#2B1B0C]">HDFC SmartGateway</strong> — payment processing (Section 6).</li>
                 <li><strong className="text-[#2B1B0C]">Delhivery</strong> (or another courier partner) — your name, address, and phone number, to deliver your order.</li>
                 <li><strong className="text-[#2B1B0C]">Resend</strong> — transactional email delivery (order confirmations, shipping updates).</li>
                 <li><strong className="text-[#2B1B0C]">Google Cloud Platform</strong> — infrastructure hosting for our servers and database; Firebase Analytics for aggregate usage data.</li>
@@ -155,10 +155,10 @@ export default function PrivacyPage() {
 
             <Section id="payments" title="6. Payment Data">
               <p>
-                All payments are processed directly by Razorpay, a PCI-DSS compliant payment gateway. Your card,
-                UPI, or net-banking details are entered directly into Razorpay&rsquo;s secure interface and never
+                All payments are processed directly by HDFC Bank's SmartGateway, a PCI-DSS compliant payment gateway. Your card,
+                UPI, or net-banking details are entered directly into SmartGateway&rsquo;s secure interface and never
                 pass through or get stored on Doshhmukti&rsquo;s servers. We only receive a payment confirmation
-                and a reference ID from Razorpay to reconcile your order.
+                and a reference ID from SmartGateway to reconcile your order.
               </p>
             </Section>
 

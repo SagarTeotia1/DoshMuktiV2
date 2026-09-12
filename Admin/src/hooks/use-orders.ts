@@ -28,7 +28,7 @@ export function useGstReport(from: string, to: string) {
 }
 
 // refundError is only ever set on a CANCELLED transition where the prepaid refund
-// itself failed (Razorpay down, etc) — the status change still committed regardless,
+// itself failed (SmartGateway down, etc) — the status change still committed regardless,
 // see orders/service.ts's updateOrderStatus.
 export function useUpdateOrderStatus(id: string) {
   const qc = useQueryClient();

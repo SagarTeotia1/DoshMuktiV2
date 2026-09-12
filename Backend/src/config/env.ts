@@ -10,6 +10,10 @@ const envSchema = z.object({
     .transform((s) => s.split(',').map((origin) => origin.trim()))
     .pipe(z.array(z.string().url()).min(1)),
   ADMIN_ORIGIN: z.string().url(),
+  // This service's own publicly reachable base URL — needed to build the return_url
+  // SmartGateway redirects the customer's browser to after payment (must be a fully
+  // qualified URL the bank's servers/browser can reach, not localhost in production).
+  BACKEND_PUBLIC_URL: z.string().url(),
 
   DATABASE_URL: z.string().min(1),
   DIRECT_URL: z.string().min(1),
@@ -23,9 +27,22 @@ const envSchema = z.object({
   UPSTASH_REDIS_REST_URL: z.string().default(''),
   UPSTASH_REDIS_REST_TOKEN: z.string().default(''),
 
-  RAZORPAY_KEY_ID: z.string().min(1),
-  RAZORPAY_KEY_SECRET: z.string().min(1),
-  RAZORPAY_WEBHOOK_SECRET: z.string().min(1),
+  // HDFC SmartGateway (expresscheckout) — replaces Razorpay. Private/public keys are
+  // PEM contents (not file paths) so the same env-var deployment story as every other
+  // secret here (Cloud Run env, not a mounted volume) keeps working.
+  HDFC_MERCHANT_ID: z.string().min(1),
+  HDFC_PAYMENT_PAGE_CLIENT_ID: z.string().min(1),
+  HDFC_KEY_UUID: z.string().min(1),
+  HDFC_PRIVATE_KEY: z.string().min(1),
+  HDFC_PUBLIC_KEY: z.string().min(1),
+  // HMAC key from Dashboard → Settings → General → "Use signed response" — verifies the
+  // return_url query string the bank redirects the customer's browser to.
+  HDFC_RESPONSE_KEY: z.string().min(1),
+  HDFC_BASE_URL: z.string().url().default('https://smartgateway.hdfcuat.bank.in'),
+  // Basic-auth credentials configured in Dashboard → Payments → Settings → Webhook —
+  // SmartGateway sends these back on every webhook call for us to check.
+  HDFC_WEBHOOK_USERNAME: z.string().min(1),
+  HDFC_WEBHOOK_PASSWORD: z.string().min(1),
 
   R2_ACCOUNT_ID: z.string().default(''),
   R2_ACCESS_KEY_ID: z.string().default(''),

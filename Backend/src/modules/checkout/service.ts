@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import type { Prisma } from "@prisma/client";
 import { db } from "../../shared/db/client";
-import { razorpay } from "../../shared/integrations/razorpay/client";
+import { createOrderSession } from "../../shared/integrations/hdfc-smartgateway/client";
 import { redis } from "../../shared/cache/client";
 import { cacheKeys, CACHE_TTL } from "../../shared/cache/keys";
 import { env } from "../../config/env";
@@ -248,7 +248,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
   );
   const reservedUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
-  const { order, payment } = await withSerializableRetry(() =>
+  const { order } = await withSerializableRetry(() =>
     db.$transaction(
       async (tx) => {
         const reservation = await reserveStock(tx, allReservationItems);
@@ -321,7 +321,9 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
         const payment = await tx.payment.create({
           data: {
             orderId: order.id,
-            razorpayOrderId: `pending_${order.id}`,
+            // Our own orderNumber doubles as SmartGateway's order_id (see the
+            // OrderSession.create call below) — known up front, no post-call update needed.
+            hdfcOrderId: orderNumber,
             amount: order.total,
             status: "PENDING",
           },
@@ -346,22 +348,23 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
 
   const finalTotal = Number(order.total);
 
-  // Razorpay call OUTSIDE the transaction — never hold a DB connection open across a network call
-  const rzpOrder = await razorpay.orders.create({
-    amount: Math.round(finalTotal * 100),
-    currency: "INR",
-    receipt: order.orderNumber,
-  });
-
-  await db.payment.update({
-    where: { id: payment.id },
-    data: { razorpayOrderId: rzpOrder.id },
+  // SmartGateway call OUTSIDE the transaction — never hold a DB connection open across a network call
+  const [firstName, ...lastNameParts] = input.customerName.trim().split(/\s+/);
+  const session = await createOrderSession({
+    orderId: order.orderNumber,
+    amount: finalTotal,
+    returnUrl: `${env.BACKEND_PUBLIC_URL}/checkout/return`,
+    customerId: userId,
+    customerEmail: input.customerEmail,
+    customerPhone: input.customerPhone,
+    firstName,
+    lastName: lastNameParts.join(" ") || undefined,
   });
 
   return {
     orderId: order.id,
     orderNumber: order.orderNumber,
-    rzpOrderId: rzpOrder.id,
+    paymentLink: session.paymentLink,
     amount: Math.round(finalTotal * 100),
     currency: "INR",
   };

@@ -1,10 +1,10 @@
-import crypto from 'node:crypto';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { checkoutSchema, verifyPaymentSchema } from './schema';
+import { checkoutSchema, returnUrlSchema } from './schema';
 import { initiateCheckout, OutOfStockError, NotServiceableError } from './service';
 import { mapCouponValidationError } from '../coupons/controller';
 import { clearCart } from '../cart/service';
-import { handlePaymentCaptured } from '../webhooks/service';
+import { handlePaymentCaptured, handlePaymentFailed } from '../webhooks/service';
+import { getOrderStatus, verifyReturnUrlSignature } from '../../shared/integrations/hdfc-smartgateway/client';
 import { logger } from '../../shared/logger/pino';
 import { env } from '../../config/env';
 
@@ -24,11 +24,11 @@ export async function checkoutHandler(req: FastifyRequest, reply: FastifyReply) 
     const result = await initiateCheckout(parsed.data, userId);
 
     // Buy Now pseudo-cart is intentionally left untouched here — the order created by
-    // initiateCheckout is only PENDING_PAYMENT, and the customer may still dismiss the
-    // Razorpay modal or have the payment fail. Clearing it at this point (as this used
-    // to do) emptied the checkout page's item list the moment "Pay Now" was pressed,
-    // so a cancelled/failed payment left the Buy Now screen showing nothing to retry —
-    // see verifyPaymentHandler below, which now clears it only once payment actually
+    // initiateCheckout is only PENDING_PAYMENT, and the customer may still abandon the
+    // bank's hosted payment page or have the payment fail. Clearing it at this point (as
+    // this used to do) emptied the checkout page's item list the moment "Pay Now" was
+    // pressed, so a cancelled/failed payment left the Buy Now screen showing nothing to
+    // retry — see returnUrlHandler below, which now clears it only once payment actually
     // succeeds, matching how the real cart is already handled.
 
     return reply.code(201).send(result);
@@ -47,43 +47,55 @@ export async function checkoutHandler(req: FastifyRequest, reply: FastifyReply) 
   }
 }
 
-// Fast, client-driven confirmation path: checkout.js hands the client these three values
-// immediately on payment success. We verify them synchronously here so the order flips to
-// PAID without waiting on Razorpay's server-to-server webhook (which never fires on
-// localhost / without a public webhook URL configured). The webhook in modules/webhooks
-// stays in place as a durability backstop — handlePaymentCaptured is idempotent, so whichever
-// path arrives first wins and the other is a no-op.
-export async function verifyPaymentHandler(req: FastifyRequest, reply: FastifyReply) {
-  const parsed = verifyPaymentSchema.safeParse(req.body);
+// SmartGateway redirects the customer's browser here (GET) after they leave the bank's
+// hosted payment page — this is the return_url passed to OrderSession.create. The
+// redirect itself is spoofable (it's a browser hop, not a server-to-server call), so its
+// signature is only a fast-path hint: the authoritative source of truth is always the
+// server-to-server Order Status call below, done regardless of whether the signature
+// check passes. handlePaymentCaptured/handlePaymentFailed are idempotent, and the
+// webhook in modules/webhooks is a durability backstop for the case where the customer
+// closes the tab before this redirect ever fires.
+export async function returnUrlHandler(req: FastifyRequest, reply: FastifyReply) {
+  const query = req.query as Record<string, string | undefined>;
+  const parsed = returnUrlSchema.safeParse(query);
   if (!parsed.success) {
-    return reply.code(400).send({ error: 'Invalid input', details: parsed.error.flatten().fieldErrors });
+    return reply.code(400).send({ error: 'Invalid return_url params', details: parsed.error.flatten().fieldErrors });
+  }
+  const { order_id: orderId } = parsed.data;
+
+  if (!verifyReturnUrlSignature(query)) {
+    logger.warn({ orderId }, 'SmartGateway return_url signature mismatch — falling back to order-status API as source of truth');
   }
 
-  const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = parsed.data;
+  let finalStatus: string;
+  try {
+    const status = await getOrderStatus(orderId);
+    finalStatus = status.status;
+    if (status.status === 'CHARGED') {
+      await handlePaymentCaptured(orderId, status.txnId ?? orderId);
 
-  const expected = crypto
-    .createHmac('sha256', env.RAZORPAY_KEY_SECRET)
-    .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-    .digest('hex');
-
-  const sigBuf = Buffer.from(razorpaySignature, 'hex');
-  const expBuf = Buffer.from(expected, 'hex');
-
-  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
-    return reply.code(401).send({ error: 'Invalid payment signature' });
+      // Only now — payment actually confirmed — is it safe to drop the Buy Now
+      // pseudo-cart. The real cart is still deliberately left alone (see
+      // handlePaymentCaptured's webhook counterpart, which doesn't have a session id to
+      // key off).
+      const sessionId = sessionIdOf(req);
+      if (sessionId?.endsWith(':buynow')) {
+        clearCart(sessionId).catch((err) => {
+          logger.warn({ err, sessionId }, 'Failed to clear cart after successful checkout');
+        });
+      }
+    } else if (status.status === 'AUTHORIZATION_FAILED' || status.status === 'AUTHENTICATION_FAILED') {
+      await handlePaymentFailed(orderId, `SmartGateway order status: ${status.status}`);
+    }
+  } catch (err) {
+    logger.error({ err, orderId }, 'Order Status API call failed while handling SmartGateway return_url');
+    finalStatus = 'PENDING';
   }
 
-  await handlePaymentCaptured(razorpayOrderId, razorpayPaymentId);
+  const destination =
+    finalStatus === 'CHARGED'
+      ? `${env.FRONTEND_ORIGIN[0]}/checkout/success?orderNumber=${encodeURIComponent(orderId)}`
+      : `${env.FRONTEND_ORIGIN[0]}/track/${encodeURIComponent(orderId)}`;
 
-  // Only now — payment actually confirmed — is it safe to drop the Buy Now pseudo-cart.
-  // The real cart is still deliberately left alone (see handlePaymentCaptured's webhook
-  // counterpart, which doesn't have a session id to key off).
-  const sessionId = sessionIdOf(req);
-  if (sessionId?.endsWith(':buynow')) {
-    clearCart(sessionId).catch((err) => {
-      logger.warn({ err, sessionId }, 'Failed to clear cart after successful checkout');
-    });
-  }
-
-  return reply.code(200).send({ verified: true });
+  return reply.redirect(destination);
 }

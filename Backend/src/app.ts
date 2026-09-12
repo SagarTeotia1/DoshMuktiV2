@@ -46,8 +46,9 @@ export async function buildApp() {
   await app.register(jwt, { secret: env.JWT_SECRET });
   await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } });
 
-  // Raw body capture for the Razorpay webhook — HMAC verification needs the
-  // exact bytes, not the JSON-reparsed object. See docs/PATTERNS.md.
+  // Raw body capture — kept available for any handler needing exact request bytes
+  // (e.g. a future signature scheme keyed off the raw payload rather than headers).
+  // See docs/PATTERNS.md.
   app.addContentTypeParser(
     'application/json',
     { parseAs: 'string' },

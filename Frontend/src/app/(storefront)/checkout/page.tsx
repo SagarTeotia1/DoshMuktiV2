@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ShieldCheck, ChevronDown, Ticket, Copy, Check, Minus, Plus } from 'lucide-react';
 import { useCart, type CartScope } from '@/hooks/use-cart';
 import { usePincodeCheck } from '@/hooks/use-pincode-check';
-import { useRazorpay } from '@/hooks/use-razorpay';
 import { useAuth } from '@/providers/auth-provider';
 import { useAddresses, useSaveAddress, useUpdateAddress } from '@/hooks/use-addresses';
 import { useShippingEstimate } from '@/hooks/use-shipping-estimate';
@@ -16,9 +15,8 @@ import { getSessionId, getBuyNowSessionId } from '@/lib/session';
 import { getToken } from '@/lib/auth';
 import { formatCurrency } from '@/lib/formatters';
 import { SHIPPING_FEE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
-import { trackBeginCheckout, trackPurchase } from '@/lib/firebase';
+import { trackBeginCheckout } from '@/lib/firebase';
 import type { Address, CheckoutInput, CheckoutResponse, CouponPreviewResponse, SuggestedCoupon } from '@/types/api.types';
-import type { RazorpayResponse } from '@/hooks/use-razorpay';
 
 const inputClass =
   'bg-white border border-[#2B1B0C]/40 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:border-[#9C5A26] focus:outline-none font-body placeholder:text-[#6B5539] transition-colors';
@@ -209,12 +207,10 @@ function InlineLogin({
 }
 
 function CheckoutPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const scope: CartScope = searchParams.get('mode') === 'buyNow' ? 'buyNow' : 'cart';
   const queryClient = useQueryClient();
   const { cart, updateQuantity, isUpdating } = useCart(scope);
-  const { openCheckout, loading: rzpLoading } = useRazorpay();
   const { user, loading: authLoading, isAuthenticated, sendOtp, verifyOtp } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
@@ -385,7 +381,7 @@ function CheckoutPageContent() {
   // Backend-computed — same resolution path checkout itself uses (see cart/service.ts's
   // computeCartPricing), so this can never drift from what actually gets charged. Previously
   // this page computed shippingFee locally and never subtracted AUTO_APPLIED offer discounts
-  // at all — the Razorpay charge was always correct, but the customer never saw the price
+  // at all — the gateway charge was always correct, but the customer never saw the price
   // move before paying, which is exactly the "total isn't going down" gap this closes.
   const shippingFee =
     liveShipping.data?.fee ?? cart?.shippingFee ?? (subtotal >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE);
@@ -501,46 +497,19 @@ function CheckoutPageContent() {
         Authorization: `Bearer ${getToken()}`,
       });
 
-      await openCheckout({
-        amount: result.amount,
-        currency: result.currency,
-        name: 'Doshhmukti',
-        order_id: result.rzpOrderId,
-        prefill: { name: form.customerName, email: form.customerEmail, contact: form.customerPhone },
-        theme: { color: '#9C5A26' },
-        handler: async (response: RazorpayResponse) => {
-          trackPurchase({ orderNumber: result.orderNumber, total, itemCount: items.length });
-          // Address is already saved (see handleSubmit, fires the moment Pay Now was
-          // pressed) — nothing address-related left to do here.
-          // Payment has already succeeded by the time this fires — this call is only
-          // about getting OUR order status flipped to PAID promptly, since the Razorpay
-          // webhook (the usual trigger) never reaches localhost and is fragile even in
-          // prod. Best-effort: never block/fail checkout completion on this, and never
-          // let a rejection reach the handleSubmit catch below (that's for /api/checkout
-          // only) — the webhook remains a backstop that reconciles the order regardless.
-          try {
-            await api.post('/api/checkout/verify', {
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-            }, {
-              Authorization: `Bearer ${getToken()}`,
-            });
-          } catch {
-            // Non-fatal — no toast, no rethrow. Webhook backstop will reconcile.
-          }
-          // Buy Now: Backend already cleared this pseudo-cart server-side on order
-          // creation (safe since it's disposable) — this refetch just syncs the cache.
-          // Cart scope: Backend deliberately does NOT clear the real cart pre-payment
-          // (see checkout/controller.ts), so this refetch is a no-op today, but it's
-          // still correct to invalidate here in case that changes post-payment-confirm.
-          queryClient.invalidateQueries({ queryKey: ['cart', sessionIdForScope(scope), scope] });
-          router.push(
-            `/checkout/success?orderNumber=${result.orderNumber}&paymentId=${response.razorpay_payment_id}`
-          );
-        },
-        modal: { ondismiss: () => setSubmitting(false) },
-      });
+      // Buy Now: Backend already cleared this pseudo-cart server-side on order creation
+      // (safe since it's disposable) — this refetch just syncs the cache. Cart scope:
+      // Backend deliberately does NOT clear the real cart pre-payment, so this refetch
+      // is a no-op today, but still correct to invalidate here in case that changes.
+      queryClient.invalidateQueries({ queryKey: ['cart', sessionIdForScope(scope), scope] });
+
+      // Full-page handoff to SmartGateway's hosted payment page — there is no client-side
+      // SDK/modal for this gateway. The bank redirects the browser back to the Backend's
+      // /checkout/return once payment completes, which verifies status server-to-server
+      // and forwards on to this app's /checkout/success (or /track/[orderNumber] on
+      // failure). trackPurchase now fires from the success page instead of from here,
+      // since this tab navigates away before any "payment succeeded" event could fire.
+      window.location.href = result.paymentLink;
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(err.body.error);
@@ -757,14 +726,14 @@ function CheckoutPageContent() {
         <>
           <button
             type="submit"
-            disabled={submitting || rzpLoading || items.length === 0}
+            disabled={submitting || items.length === 0}
             className="mt-4 bg-[#2B1B0C] text-white border border-[#2B1B0C] rounded-full px-8 py-4 font-body font-bold uppercase tracking-widest text-sm hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? 'Processing...' : 'Pay Now'}
           </button>
           <p className="flex items-center justify-center gap-1.5 font-body text-[10px] text-[#8A7A63] mt-1">
             <ShieldCheck className="w-3.5 h-3.5 text-[#9C5A26]" />
-            Secured by Razorpay
+            Secured by HDFC SmartGateway
           </p>
         </>
       ) : (

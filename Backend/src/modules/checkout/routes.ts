@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { verifyCustomer } from '../../shared/middleware/auth.middleware';
-import { checkoutHandler, verifyPaymentHandler } from './controller';
+import { checkoutHandler, returnUrlHandler } from './controller';
 
 export async function checkoutRoutes(app: FastifyInstance) {
   app.post('/checkout', {
@@ -9,9 +9,7 @@ export async function checkoutRoutes(app: FastifyInstance) {
     handler: checkoutHandler,
   });
 
-  app.post('/checkout/verify', {
-    preHandler: verifyCustomer,
-    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
-    handler: verifyPaymentHandler,
-  });
+  // Public — hit by the customer's browser being redirected here by SmartGateway, not
+  // an authenticated call from our own frontend. See returnUrlHandler's comment.
+  app.get('/checkout/return', returnUrlHandler);
 }

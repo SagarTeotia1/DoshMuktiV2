@@ -60,7 +60,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What payment methods are accepted?',
-    a: 'UPI, debit/credit cards, net banking and EMI — all processed securely through Razorpay.',
+    a: 'UPI, debit/credit cards, net banking and EMI — all processed securely through HDFC SmartGateway.',
   },
   {
     q: 'Where do I place it in my vehicle?',

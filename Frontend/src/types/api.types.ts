@@ -238,7 +238,8 @@ export type CouponPreviewResponse =
 export interface CheckoutResponse {
   orderId: string;
   orderNumber: string;
-  rzpOrderId: string;
+  // SmartGateway's hosted payment page — full-page redirect, no client-side SDK.
+  paymentLink: string;
   amount: number;
   currency: string;
 }

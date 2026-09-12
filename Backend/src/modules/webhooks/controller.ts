@@ -1,35 +1,43 @@
 import crypto from 'node:crypto';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { env } from '../../config/env';
+import { verifyWebhookBasicAuth } from '../../shared/integrations/hdfc-smartgateway/client';
 import { handlePaymentCaptured, handlePaymentFailed, handleDelhiveryStatusUpdate } from './service';
 
-interface RawBodyRequest extends FastifyRequest {
-  rawBody?: string;
+interface SmartGatewayWebhookBody {
+  id: string;
+  event_name: string;
+  content: {
+    order: {
+      order_id: string;
+      status: string;
+      txn_id?: string;
+      id?: string;
+    };
+  };
 }
 
-export async function razorpayWebhookHandler(req: RawBodyRequest, reply: FastifyReply) {
-  const rawBody = req.rawBody ?? JSON.stringify(req.body);
-  const signature = req.headers['x-razorpay-signature'] as string | undefined;
-
-  const expected = crypto.createHmac('sha256', env.RAZORPAY_WEBHOOK_SECRET).update(rawBody).digest('hex');
-  const sigBuf = Buffer.from(signature ?? '', 'hex');
-  const expBuf = Buffer.from(expected, 'hex');
-
-  if (!signature || sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
-    return reply.code(401).send({ error: 'Invalid signature' });
+// Auth is HTTP Basic (dashboard-configured username/password) — see
+// verifyWebhookBasicAuth. This is a durability backstop for /checkout/return (which
+// never fires if the customer closes the tab before the bank redirects them back) —
+// handlePaymentCaptured/handlePaymentFailed are idempotent, so whichever path arrives
+// first wins and the other is a no-op.
+export async function hdfcWebhookHandler(req: FastifyRequest, reply: FastifyReply) {
+  if (!verifyWebhookBasicAuth(req.headers.authorization)) {
+    return reply.code(401).send({ error: 'Invalid credentials' });
   }
 
-  // Ack before processing — Razorpay retries if no 200 within 5s
+  // Ack before processing — SmartGateway retries if no 200 within a few seconds
   reply.code(200).send({ status: 'ok' });
 
-  const event = req.body as { event: string; payload: { payment: { entity: { order_id: string; id: string; error_description?: string } } } };
+  const event = req.body as SmartGatewayWebhookBody;
+  const order = event.content?.order;
+  if (!order) return;
 
-  if (event.event === 'payment.captured') {
-    const { order_id, id } = event.payload.payment.entity;
-    await handlePaymentCaptured(order_id, id);
-  } else if (event.event === 'payment.failed') {
-    const { order_id, error_description } = event.payload.payment.entity;
-    await handlePaymentFailed(order_id, error_description ?? 'Payment failed');
+  if (event.event_name === 'ORDER_SUCCEEDED') {
+    await handlePaymentCaptured(order.order_id, order.txn_id ?? order.id ?? order.order_id);
+  } else if (event.event_name === 'ORDER_FAILED') {
+    await handlePaymentFailed(order.order_id, `SmartGateway order status: ${order.status}`);
   }
 }
 

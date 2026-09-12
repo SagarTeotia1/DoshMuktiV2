@@ -24,9 +24,11 @@ export const checkoutSchema = z.object({
 });
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
-export const verifyPaymentSchema = z.object({
-  razorpayOrderId: z.string().min(1),
-  razorpayPaymentId: z.string().min(1),
-  razorpaySignature: z.string().min(1),
+// SmartGateway's return_url redirect carries order_id + status always; every other
+// field (signature, txn details, etc) varies and is read straight off the raw query —
+// verifyReturnUrlSignature needs the full param set, not just these two, to recompute
+// the HMAC correctly.
+export const returnUrlSchema = z.object({
+  order_id: z.string().min(1),
+  status: z.string().min(1),
 });
-export type VerifyPaymentInput = z.infer<typeof verifyPaymentSchema>;

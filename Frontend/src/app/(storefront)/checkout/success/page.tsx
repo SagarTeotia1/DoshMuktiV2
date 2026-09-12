@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
 import { api, invoiceUrl } from '@/lib/api-client';
 import type { OrderTrackingResponse } from '@/types/api.types';
+import { PurchaseTracker } from './purchase-tracker';
 
 async function getOrder(orderNumber: string): Promise<OrderTrackingResponse | null> {
   try {
@@ -17,15 +18,17 @@ export default async function CheckoutSuccessPage({
   searchParams: Promise<{ orderNumber?: string }>;
 }) {
   const { orderNumber } = await searchParams;
-  // Payment confirmation (POST /api/checkout/verify, fired from the checkout page's Razorpay
-  // handler) is best-effort and can still be in flight when this page renders — gate the
-  // invoice link on the order's actual payment status rather than showing a link that's
-  // likely to 409 on the very first click.
+  // Payment confirmation happens server-side in the Backend's /checkout/return handler,
+  // which runs the authoritative Order Status call before redirecting the customer here —
+  // by the time this page renders, the order's payment status is already settled.
   const order = orderNumber ? await getOrder(orderNumber) : null;
   const invoiceEligible = order?.payment?.status === 'CAPTURED';
 
   return (
     <div className="max-w-lg mx-auto px-4 py-20 text-center">
+      {invoiceEligible && orderNumber && order && (
+        <PurchaseTracker orderNumber={orderNumber} total={order.total} itemCount={order.items.length} />
+      )}
       <CheckCircle2 className="w-16 h-16 text-[#9C5A26] mx-auto mb-6" />
       <h1 className="font-heading font-black tracking-tight leading-tight text-2xl sm:text-3xl text-[#2B1B0C] mb-3">Order Confirmed</h1>
       {orderNumber && (
