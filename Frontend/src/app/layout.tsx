@@ -19,9 +19,9 @@ const outfit = Outfit({
 // Title kept in the 50-60 char sweet spot and description under ~160 — both were
 // previously 86/247 chars (truncated mid-sentence) then over-corrected to 43 chars
 // (too short to carry secondary keywords) in the Google SERP.
-const TITLE_DEFAULT = 'Doshhmukti — Authentic Gemstones for Love, Wealth & Health';
+const TITLE_DEFAULT = 'Doshhmukti — Astrology Products & Remedies';
 const DESCRIPTION =
-  'Authentic, energized gemstones, rudraksha malas and bracelets chosen with Vedic astrology guidance. Shop remedies for love, wealth, health & protection.';
+  'Authentic astrology products — energized gemstones, rudraksha malas and bracelets — chosen with Vedic guidance. Shop remedies for love, wealth, health & protection.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
