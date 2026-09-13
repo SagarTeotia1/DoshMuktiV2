@@ -76,11 +76,20 @@ export default function ContactPage() {
       <section className="py-14 sm:py-20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12">
           <StaggerGroup className="grid sm:grid-cols-2 gap-4 sm:gap-6 mb-12 sm:mb-16">
-            {CHANNELS.map((c) => (
-              <StaggerItem key={c.label}>
-                <ContactChannelLink href={c.href} icon={c.icon} label={c.label} detail={c.detail} cta={c.cta} />
-              </StaggerItem>
-            ))}
+            {CHANNELS.map((c) => {
+              const Icon = c.icon;
+              return (
+                <StaggerItem key={c.label}>
+                  <ContactChannelLink
+                    href={c.href}
+                    icon={<Icon className="w-5 h-5 text-[#9C5A26]" strokeWidth={1.75} />}
+                    label={c.label}
+                    detail={c.detail}
+                    cta={c.cta}
+                  />
+                </StaggerItem>
+              );
+            })}
           </StaggerGroup>
 
           <Reveal className="flex items-center justify-center gap-2.5 text-center">

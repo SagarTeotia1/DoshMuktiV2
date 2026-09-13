@@ -1,22 +1,28 @@
 'use client';
 
 import Link from 'next/link';
-import type { LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { trackContact } from '@/lib/analytics';
 
 // Meta's Contact standard event ("someone got in contact with your business via
 // telephone, SMS, email, chat, etc") — fires when a visitor actually clicks through to
 // WhatsApp/email/etc, not just for viewing this page. Split out from page.tsx (a Server
 // Component, for its metadata export) since onClick needs a Client Component.
+//
+// `icon` is a pre-rendered ReactNode (page.tsx renders <Icon .../> itself), not the
+// LucideIcon component reference — a Server Component can't pass a bare function/
+// component reference across to a Client Component (Next.js can't serialize it, and
+// fails the whole build with "Functions cannot be passed directly to Client
+// Components"), but an already-rendered element is a normal serializable RSC payload.
 export function ContactChannelLink({
   href,
-  icon: Icon,
+  icon,
   label,
   detail,
   cta,
 }: {
   href: string;
-  icon: LucideIcon;
+  icon: ReactNode;
   label: string;
   detail: string;
   cta: string;
@@ -31,7 +37,7 @@ export function ContactChannelLink({
     >
       <div className="flex items-center gap-4 min-w-0">
         <span className="flex-shrink-0 w-12 h-12 rounded-full bg-[#F6E4C2] flex items-center justify-center group-hover:bg-[#9C5A26]/15 transition-colors duration-300">
-          <Icon className="w-5 h-5 text-[#9C5A26]" strokeWidth={1.75} />
+          {icon}
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="font-heading font-bold text-sm text-[#2B1B0C]">{label}</h3>
