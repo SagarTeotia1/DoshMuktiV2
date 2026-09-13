@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Star, MessageSquarePlus, Quote, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -164,21 +164,44 @@ export function ReviewsSection({
 }) {
   const [showForm, setShowForm] = useState(false);
   const [page, setPage] = useState(1);
-  // Matches Backend's productReviewsQuerySchema default and its 3-high:2-low
-  // interleaveByRating mix — every page of 5 reads as a realistic mixed spread of
-  // ratings, not a wall of the same score. Keep these two defaults in sync.
-  const REVIEWS_PER_PAGE = 5;
+  // 6/page on laptop+ (lg, matches this file's lg:grid-cols-3 review grid — 6 lays out
+  // as a clean 3x2), 5/page on mobile/tablet. Backend's productReviewsQuerySchema
+  // default (5) and its 3-high:2-low interleaveByRating mix apply at whatever `limit`
+  // is actually sent, so either page size still reads as a realistic mixed spread.
+  const DESKTOP_REVIEWS_PER_PAGE = 6;
+  const MOBILE_REVIEWS_PER_PAGE = 5;
+  const [reviewsPerPage, setReviewsPerPage] = useState(MOBILE_REVIEWS_PER_PAGE);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    function applyMatch(matches: boolean) {
+      setReviewsPerPage(matches ? DESKTOP_REVIEWS_PER_PAGE : MOBILE_REVIEWS_PER_PAGE);
+      // A page number valid at one page size can be out of range at the other (e.g.
+      // page 4 of 5-per-page doesn't exist at 6-per-page) — reset to page 1 whenever
+      // the breakpoint actually flips, not on every resize event.
+      setPage(1);
+    }
+    function handleChange(e: MediaQueryListEvent) {
+      applyMatch(e.matches);
+    }
+    applyMatch(mql.matches);
+    mql.addEventListener('change', handleChange);
+    return () => mql.removeEventListener('change', handleChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Server already fetched this same 60s-ISR'd endpoint for JSON-LD (see page.tsx) — seeding
   // it here as initialData skips the client fetch waterfall, so reviews paint immediately
   // instead of the skeleton flashing on every load. staleTime matches that ISR window so
-  // TanStack Query won't immediately re-fetch behind it. initialData only applies to page 1
-  // — react-query only uses it when the queryKey matches what generated it.
+  // TanStack Query won't immediately re-fetch behind it. initialData only applies on the
+  // very first mobile-sized render (page 1, default limit=5) — react-query only uses it
+  // when the queryKey matches what generated it, so a desktop viewport (limit=6) just
+  // fetches fresh instead of using a mismatched cached page.
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['product-reviews', productId, page],
+    queryKey: ['product-reviews', productId, page, reviewsPerPage],
     queryFn: () =>
-      api.get<ProductReviewsResponse>(`/api/products/${productSlug}/reviews?page=${page}&limit=${REVIEWS_PER_PAGE}`),
-    initialData: page === 1 ? initialData : undefined,
+      api.get<ProductReviewsResponse>(`/api/products/${productSlug}/reviews?page=${page}&limit=${reviewsPerPage}`),
+    initialData: page === 1 && reviewsPerPage === MOBILE_REVIEWS_PER_PAGE ? initialData : undefined,
     staleTime: 60_000,
   });
 
