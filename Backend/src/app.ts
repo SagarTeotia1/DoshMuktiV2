@@ -27,6 +27,7 @@ import { homepageSectionsRoutes } from './modules/homepage-sections/routes';
 import { shippingRoutes } from './modules/shipping/routes';
 import { pickupRequestsRoutes } from './modules/pickup-requests/routes';
 import { addressRoutes } from './modules/addresses/routes';
+import { catalogRoutes } from './modules/catalog/routes';
 import { jobRoutes } from './jobs/routes';
 
 export async function buildApp() {
@@ -84,6 +85,7 @@ export async function buildApp() {
   await app.register(shippingRoutes, { prefix: '/api' });
   await app.register(pickupRequestsRoutes, { prefix: '/api' });
   await app.register(addressRoutes, { prefix: '/api' });
+  await app.register(catalogRoutes, { prefix: '/api' });
   await app.register(jobRoutes, { prefix: '/api' });
 
   return app;
