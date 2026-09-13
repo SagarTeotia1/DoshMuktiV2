@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { trackViewItem } from '@/lib/firebase';
+import { trackViewItem } from '@/lib/analytics';
 
 // Renders nothing — fires GA4's view_item exactly once per mount (useRef guard, same
 // pattern as ImpressionTracker) so a campaign page's product view is counted once per

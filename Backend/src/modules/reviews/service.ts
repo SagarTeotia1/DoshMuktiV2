@@ -1,5 +1,5 @@
 import { db } from '../../shared/db/client';
-import type { CreateReviewInput, AdminListReviewsQuery, ModerateReviewInput } from './schema';
+import type { CreateReviewInput, AdminListReviewsQuery, ModerateReviewInput, ProductReviewsQuery } from './schema';
 
 export class ProductNotFoundError extends Error {
   constructor() {
@@ -24,20 +24,34 @@ export async function createReview(input: CreateReviewInput) {
   });
 }
 
-export async function listApprovedForProduct(productId: string) {
-  const [reviews, agg] = await Promise.all([
+// Paginated — a product with 50-100+ reviews was rendering every single one into one
+// unbounded grid on the page. `ratingCounts` is queried independently of the paginated
+// `reviews` page so the star-breakdown bars always reflect ALL approved reviews, not
+// just whichever page is currently showing.
+export async function listApprovedForProduct(productId: string, { page, limit }: ProductReviewsQuery) {
+  const [reviews, agg, ratingGroups] = await Promise.all([
     db.review.findMany({
       where: { productId, status: 'APPROVED' },
       orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
       select: { id: true, customerName: true, rating: true, title: true, body: true, createdAt: true },
     }),
     db.review.aggregate({ where: { productId, status: 'APPROVED' }, _avg: { rating: true }, _count: true }),
+    db.review.groupBy({ by: ['rating'], where: { productId, status: 'APPROVED' }, _count: true }),
   ]);
+
+  const totalReviews = agg._count;
+  const ratingCounts: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  for (const g of ratingGroups) ratingCounts[g.rating as 1 | 2 | 3 | 4 | 5] = g._count;
 
   return {
     reviews,
     averageRating: agg._avg.rating ?? 0,
-    totalReviews: agg._count,
+    totalReviews,
+    ratingCounts,
+    page,
+    pages: Math.max(1, Math.ceil(totalReviews / limit)),
   };
 }
 

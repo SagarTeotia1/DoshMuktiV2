@@ -1,7 +1,9 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import { setPublicCache } from '../../shared/http/cacheControl';
 import {
   createReviewSchema,
   slugParamSchema,
+  productReviewsQuerySchema,
   adminListReviewsQuerySchema,
   moderateReviewSchema,
   idParamSchema,
@@ -33,10 +35,14 @@ export async function getProductReviewsHandler(req: FastifyRequest, reply: Fasti
   const parsed = slugParamSchema.safeParse(req.params);
   if (!parsed.success) return reply.code(400).send({ error: 'Invalid slug' });
 
+  const query = productReviewsQuerySchema.safeParse(req.query);
+  if (!query.success) return reply.code(400).send({ error: 'Invalid query', details: query.error.flatten().fieldErrors });
+
   const product = await getProductBySlug(parsed.data.slug);
   if (!product) return reply.code(404).send({ error: 'Product not found' });
 
-  return reply.send(await listApprovedForProduct(product.id));
+  setPublicCache(reply, 300);
+  return reply.send(await listApprovedForProduct(product.id, query.data));
 }
 
 export async function getRecentReviewsHandler(req: FastifyRequest, reply: FastifyReply) {

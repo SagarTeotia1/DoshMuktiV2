@@ -16,7 +16,7 @@ import { getSessionId, getBuyNowSessionId } from '@/lib/session';
 import { getToken } from '@/lib/auth';
 import { formatCurrency } from '@/lib/formatters';
 import { SHIPPING_FEE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
-import { trackBeginCheckout, trackPurchase } from '@/lib/firebase';
+import { trackBeginCheckout, trackAddPaymentInfo, trackPurchase } from '@/lib/analytics';
 import type { Address, CheckoutInput, CheckoutResponse, CouponPreviewResponse, SuggestedCoupon } from '@/types/api.types';
 import type { RazorpayResponse } from '@/hooks/use-razorpay';
 
@@ -501,6 +501,7 @@ function CheckoutPageContent() {
         Authorization: `Bearer ${getToken()}`,
       });
 
+      trackAddPaymentInfo(total);
       await openCheckout({
         amount: result.amount,
         currency: result.currency,

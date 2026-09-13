@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { api, ApiError } from '@/lib/api-client';
 import { getToken, setToken, clearToken } from '@/lib/auth';
+import { trackCompleteRegistration } from '@/lib/analytics';
 
 export interface CustomerUser {
   id: string;
@@ -14,6 +15,7 @@ export interface CustomerUser {
 interface VerifyOtpResponse {
   token: string;
   user: CustomerUser;
+  isNewUser: boolean;
 }
 
 interface AuthContextValue {
@@ -74,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const result = await api.post<VerifyOtpResponse>('/api/auth/otp/verify', { phone, otp });
     setToken(result.token);
     setUser(result.user);
+    if (result.isNewUser) trackCompleteRegistration();
     return result.user;
   }
 

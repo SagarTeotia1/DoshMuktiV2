@@ -101,7 +101,10 @@ export function ChatWidget() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="font-heading font-bold text-sm text-[#E6D3AE] truncate">Acharya Madhav</p>
-              <p className="font-body text-[11px] text-[#9C5A26]">Vedic Astrologer · Online</p>
+              {/* #9C5A26 (mid bronze) on this dark header only measures ~3.1:1 — fails
+                  WCAG AA's 4.5:1 for normal text. #C9863F (already in this same palette
+                  as the "lighter bronze" accent — see acharya-section.tsx) measures ~5.5:1. */}
+              <p className="font-body text-[11px] text-[#C9863F]">Vedic Astrologer · Online</p>
             </div>
             <button
               onClick={() => setOpen(false)}
@@ -128,7 +131,9 @@ export function ChatWidget() {
                 {m.recommendedProducts && m.recommendedProducts.length > 0 && (
                   <div className="flex flex-col gap-1.5">
                     {m.recommendationReason && (
-                      <p className="font-body text-xs italic text-[#8A7A63] px-1 leading-relaxed">
+                      // #8A7A63 on white only measures ~4.3:1 (fails 4.5:1 AA) — #7E6E58 is
+                      // the same muted warm gray, darkened just enough to clear it (~4.9:1).
+                      <p className="font-body text-xs italic text-[#7E6E58] px-1 leading-relaxed">
                         {m.recommendationReason}
                       </p>
                     )}
@@ -197,7 +202,8 @@ export function ChatWidget() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={voice.listening ? 'Listening...' : 'Ask about love, money, career...'}
-              className="flex-1 bg-white border border-[#2B1B0C]/15 rounded-full px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none font-body placeholder:text-[#8A7A63]"
+              // Same #8A7A63 -> #7E6E58 contrast fix as the recommendationReason text above.
+              className="flex-1 bg-white border border-[#2B1B0C]/15 rounded-full px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none font-body placeholder:text-[#7E6E58]"
             />
             <button
               type="submit"

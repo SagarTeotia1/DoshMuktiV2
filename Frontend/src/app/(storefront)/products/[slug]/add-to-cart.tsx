@@ -8,7 +8,7 @@ import { useCart } from '@/hooks/use-cart';
 import { useActiveCartScope } from '@/hooks/use-active-cart-scope';
 import { useAuth } from '@/providers/auth-provider';
 import { useShippingEstimate } from '@/hooks/use-shipping-estimate';
-import { trackAddToCart } from '@/lib/firebase';
+import { trackAddToCart } from '@/lib/analytics';
 import { formatCurrency } from '@/lib/formatters';
 import type { Product } from '@/types/api.types';
 

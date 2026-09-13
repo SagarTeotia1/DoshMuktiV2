@@ -74,7 +74,7 @@ export function AcharyaSection() {
               <span className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 w-3.5 h-3.5 rounded-full bg-brand-success border-2 border-[#2B1B0C] animate-pulse" />
             </div>
 
-            <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#9C5A26] mb-3">
+            <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#C9863F] mb-3">
               Not Sure This Yantra Is Enough?
             </p>
             <h2
@@ -119,7 +119,7 @@ export function AcharyaSection() {
                     <p className="font-heading font-black text-[11px] sm:text-sm uppercase tracking-tight text-[#E6D3AE]">
                       {d.label}
                     </p>
-                    <p className="font-body text-xs sm:text-sm text-[#B8A98A]/70 leading-snug">&ldquo;{d.prompt}&rdquo;</p>
+                    <p className="font-body text-xs sm:text-sm text-[#B8A98A]/80 leading-snug">&ldquo;{d.prompt}&rdquo;</p>
                   </button>
                 </StaggerItem>
               );

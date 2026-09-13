@@ -8,7 +8,7 @@ import { Search, ShoppingCart, Menu, X, User, LogOut } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { useActiveCartScope } from '@/hooks/use-active-cart-scope';
 import { useAuth } from '@/providers/auth-provider';
-import { trackSearch } from '@/lib/firebase';
+import { trackSearch } from '@/lib/analytics';
 import logo from '@/assets/Logo.png';
 
 const NAV_LINKS = [

@@ -13,6 +13,12 @@ export const slugParamSchema = z.object({
   slug: z.string().min(2).max(200).regex(/^[a-z0-9-]+$/),
 });
 
+export const productReviewsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(999).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+export type ProductReviewsQuery = z.infer<typeof productReviewsQuerySchema>;
+
 export const adminListReviewsQuerySchema = z.object({
   status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
   page: z.coerce.number().int().min(1).max(999).default(1),

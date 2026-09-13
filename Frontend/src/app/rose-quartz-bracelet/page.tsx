@@ -13,7 +13,7 @@ import { ImageCarousel } from '@/components/storefront/ImageCarousel';
 import { api } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
 import { SITE_URL, RETURN_ELIGIBLE_ABOVE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
-import { ChatWidget } from '@/components/chat/ChatWidget';
+import { ChatWidgetLoader } from '@/components/chat/ChatWidgetLoader';
 import { Footer } from '@/components/layout/Footer';
 import { CampaignHeader } from './campaign-header';
 import { BuyNowButton } from './buy-now-button';
@@ -29,7 +29,12 @@ const PRODUCT_SLUG = 'rose-quartz-bracelet';
 
 // Same ISR pattern as the regular PDP (products/[slug]/page.tsx) and the other
 // campaign pages — cached and served instantly instead of re-fetching every request.
-export const revalidate = 300;
+// No CDN/proxy cache in front of this VM (nginx.conf is a plain reverse proxy, no
+// proxy_cache) — this ISR window is the ONLY shared cache every visitor benefits from.
+// On a low-traffic campaign page a short window means most real visits land outside it
+// and pay a full cold regen (Neon query + render), which read as "not cached at all".
+// An hour is safe — price/stock/copy here only change when an admin edits the product.
+export const revalidate = 3600;
 
 // A serif display face, scoped to this campaign page only — matches the other
 // campaign pages' editorial headline register, not the site-wide Outfit/Satoshi system.
@@ -304,7 +309,7 @@ export default async function RoseQuartzBraceletPage() {
               <div className="h-full flex items-center gap-4 px-4 sm:px-6 py-4 sm:py-3">
                 <span className="hidden sm:flex items-baseline gap-2">
                   <span className="font-heading text-lg font-black tabular-nums text-[#FFFDF8]">{formatCurrency(price)}</span>
-                  {mrp && <span className="text-xs text-[#E6D3AE]/50 line-through">{formatCurrency(mrp)}</span>}
+                  {mrp && <span className="text-xs text-[#E6D3AE]/60 line-through">{formatCurrency(mrp)}</span>}
                 </span>
                 {!soldOut && variant ? (
                   <BuyNowButton variantId={variant.id} productName={product.name} price={price} maxQty={maxQty} tone="dark" />
@@ -503,7 +508,7 @@ export default async function RoseQuartzBraceletPage() {
       </section>
 
       <Footer />
-      <ChatWidget />
+      <ChatWidgetLoader />
     </div>
   );
 }

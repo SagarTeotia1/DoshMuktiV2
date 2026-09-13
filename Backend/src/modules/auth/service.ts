@@ -39,7 +39,7 @@ export async function sendCustomerOtp(rawPhone: string): Promise<void> {
   });
 }
 
-export async function verifyCustomerOtp(rawPhone: string, otp: string): Promise<User> {
+export async function verifyCustomerOtp(rawPhone: string, otp: string): Promise<{ user: User; isNewUser: boolean }> {
   const phone = normalizePhone(rawPhone);
 
   // The profile step (name) resubmits the same phone+otp after the OTP was already
@@ -65,7 +65,8 @@ export async function verifyCustomerOtp(rawPhone: string, otp: string): Promise<
   }
 
   const existing = await db.user.findUnique({ where: { phone } });
-  if (existing) return existing;
+  if (existing) return { user: existing, isNewUser: false };
 
-  return db.user.create({ data: { phone } });
+  const user = await db.user.create({ data: { phone } });
+  return { user, isNewUser: true };
 }

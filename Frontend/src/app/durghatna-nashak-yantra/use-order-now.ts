@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useCart } from '@/hooks/use-cart';
 import { useAuth } from '@/providers/auth-provider';
-import { trackAddToCart } from '@/lib/firebase';
+import { trackAddToCart } from '@/lib/analytics';
 
 // Same "Order Now" flow as products/[slug]/add-to-cart.tsx's handleOrderNow — an
 // isolated buy-now pseudo-cart, cleared and re-seeded with just this one item, then

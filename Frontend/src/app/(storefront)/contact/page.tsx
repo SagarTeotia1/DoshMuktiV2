@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { MessageCircle, Mail, Instagram, Youtube, Clock } from 'lucide-react';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { Reveal } from '@/components/motion/Reveal';
 import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
 import { SITE_URL } from '@/lib/constants';
+import { ContactChannelLink } from './contact-channel-link';
 
 const WHATSAPP_NUMBER = '918882386868';
 const SUPPORT_EMAIL = 'support@doshmukti.com';
@@ -76,32 +76,11 @@ export default function ContactPage() {
       <section className="py-14 sm:py-20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12">
           <StaggerGroup className="grid sm:grid-cols-2 gap-4 sm:gap-6 mb-12 sm:mb-16">
-            {CHANNELS.map((c) => {
-              const Icon = c.icon;
-              return (
-                <StaggerItem key={c.label}>
-                  <Link
-                    href={c.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 rounded-xl border border-[#2B1B0C]/12 bg-white p-5 sm:p-6 hover:border-[#9C5A26] hover:shadow-neo-md transition-all duration-300"
-                  >
-                    <div className="flex items-center gap-4 min-w-0">
-                      <span className="flex-shrink-0 w-12 h-12 rounded-full bg-[#F6E4C2] flex items-center justify-center group-hover:bg-[#9C5A26]/15 transition-colors duration-300">
-                        <Icon className="w-5 h-5 text-[#9C5A26]" strokeWidth={1.75} />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-heading font-bold text-sm text-[#2B1B0C]">{c.label}</h3>
-                        <p className="font-body text-xs text-[#8A7A63] truncate">{c.detail}</p>
-                      </div>
-                    </div>
-                    <span className="flex-shrink-0 font-body text-xs font-bold uppercase tracking-widest text-[#9C5A26] group-hover:text-[#2B1B0C] transition-colors duration-300">
-                      {c.cta} →
-                    </span>
-                  </Link>
-                </StaggerItem>
-              );
-            })}
+            {CHANNELS.map((c) => (
+              <StaggerItem key={c.label}>
+                <ContactChannelLink href={c.href} icon={c.icon} label={c.label} detail={c.detail} cta={c.cta} />
+              </StaggerItem>
+            ))}
           </StaggerGroup>
 
           <Reveal className="flex items-center justify-center gap-2.5 text-center">

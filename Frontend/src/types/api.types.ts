@@ -294,6 +294,12 @@ export interface ProductReviewsResponse {
   reviews: Review[];
   averageRating: number;
   totalReviews: number;
+  // ratingCounts covers ALL approved reviews for the product, independent of which page
+  // is currently loaded — so the star-breakdown bars never look wrong just because a
+  // later page hasn't been fetched yet.
+  ratingCounts: Record<1 | 2 | 3 | 4 | 5, number>;
+  page: number;
+  pages: number;
 }
 
 export interface ChatMessage {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { trackViewItemList } from '@/lib/firebase';
+import { trackViewItemList } from '@/lib/analytics';
 import type { Product } from '@/types/api.types';
 
 // Renders nothing — fires GA4's view_item_list once per mount so a rail's impression

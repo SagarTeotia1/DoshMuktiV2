@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { formatCurrency } from '@/lib/formatters';
-import { trackViewCart } from '@/lib/firebase';
+import { trackViewCart } from '@/lib/analytics';
 import { SHIPPING_FEE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
 
 export default function CartPage() {

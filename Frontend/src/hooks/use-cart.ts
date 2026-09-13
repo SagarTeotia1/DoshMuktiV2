@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api-client';
 import { getSessionId, getBuyNowSessionId } from '@/lib/session';
-import { trackRemoveFromCart } from '@/lib/firebase';
+import { trackRemoveFromCart } from '@/lib/analytics';
 import type { CartResponse } from '@/types/api.types';
 
 export type CartScope = 'cart' | 'buyNow';

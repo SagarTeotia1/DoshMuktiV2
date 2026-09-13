@@ -40,9 +40,13 @@ export async function verifyOtpHandler(req: FastifyRequest, reply: FastifyReply)
   if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? 'Invalid input' });
 
   try {
-    const user = await verifyCustomerOtp(parsed.data.phone, parsed.data.otp);
+    const { user, isNewUser } = await verifyCustomerOtp(parsed.data.phone, parsed.data.otp);
     const token = await reply.jwtSign({ sub: user.id, phone: user.phone, role: 'customer' }, { expiresIn: '180d' });
-    return reply.send({ token, user: { id: user.id, name: user.name, phone: user.phone, dob: user.dob } });
+    return reply.send({
+      token,
+      user: { id: user.id, name: user.name, phone: user.phone, dob: user.dob },
+      isNewUser,
+    });
   } catch (err) {
     if (err instanceof InvalidOtpError) {
       return reply.code(400).send({ error: err.message });

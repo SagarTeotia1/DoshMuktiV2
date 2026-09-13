@@ -64,7 +64,9 @@ export function BuyNowButton({
           {isOrdering ? 'Placing Order…' : `Buy Now — ${formatCurrency(price * quantity)}`}
         </button>
       </div>
-      <p className={`text-center text-[11px] font-body ${tone === 'dark' ? 'text-[#E6D3AE]/60' : 'text-[#8A7A63]'}`}>
+      {/* #8A7A63 (light tone) on white measured ~4.3:1, failing WCAG AA's 4.5:1 for
+          normal text; #7E6E58 is the same muted warm gray darkened just enough to clear it (~4.9:1). */}
+      <p className={`text-center text-[11px] font-body ${tone === 'dark' ? 'text-[#E6D3AE]/60' : 'text-[#7E6E58]'}`}>
         Secure checkout · Pay via UPI, Cards or EMI
       </p>
     </div>

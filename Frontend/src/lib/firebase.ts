@@ -82,3 +82,19 @@ export function trackSelectItem(listName: string, item: { id: string; name: stri
 export function trackSearch(term: string) {
   track('search', { search_term: term });
 }
+
+// GA4's standard event for a completed account creation — fired once, only when the
+// OTP-verify call actually created a brand-new customer (see isNewUser in the
+// /api/auth/otp/verify response), never on a returning-user login.
+export function trackCompleteRegistration() {
+  track('sign_up', { method: 'phone_otp' });
+}
+
+export function trackAddPaymentInfo(total: number) {
+  track('add_payment_info', { currency: 'INR', value: total });
+}
+
+// No GA4 standard event for this — 'contact' as a custom event name is still valid GA4.
+export function trackContact() {
+  track('contact');
+}

@@ -9,7 +9,7 @@ import { Tag, ShoppingBag, Eye } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { useActiveCartScope } from '@/hooks/use-active-cart-scope';
 import { formatCurrency } from '@/lib/formatters';
-import { trackSelectItem } from '@/lib/firebase';
+import { trackSelectItem } from '@/lib/analytics';
 import type { Product } from '@/types/api.types';
 
 const MotionLink = motion.create(Link);

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Star, MessageSquarePlus, Quote, Sparkles } from 'lucide-react';
+import { Star, MessageSquarePlus, Quote, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api, ApiError } from '@/lib/api-client';
 import { formatDate } from '@/lib/formatters';
 import type { ProductReviewsResponse, CreateReviewInput } from '@/types/api.types';
@@ -50,7 +50,9 @@ function WriteReviewForm({ productId, onDone }: { productId: string; onDone: () 
     mutationFn: (input: CreateReviewInput) => api.post('/api/reviews', input),
     onSuccess: () => {
       toast.success('Thanks for your review!');
-      qc.invalidateQueries({ queryKey: ['product-reviews', productId] });
+      // No page index in this key — invalidates every cached page for this product,
+      // not just whichever page the submitter happened to be viewing.
+      qc.invalidateQueries({ queryKey: ['product-reviews', productId], exact: false });
       onDone();
     },
     onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Could not submit review'),
@@ -109,8 +111,18 @@ function WriteReviewForm({ productId, onDone }: { productId: string; onDone: () 
   );
 }
 
-function RatingBreakdown({ reviews, averageRating, totalReviews }: { reviews: { rating: number }[]; averageRating: number; totalReviews: number }) {
-  const counts = [5, 4, 3, 2, 1].map((star) => reviews.filter((r) => r.rating === star).length);
+function RatingBreakdown({
+  ratingCounts,
+  averageRating,
+  totalReviews,
+}: {
+  ratingCounts: Record<1 | 2 | 3 | 4 | 5, number>;
+  averageRating: number;
+  totalReviews: number;
+}) {
+  // Server-computed across ALL approved reviews, not just the current page — so these
+  // bars stay accurate no matter which page of reviews is currently loaded.
+  const counts = [5, 4, 3, 2, 1].map((star) => ratingCounts[star as 1 | 2 | 3 | 4 | 5]);
 
   return (
     <div className="flex flex-col sm:flex-row gap-6 sm:gap-10 bg-[#FFFDF8] border border-[#2B1B0C]/10 rounded-2xl p-5 sm:p-6 mb-6">
@@ -151,20 +163,29 @@ export function ReviewsSection({
   initialData?: ProductReviewsResponse;
 }) {
   const [showForm, setShowForm] = useState(false);
+  const [page, setPage] = useState(1);
+  const REVIEWS_PER_PAGE = 10;
 
   // Server already fetched this same 60s-ISR'd endpoint for JSON-LD (see page.tsx) — seeding
   // it here as initialData skips the client fetch waterfall, so reviews paint immediately
   // instead of the skeleton flashing on every load. staleTime matches that ISR window so
-  // TanStack Query won't immediately re-fetch behind it.
-  const { data, isLoading } = useQuery({
-    queryKey: ['product-reviews', productId],
-    queryFn: () => api.get<ProductReviewsResponse>(`/api/products/${productSlug}/reviews`),
-    initialData,
+  // TanStack Query won't immediately re-fetch behind it. initialData only applies to page 1
+  // — react-query only uses it when the queryKey matches what generated it.
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['product-reviews', productId, page],
+    queryFn: () =>
+      api.get<ProductReviewsResponse>(`/api/products/${productSlug}/reviews?page=${page}&limit=${REVIEWS_PER_PAGE}`),
+    initialData: page === 1 ? initialData : undefined,
     staleTime: 60_000,
   });
 
+  function goToPage(next: number) {
+    setPage(next);
+    document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   return (
-    <section className="mt-16 sm:mt-24 max-w-5xl" itemScope itemType="https://schema.org/Product">
+    <section id="reviews-section" className="mt-16 sm:mt-24 max-w-5xl scroll-mt-24" itemScope itemType="https://schema.org/Product">
       <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-[#9C5A26] mb-2">
@@ -206,7 +227,7 @@ export function ReviewsSection({
         </div>
       ) : (
         <>
-          <RatingBreakdown reviews={data.reviews} averageRating={data.averageRating} totalReviews={data.totalReviews} />
+          <RatingBreakdown ratingCounts={data.ratingCounts} averageRating={data.averageRating} totalReviews={data.totalReviews} />
 
           <div className="grid sm:grid-cols-2 gap-4">
             {data.reviews.map((review) => (
@@ -246,6 +267,32 @@ export function ReviewsSection({
               </div>
             ))}
           </div>
+
+          {data.pages > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-8">
+              <button
+                type="button"
+                onClick={() => goToPage(page - 1)}
+                disabled={page <= 1 || isFetching}
+                aria-label="Previous page of reviews"
+                className="w-9 h-9 rounded-full border border-[#2B1B0C]/15 flex items-center justify-center hover:border-[#2B1B0C] hover:bg-[#F6E4C2] transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <ChevronLeft className="w-4 h-4 text-[#2B1B0C]" />
+              </button>
+              <span className="font-body text-xs font-bold text-[#6B5539] tabular-nums">
+                Page {data.page} of {data.pages}
+              </span>
+              <button
+                type="button"
+                onClick={() => goToPage(page + 1)}
+                disabled={page >= data.pages || isFetching}
+                aria-label="Next page of reviews"
+                className="w-9 h-9 rounded-full border border-[#2B1B0C]/15 flex items-center justify-center hover:border-[#2B1B0C] hover:bg-[#F6E4C2] transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <ChevronRight className="w-4 h-4 text-[#2B1B0C]" />
+              </button>
+            </div>
+          )}
         </>
       )}
     </section>

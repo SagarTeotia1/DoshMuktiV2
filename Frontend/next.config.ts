@@ -14,7 +14,7 @@ const securityHeaders = [
 // Backend/src/shared/http/cacheControl.ts) — max-age matches these pages' own ISR
 // `revalidate` window, so nginx/any CDN in front and every visitor's browser can serve
 // a shared cached copy instead of hitting the Node process on every request.
-const campaignPageCacheHeaders = [{ key: 'Cache-Control', value: 'public, max-age=300, stale-while-revalidate=1500' }];
+const campaignPageCacheHeaders = [{ key: 'Cache-Control', value: 'public, max-age=3600, stale-while-revalidate=86400' }];
 
 const nextConfig: NextConfig = {
   output: 'standalone',
@@ -40,6 +40,7 @@ const nextConfig: NextConfig = {
       { source: '/vahan-suraksha-kavach', headers: campaignPageCacheHeaders },
       { source: '/durghatna-nashak-yantra', headers: campaignPageCacheHeaders },
       { source: '/durbhagya-nashak-nariyal', headers: campaignPageCacheHeaders },
+      { source: '/rose-quartz-bracelet', headers: campaignPageCacheHeaders },
     ];
   },
 };
