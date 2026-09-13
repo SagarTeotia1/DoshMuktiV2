@@ -12,7 +12,18 @@ import type { PaginatedProducts } from '@/types/api.types';
 // bad build self-heals on its own instead of staying broken indefinitely.
 export const revalidate = 3600;
 
-const STATIC_ROUTES = ['', '/shop', '/about', '/contact', '/faq', '/privacy', '/terms'];
+const STATIC_ROUTES = [
+  '',
+  '/shop',
+  '/about',
+  '/contact',
+  '/faq',
+  '/privacy',
+  '/terms',
+  '/vahan-suraksha-kavach',
+  '/durghatna-nashak-yantra',
+  '/durbhagya-nashak-nariyal',
+];
 
 // Backend caps `limit` at 100 (products/schema.ts) — requesting more 400s. A prior
 // version requested limit=500 in one shot; the 400 was swallowed by the catch below

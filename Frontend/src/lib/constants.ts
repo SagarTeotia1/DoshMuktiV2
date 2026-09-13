@@ -15,6 +15,8 @@ export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3
 // treating them as competing duplicates.
 export const CAMPAIGN_PAGE_SLUGS: Record<string, string> = {
   'vahan-suraksha-kavach': '/vahan-suraksha-kavach',
+  'durghatna-nashak-yantra': '/durghatna-nashak-yantra',
+  'durbhagya-nashak-nariyal': '/durbhagya-nashak-nariyal',
 };
 
 export const SOCIAL_LINKS = {
