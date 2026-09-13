@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { Fraunces } from 'next/font/google';
 import Image from 'next/image';
@@ -8,6 +9,7 @@ import { Reveal } from '@/components/motion/Reveal';
 import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { ProductRail } from '@/components/storefront/ProductRail';
+import { ProductRailSkeleton } from '@/components/storefront/ProductRailSkeleton';
 import { ViewItemTracker } from '@/components/storefront/ViewItemTracker';
 import { ImageCarousel } from '@/components/storefront/ImageCarousel';
 import { api } from '@/lib/api-client';
@@ -110,6 +112,13 @@ async function getRelatedProducts(currentSlug: string): Promise<Product[]> {
   }
 }
 
+// Its own async component so <Suspense> can stream it in after the rest of the page has
+// already shipped — this is the fetch that used to hold up everything below the hero.
+async function RelatedRail() {
+  const relatedProducts = await getRelatedProducts(PRODUCT_SLUG);
+  return <ProductRail eyebrow="More" title="Protection & Blessings" products={relatedProducts} tinted tightTop tightBottom />;
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const product = await getProduct();
   if (!product) return {};
@@ -130,13 +139,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function DurghatnaNashakYantraPage() {
-  // Fired together, not one after the other — related-products doesn't actually depend
-  // on `product` (it filters by a hardcoded purpose + excludes PRODUCT_SLUG), so awaiting
-  // it only after getProduct() finished was serializing two Backend round-trips back to
-  // back, doubling how long the whole page (price, gallery, everything below the fold)
-  // sat blocked before any HTML could go out — the "everything except photos loads slow"
-  // symptom on the live site.
-  const [product, relatedProducts] = await Promise.all([getProduct(), getRelatedProducts(PRODUCT_SLUG)]);
+  // Only the product fetch blocks the page shell now — related-products is fetched
+  // inside its own Suspense boundary further down (see RelatedRail) so Next.js can stream
+  // the whole page (hero, price, gallery, benefits, reviews...) out immediately instead of
+  // waiting on a second Backend round-trip nothing above the fold actually needs.
+  const product = await getProduct();
   if (!product) notFound();
 
   const activeVariants = product.variants.filter((v) => v.isActive && v.attributes.type !== 'service');
@@ -535,7 +542,9 @@ export default async function DurghatnaNashakYantraPage() {
           )}
 
           <div className="rounded-[1.5rem] overflow-hidden">
-            <ProductRail eyebrow="More" title="Protection & Blessings" products={relatedProducts} tinted tightTop tightBottom />
+            <Suspense fallback={<ProductRailSkeleton tinted tightTop tightBottom />}>
+              <RelatedRail />
+            </Suspense>
           </div>
         </div>
       </section>
