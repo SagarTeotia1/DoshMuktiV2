@@ -8,6 +8,7 @@ import { Reveal } from '@/components/motion/Reveal';
 import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { ProductRail } from '@/components/storefront/ProductRail';
+import { ViewItemTracker } from '@/components/storefront/ViewItemTracker';
 import { api } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
 import { SITE_URL, RETURN_ELIGIBLE_ABOVE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
@@ -24,6 +25,11 @@ import type { Product, DescriptionBlock, PaginatedProducts } from '@/types/api.t
 // gets its own minimal chrome (see campaign-header.tsx). Buying still goes through the
 // exact same buy-now cart + /checkout + login flow every other product page uses.
 const PRODUCT_SLUG = 'durbhagya-nashak-nariyal';
+
+// Same ISR pattern as the regular PDP (products/[slug]/page.tsx) — without this the
+// route re-renders and re-fetches on every single request instead of being cached and
+// served instantly, which was the main cause of this page feeling slow to load.
+export const revalidate = 300;
 
 // A serif display face, scoped to this campaign page only (next/font/google works from
 // any Server Component, not just root layout) — the rest of the site runs on Outfit/Satoshi
@@ -78,7 +84,7 @@ interface ProductDetailResponse {
 
 async function getProduct(): Promise<Product | null> {
   try {
-    const data = await api.get<ProductDetailResponse>(`/api/products/${PRODUCT_SLUG}`);
+    const data = await api.get<ProductDetailResponse>(`/api/products/${PRODUCT_SLUG}`, undefined, revalidate);
     return data.product;
   } catch {
     return null;
@@ -91,7 +97,7 @@ async function getProduct(): Promise<Product | null> {
 async function getRelatedProducts(currentSlug: string): Promise<Product[]> {
   try {
     const params = new URLSearchParams({ purpose: 'wealth', sort: 'newest', limit: '9' });
-    const data = await api.get<PaginatedProducts>(`/api/products?${params.toString()}`);
+    const data = await api.get<PaginatedProducts>(`/api/products?${params.toString()}`, undefined, revalidate);
     return data.products.filter((p) => p.slug !== currentSlug).slice(0, 8);
   } catch {
     return [];
@@ -141,6 +147,20 @@ export default async function DurbhagyaNashakNariyalPage() {
     (b): b is Extract<DescriptionBlock, { type: 'image' }> => b.type === 'image'
   );
   const fullDescription = descriptionParagraphs.map((b) => b.content).join(' ');
+  // Every remaining real product photo — hero (images[0]) and the feature-image section's
+  // pick (descriptionImages[0]) are already shown elsewhere, so both are excluded here.
+  // Deduped by URL so the same photo (e.g. a description image that's also a plain
+  // catalog image) never repeats twice in the same grid. Nothing invented — only what
+  // the product record actually has renders.
+  const galleryImages = (() => {
+    const seen = new Set<string>();
+    const images = [...product.images.slice(1), ...descriptionImages.slice(1)];
+    return images.filter((img) => {
+      if (seen.has(img.full)) return false;
+      seen.add(img.full);
+      return true;
+    });
+  })();
   // The real, admin-authored copy's second sentence stands alone as the big pull-quote
   // statement below — short enough to actually work at giant type size, unlike the full
   // paragraph. Falls back to the whole thing if it was ever written as a single sentence.
@@ -201,6 +221,8 @@ export default async function DurbhagyaNashakNariyalPage() {
     <div className={`${fraunces.variable} bg-[#FFFDF8] text-[#2B1B0C] overflow-x-hidden`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+
+      <ViewItemTracker item={{ id: product.id, name: product.name, price, category: product.categories[0] ?? 'DoshMukti Special' }} />
 
       {variant && <CampaignHeader variantId={variant.id} productName={product.name} price={price} />}
 
@@ -393,6 +415,30 @@ export default async function DurbhagyaNashakNariyalPage() {
           )}
         </div>
       </section>
+
+      {/* ─── Gallery — every remaining real product photo, none invented ──── */}
+      {galleryImages.length > 0 && (
+        <section className="px-5 pb-24 sm:pb-32">
+          <Reveal className="max-w-2xl mx-auto text-center mb-12 sm:mb-14">
+            <h2 className="font-heading font-black text-3xl sm:text-4xl tracking-tight">A Closer Look</h2>
+          </Reveal>
+          <StaggerGroup className="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-5">
+            {galleryImages.map((img, i) => (
+              <StaggerItem key={img.full}>
+                <div className="relative aspect-square rounded-2xl overflow-hidden shadow-neo-sm">
+                  <Image
+                    src={img.full}
+                    alt={`${product.name} — photo ${i + 2}`}
+                    fill
+                    className="object-cover"
+                    sizes="(min-width: 640px) 33vw, 50vw"
+                  />
+                </div>
+              </StaggerItem>
+            ))}
+          </StaggerGroup>
+        </section>
+      )}
 
       {/* ─── Stat strip ───────────────────────────────────────────────────── */}
       <section className="border-y border-[#2B1B0C]/10 bg-[#F6E4C2]/40 px-5 py-16 sm:py-20">

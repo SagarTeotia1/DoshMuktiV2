@@ -10,6 +10,12 @@ const securityHeaders = [
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(self), geolocation=()' },
 ];
 
+// Same public, stale-while-revalidate convention as Backend's setPublicCache (see
+// Backend/src/shared/http/cacheControl.ts) — max-age matches these pages' own ISR
+// `revalidate` window, so nginx/any CDN in front and every visitor's browser can serve
+// a shared cached copy instead of hitting the Node process on every request.
+const campaignPageCacheHeaders = [{ key: 'Cache-Control', value: 'public, max-age=300, stale-while-revalidate=1500' }];
+
 const nextConfig: NextConfig = {
   output: 'standalone',
   // Pin explicitly — a package-lock.json one level up (C:\Users\acer) otherwise makes
@@ -29,7 +35,12 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 31536000,
   },
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }];
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      { source: '/vahan-suraksha-kavach', headers: campaignPageCacheHeaders },
+      { source: '/durghatna-nashak-yantra', headers: campaignPageCacheHeaders },
+      { source: '/durbhagya-nashak-nariyal', headers: campaignPageCacheHeaders },
+    ];
   },
 };
 
