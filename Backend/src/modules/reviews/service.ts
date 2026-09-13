@@ -52,14 +52,15 @@ function interleaveByRating<T extends { rating: number }>(reviews: T[], limit: n
 // fetching every approved review and interleaving/paginating in memory is cheap and
 // far simpler than expressing a ratio-interleave as SQL.
 export async function listApprovedForProduct(productId: string, { page, limit }: ProductReviewsQuery) {
+  const where = { productId, status: 'APPROVED' as const, rating: { gte: 3 } };
   const [allReviews, agg, ratingGroups] = await Promise.all([
     db.review.findMany({
-      where: { productId, status: 'APPROVED' },
+      where,
       orderBy: { createdAt: 'desc' },
       select: { id: true, customerName: true, rating: true, title: true, body: true, createdAt: true },
     }),
-    db.review.aggregate({ where: { productId, status: 'APPROVED' }, _avg: { rating: true }, _count: true }),
-    db.review.groupBy({ by: ['rating'], where: { productId, status: 'APPROVED' }, _count: true }),
+    db.review.aggregate({ where, _avg: { rating: true }, _count: true }),
+    db.review.groupBy({ by: ['rating'], where, _count: true }),
   ]);
 
   const totalReviews = agg._count;
@@ -81,7 +82,7 @@ export async function listApprovedForProduct(productId: string, { page, limit }:
 
 export async function listRecentApproved(limit = 8) {
   return db.review.findMany({
-    where: { status: 'APPROVED' },
+    where: { status: 'APPROVED', rating: { gte: 3 } },
     orderBy: { createdAt: 'desc' },
     take: limit,
     select: {
