@@ -164,7 +164,10 @@ export function ReviewsSection({
 }) {
   const [showForm, setShowForm] = useState(false);
   const [page, setPage] = useState(1);
-  const REVIEWS_PER_PAGE = 10;
+  // Matches Backend's productReviewsQuerySchema default and its 3-high:2-low
+  // interleaveByRating mix — every page of 5 reads as a realistic mixed spread of
+  // ratings, not a wall of the same score. Keep these two defaults in sync.
+  const REVIEWS_PER_PAGE = 5;
 
   // Server already fetched this same 60s-ISR'd endpoint for JSON-LD (see page.tsx) — seeding
   // it here as initialData skips the client fetch waterfall, so reviews paint immediately
@@ -229,14 +232,16 @@ export function ReviewsSection({
         <>
           <RatingBreakdown ratingCounts={data.ratingCounts} averageRating={data.averageRating} totalReviews={data.totalReviews} />
 
-          <div className="grid sm:grid-cols-2 gap-4">
+          {/* 3-col on lg — 5 reviews/page (the new mixed-rating default) lays out as a
+              clean 3+2 instead of a lopsided 2-col grid with one orphaned card. */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {data.reviews.map((review) => (
               <div
                 key={review.id}
                 itemProp="review"
                 itemScope
                 itemType="https://schema.org/Review"
-                className="relative bg-[#FFFDF8] border border-[#2B1B0C]/10 rounded-2xl p-5 sm:p-6 shadow-neo-sm hover:shadow-neo-md hover:-translate-y-0.5 transition-all duration-250"
+                className="relative bg-[#FFFDF8] border border-[#2B1B0C]/10 rounded-2xl p-5 sm:p-6 shadow-neo-sm hover:shadow-neo-md hover:-translate-y-0.5 transition-all duration-250 flex flex-col"
               >
                 <Quote className="absolute top-4 right-4 w-6 h-6 text-[#9C5A26]/15 fill-[#9C5A26]/10" />
 
@@ -261,7 +266,7 @@ export function ReviewsSection({
                 {review.title && (
                   <p className="font-heading font-bold text-sm text-[#2B1B0C] mt-2.5 mb-1">{review.title}</p>
                 )}
-                <p itemProp="reviewBody" className="font-body text-sm text-[#6B5539] leading-relaxed mt-1">
+                <p itemProp="reviewBody" className="font-body text-sm text-[#6B5539] leading-relaxed mt-1 flex-1">
                   {review.body}
                 </p>
               </div>

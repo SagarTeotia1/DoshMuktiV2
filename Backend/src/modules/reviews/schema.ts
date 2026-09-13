@@ -15,7 +15,10 @@ export const slugParamSchema = z.object({
 
 export const productReviewsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(999).default(1),
-  limit: z.coerce.number().int().min(1).max(50).default(10),
+  // 5 per page — the storefront wants a realistic mixed spread of ratings per page
+  // (3 high-rated : 2 lower-rated, see interleaveByRating in service.ts), not a wall
+  // of reviews at once.
+  limit: z.coerce.number().int().min(1).max(50).default(5),
 });
 export type ProductReviewsQuery = z.infer<typeof productReviewsQuerySchema>;
 
