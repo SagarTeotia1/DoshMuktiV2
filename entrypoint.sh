@@ -15,7 +15,10 @@ echo "[entrypoint] Starting Backend on :4000"
 BACKEND_PID=$!
 
 echo "[entrypoint] Starting Frontend on :3000"
-(cd /app/frontend && PORT=3000 HOSTNAME=0.0.0.0 node server.js) &
+# BACKEND_INTERNAL_URL points Frontend's server-side (SSR/ISR) fetches straight at
+# Backend's own :4000 in this same container, instead of round-tripping through the
+# public api.doshmukti.com domain — see api-client.ts for why that round-trip fails.
+(cd /app/frontend && PORT=3000 HOSTNAME=0.0.0.0 BACKEND_INTERNAL_URL=http://127.0.0.1:4000 node server.js) &
 FRONTEND_PID=$!
 
 echo "[entrypoint] Starting Admin on :3001"

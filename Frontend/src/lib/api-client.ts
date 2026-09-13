@@ -1,4 +1,14 @@
-const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL!;
+// Server-side (SSR/ISR/build) fetches run inside the same container as Backend
+// (entrypoint.sh starts it on :4000 alongside Frontend on :3000) — hitting the public
+// domain from in here round-trips through DNS/TLS/nginx back to the VM's own public IP,
+// which many hosts refuse to hairpin. That made every server-side fetch on these pages
+// fail (ECONNREFUSED/timeout), which is what baked the 404 into the ISR cache for the
+// campaign pages. Server code talks to localhost directly; the browser (where `window`
+// exists) still needs the real public URL.
+const BASE_URL =
+  typeof window === 'undefined'
+    ? process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_BACKEND_URL!
+    : process.env.NEXT_PUBLIC_BACKEND_URL!;
 
 export function invoiceUrl(orderNumber: string): string {
   return `${BASE_URL}/api/orders/${orderNumber}/invoice`;
