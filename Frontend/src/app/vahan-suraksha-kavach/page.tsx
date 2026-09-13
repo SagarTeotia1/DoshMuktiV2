@@ -130,7 +130,13 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function VahanSurakshaKavachPage() {
-  const product = await getProduct();
+  // Fired together, not one after the other — related-products doesn't actually depend
+  // on `product` (it filters by a hardcoded purpose + excludes PRODUCT_SLUG), so awaiting
+  // it only after getProduct() finished was serializing two Backend round-trips back to
+  // back, doubling how long the whole page (price, gallery, everything below the fold)
+  // sat blocked before any HTML could go out — the "everything except photos loads slow"
+  // symptom on the live site.
+  const [product, relatedProducts] = await Promise.all([getProduct(), getRelatedProducts(PRODUCT_SLUG)]);
   if (!product) notFound();
 
   const activeVariants = product.variants.filter((v) => v.isActive && v.attributes.type !== 'service');
@@ -188,8 +194,6 @@ export default async function VahanSurakshaKavachPage() {
           { title: 'Travels With the Vehicle', description: 'Tuck it into the dashboard or glovebox — it protects the journey, not a seat.' },
           { title: 'Built for Every Road', description: 'Invoked for safe roads and steady journeys, wherever the road takes you.' },
         ];
-
-  const relatedProducts = await getRelatedProducts(product.slug);
 
   const productJsonLd = {
     '@context': 'https://schema.org',
