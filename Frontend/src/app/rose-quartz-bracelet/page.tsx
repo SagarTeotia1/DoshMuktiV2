@@ -278,8 +278,12 @@ export default async function RoseQuartzBraceletPage() {
           </div>
         </div>
 
+        {/* Not wrapped in <Reveal>: framer-motion SSRs this with opacity:0 and only flips it
+            visible after JS hydrates + IntersectionObserver fires, so the single most
+            important text on the page was invisible until then — very noticeable on Safari's
+            slower hydration. Render plain so it's visible the instant HTML paints. */}
         <div className="relative z-10 px-5 sm:px-10 mt-10 sm:mt-14">
-          <Reveal className="max-w-4xl mx-auto text-center sm:text-left">
+          <div className="max-w-4xl mx-auto text-center sm:text-left">
             <h1
               className="leading-[1.05] sm:leading-[0.98] tracking-tight text-[#FFFDF8] text-[2.1rem] sm:text-6xl lg:text-7xl"
               style={{ fontFamily: 'var(--font-fraunces), Georgia, serif' }}
@@ -289,7 +293,7 @@ export default async function RoseQuartzBraceletPage() {
             <p className="font-body text-sm sm:text-base text-[#E6D3AE]/80 max-w-md mx-auto sm:mx-0 mt-5">
               Invoked for love, compassion and quiet emotional healing — for you or the person you give it to.
             </p>
-          </Reveal>
+          </div>
         </div>
 
         <div className="relative z-10 px-5 sm:px-10 mt-9 sm:mt-12 pb-10 sm:pb-14">

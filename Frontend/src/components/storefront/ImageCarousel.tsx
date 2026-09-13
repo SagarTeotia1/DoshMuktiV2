@@ -33,17 +33,28 @@ export function ImageCarousel({ images, alt }: { images: CarouselImage[]; alt: s
 
   if (images.length === 0) return null;
 
+  // 3 or fewer photos fit in one row with no scrolling needed — arrows/dots implying
+  // "more to swipe through" were misleading when there's nothing more, and the row
+  // was left-aligned instead of centered like a deliberate small gallery.
+  const needsScroll = images.length > 3;
+
   return (
     <div className="relative">
       <div
         ref={trackRef}
         onScroll={handleScroll}
-        className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-4 sm:gap-5 -mx-5 px-5 sm:mx-0 sm:px-0"
+        className={`flex gap-4 sm:gap-5 ${
+          needsScroll
+            ? 'overflow-x-auto snap-x snap-mandatory hide-scrollbar -mx-5 px-5 sm:mx-0 sm:px-0'
+            : 'justify-center flex-wrap'
+        }`}
       >
         {images.map((img, i) => (
           <div
             key={img.full}
-            className="relative flex-shrink-0 w-[82vw] xs:w-[70vw] sm:w-[340px] aspect-square snap-center rounded-[1.75rem] overflow-hidden shadow-neo-sm"
+            className={`relative flex-shrink-0 w-[82vw] xs:w-[70vw] sm:w-[340px] aspect-square rounded-[1.75rem] overflow-hidden shadow-neo-sm ${
+              needsScroll ? 'snap-center' : ''
+            }`}
           >
             <Image
               src={img.full}
@@ -56,7 +67,7 @@ export function ImageCarousel({ images, alt }: { images: CarouselImage[]; alt: s
         ))}
       </div>
 
-      {images.length > 1 && (
+      {needsScroll && (
         <>
           {/* Desktop-only arrow controls — mobile relies on the native touch swipe */}
           <button

@@ -294,9 +294,13 @@ export default async function DurghatnaNashakYantraPage() {
           </div>
         </div>
 
-        {/* Headline — clears the image with real, positive spacing; giant serif italic accent */}
+        {/* Headline — clears the image with real, positive spacing; giant serif italic accent.
+            Not wrapped in <Reveal>: framer-motion SSRs this with opacity:0 and only flips it
+            visible after JS hydrates + IntersectionObserver fires, so the single most
+            important text on the page was invisible until then — very noticeable on Safari's
+            slower hydration. Render plain so it's visible the instant HTML paints. */}
         <div className="relative z-10 px-5 sm:px-10 mt-10 sm:mt-14">
-          <Reveal className="max-w-4xl mx-auto text-center sm:text-left">
+          <div className="max-w-4xl mx-auto text-center sm:text-left">
             <h1
               className="leading-[1.05] sm:leading-[0.98] tracking-tight text-[#FFFDF8] text-[2.1rem] sm:text-6xl lg:text-7xl"
               style={{ fontFamily: 'var(--font-fraunces), Georgia, serif' }}
@@ -306,7 +310,7 @@ export default async function DurghatnaNashakYantraPage() {
             <p className="font-body text-sm sm:text-base text-[#E6D3AE]/80 max-w-md mx-auto sm:mx-0 mt-5">
               Invoked to remove accident dosh and shield you from sudden, unforeseen misfortune.
             </p>
-          </Reveal>
+          </div>
         </div>
 
         {/* Segmented glass bar — feature promises, price, and the buy CTA in one strip */}
