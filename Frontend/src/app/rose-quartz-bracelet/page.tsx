@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Fraunces } from 'next/font/google';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Sparkles, ShieldCheck, MoonStar, Flame, HeartHandshake, Sun, Truck, RotateCcw, Lock } from 'lucide-react';
+import { Heart, ShieldCheck, Sparkles, Gift, HeartHandshake, Flower2, Truck, RotateCcw, Lock } from 'lucide-react';
 import { Reveal } from '@/components/motion/Reveal';
 import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
@@ -21,21 +21,18 @@ import { AcharyaSection } from './acharya-section';
 import { ReviewsSection } from '../(storefront)/products/[slug]/reviews-section';
 import type { Product, DescriptionBlock, PaginatedProducts } from '@/types/api.types';
 
-// A one-product campaign page, not the regular PDP — deliberately outside the
-// (storefront) route group so it skips the catalog Navbar/Footer/AnnouncementBar and
-// gets its own minimal chrome (see campaign-header.tsx). Buying still goes through the
-// exact same buy-now cart + /checkout + login flow every other product page uses.
-const PRODUCT_SLUG = 'durbhagya-nashak-nariyal';
+// TEST campaign page — cloned from vahan-suraksha-kavach to verify the reusable
+// campaign-page template (cache headers, ISR, ViewItemTracker, standalone image +
+// swipe carousel gallery) against a real DB product from a different category
+// (a bracelet, not a Special/Kavach item) before rolling this template out further.
+const PRODUCT_SLUG = 'rose-quartz-bracelet';
 
-// Same ISR pattern as the regular PDP (products/[slug]/page.tsx) — without this the
-// route re-renders and re-fetches on every single request instead of being cached and
-// served instantly, which was the main cause of this page feeling slow to load.
+// Same ISR pattern as the regular PDP (products/[slug]/page.tsx) and the other
+// campaign pages — cached and served instantly instead of re-fetching every request.
 export const revalidate = 300;
 
-// A serif display face, scoped to this campaign page only (next/font/google works from
-// any Server Component, not just root layout) — the rest of the site runs on Outfit/Satoshi
-// per docs/DESIGN.md; this page wants a slower, more editorial headline register than that
-// sans-only system gives, without touching the global font setup other pages depend on.
+// A serif display face, scoped to this campaign page only — matches the other
+// campaign pages' editorial headline register, not the site-wide Outfit/Satoshi system.
 const fraunces = Fraunces({ subsets: ['latin'], weight: ['400', '600'], style: ['normal', 'italic'], variable: '--font-fraunces' });
 
 const HERO_SERVICES = [
@@ -54,8 +51,8 @@ const STATS = [
 
 const FAQ_ITEMS = [
   {
-    q: 'Is the Nariyal really energized before shipping?',
-    a: 'Yes — every Durbhagya Nashak Nariyal is ritually energized following traditional Vedic practice before it leaves our workshop, the same process used across every Doshhmukti product.',
+    q: 'Is the bracelet really energized before shipping?',
+    a: 'Yes — every Rose Quartz Bracelet is ritually energized following traditional Vedic practice before it leaves our workshop, the same process used across every Doshhmukti product.',
   },
   {
     q: 'How long does delivery take?',
@@ -63,21 +60,21 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What if I want to return it?',
-    a: `Eligible orders of ₹${RETURN_ELIGIBLE_ABOVE} and above (this Nariyal qualifies) come with a 7-day change-of-mind return window from delivery. Damaged or incorrect items are replaced free within 48 hours, regardless of price.`,
+    a: `Eligible orders of ₹${RETURN_ELIGIBLE_ABOVE} and above (this bracelet qualifies) come with a 7-day change-of-mind return window from delivery. Damaged or incorrect items are replaced free within 48 hours, regardless of price.`,
   },
   {
     q: 'What payment methods are accepted?',
     a: 'UPI, debit/credit cards, net banking and EMI — all processed securely through Razorpay.',
   },
   {
-    q: 'How do I use the Nariyal at home?',
-    a: 'Most customers place it at the home altar or main entrance and follow the enclosed ritual instructions — no separate priest visit needed.',
+    q: 'Which wrist should I wear it on?',
+    a: 'Most customers wear Rose Quartz on the left wrist — the receiving side — so it stays closest to the heart, though either wrist works.',
   },
 ];
 
 // Cycled icons for the benefits grid — the copy itself comes from the product's own
 // admin-authored `benefits` field, these are purely decorative per-card accents.
-const BENEFIT_ICONS = [ShieldCheck, MoonStar, Flame, Sparkles, HeartHandshake, Sun];
+const BENEFIT_ICONS = [Heart, HeartHandshake, Flower2, Sparkles, Gift, ShieldCheck];
 
 interface ProductDetailResponse {
   product: Product;
@@ -92,12 +89,12 @@ async function getProduct(): Promise<Product | null> {
   }
 }
 
-// "You May Also Need" rail near the bottom — same wealth/prosperity purpose this
-// product sits under, so it reads as a sensible next pick rather than a random rail.
-// Never allowed to crash the page: any failure just collapses the section to empty.
+// "You May Also Need" rail near the bottom — same love/gifting purpose this product
+// sits under, so it reads as a sensible next pick rather than a random rail. Never
+// allowed to crash the page: any failure just collapses the section to empty.
 async function getRelatedProducts(currentSlug: string): Promise<Product[]> {
   try {
-    const params = new URLSearchParams({ purpose: 'wealth', sort: 'newest', limit: '9' });
+    const params = new URLSearchParams({ purpose: 'love', sort: 'newest', limit: '9' });
     const data = await api.get<PaginatedProducts>(`/api/products?${params.toString()}`, undefined, revalidate);
     return data.products.filter((p) => p.slug !== currentSlug).slice(0, 8);
   } catch {
@@ -109,9 +106,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const product = await getProduct();
   if (!product) return {};
 
-  const title = 'Durbhagya Nashak Nariyal — Remove Bad Luck, Restore Prosperity';
+  const title = 'Rose Quartz Bracelet — The Stone of Unconditional Love';
   const description =
-    product.excerpt || 'A ritually energized Durbhagya Nashak Nariyal to remove durbhagya dosh and persistent misfortune — invoked for a fresh, prosperous start.';
+    product.excerpt || 'A ritually energized Rose Quartz Bracelet — worn to soften the heart and deepen compassion.';
   const canonical = `/${PRODUCT_SLUG}`;
   const image = product.images[0]?.card;
 
@@ -124,7 +121,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function DurbhagyaNashakNariyalPage() {
+export default async function RoseQuartzBraceletPage() {
   const product = await getProduct();
   if (!product) notFound();
 
@@ -150,8 +147,7 @@ export default async function DurbhagyaNashakNariyalPage() {
   const fullDescription = descriptionParagraphs.map((b) => b.content).join(' ');
   // Every remaining real product photo — hero (images[0]) and the feature-image section's
   // pick (descriptionImages[0]) are already shown elsewhere, so both are excluded here.
-  // Deduped by URL so the same photo (e.g. a description image that's also a plain
-  // catalog image) never repeats twice in the same grid. Nothing invented — only what
+  // Deduped by URL so the same photo never repeats twice. Nothing invented — only what
   // the product record actually has renders.
   const galleryImages = (() => {
     const seen = new Set<string>();
@@ -162,10 +158,8 @@ export default async function DurbhagyaNashakNariyalPage() {
       return true;
     });
   })();
-  // Split the remaining gallery instead of dumping it into one grid: the first extra
-  // photo becomes a single standalone visual break further up the page, everything
-  // left over goes into a swipeable carousel further down. Both derived from the same
-  // galleryImages array above — nothing new fetched or invented.
+  // The first extra photo becomes a single standalone visual break further up the page,
+  // everything left over goes into a swipeable carousel further down.
   const [standaloneImage, ...carouselImages] = galleryImages;
   // The real, admin-authored copy's second sentence stands alone as the big pull-quote
   // statement below — short enough to actually work at giant type size, unlike the full
@@ -180,8 +174,8 @@ export default async function DurbhagyaNashakNariyalPage() {
       ? product.benefits
       : [
           { title: 'Ritually Energized', description: product.excerpt || 'Invoked with traditional Vedic ritual before it ever leaves our workshop.' },
-          { title: 'Removes Durbhagya Dosh', description: 'Traditionally used to clear persistent misfortune and obstacles from your path.' },
-          { title: 'Invites Fresh Prosperity', description: 'Invoked to make room for positivity and a more prosperous chapter ahead.' },
+          { title: 'Worn Close to the Heart', description: 'Rose Quartz is worn to soften the heart and deepen compassion — for a partner, family, or yourself.' },
+          { title: 'A Gift That Lands', description: 'A quiet, meaningful gift for anyone who could use a little more warmth in their life right now.' },
         ];
 
   const relatedProducts = await getRelatedProducts(product.slug);
@@ -228,14 +222,11 @@ export default async function DurbhagyaNashakNariyalPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
-      <ViewItemTracker item={{ id: product.id, name: product.name, price, category: product.categories[0] ?? 'DoshMukti Special' }} />
+      <ViewItemTracker item={{ id: product.id, name: product.name, price, category: product.categories[0] ?? 'Bracelets' }} />
 
       {variant && <CampaignHeader variantId={variant.id} productName={product.name} price={price} />}
 
-      {/* ─── Hero — solid ink canvas, product photo floating on it (not full-bleed cover),
-          giant serif headline overlapping the image's base, a segmented glass bar of
-          feature promises + CTA closing the section. Composition, not colorway, borrowed
-          from a "product-hero" reference the client liked — this stays Temple Warmth bronze. */}
+      {/* ─── Hero ──────────────────────────────────────────────────────────── */}
       <section className="relative bg-[#2B1B0C] overflow-hidden pt-24 sm:pt-28">
         <div className="pointer-events-none absolute top-[-15%] left-1/2 -translate-x-1/2 w-[900px] h-[700px] rounded-full bg-[#9C5A26]/20 blur-[140px]" />
         <div className="pointer-events-none absolute bottom-0 right-[-10%] w-[420px] h-[420px] rounded-full bg-[#C9863F]/15 blur-[110px]" />
@@ -245,66 +236,57 @@ export default async function DurbhagyaNashakNariyalPage() {
         />
 
         <span className="relative z-10 block text-center font-body text-[11px] sm:text-xs font-bold uppercase tracking-[0.35em] text-[#E6B873] mb-8 sm:mb-10">
-          Vedic Misfortune-Removal Ritual
+          Vedic Love Ritual
         </span>
 
-        {/* Product image, badge and sticker tag all live INSIDE the image's own box — the
-            reference's overlap trick only works because its product is a transparent
-            cutout; ours is an opaque studio photo, so nothing here is allowed to spill
-            past the image edge into the headline below it (that was the overlap bug). */}
         <div className="relative mx-auto max-w-[min(480px,80vw)] sm:max-w-[440px]">
           <div className="relative z-10 aspect-square rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden shadow-[0_40px_90px_-25px_rgba(0,0,0,0.55)] sm:shadow-[0_60px_120px_-30px_rgba(0,0,0,0.55)] animate-float motion-reduce:animate-none">
             {heroImage ? (
               <Image src={heroImage} alt={product.name} fill className="object-cover" priority sizes="(min-width: 640px) 440px, 80vw" />
             ) : (
               <div className="w-full h-full bg-[#F6E4C2] flex items-center justify-center text-[#8A7A63]">
-                <Flame className="w-20 h-20" />
+                <Heart className="w-20 h-20" />
               </div>
             )}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#2B1B0C]/25 via-transparent to-transparent" />
 
-            {/* Rotating circular badge — "seal of authenticity", pinned inside the frame so it
-                can never intrude on the headline no matter the viewport */}
             <div className="hidden sm:block absolute left-3 bottom-3 z-20 w-[4.5rem] h-[4.5rem]">
               <svg viewBox="0 0 100 100" className="w-full h-full animate-[spin_18s_linear_infinite] motion-reduce:animate-none">
                 <defs>
-                  <path id="dnn-badge-circle" d="M 50,50 m -38,0 a 38,38 0 1,1 76,0 a 38,38 0 1,1 -76,0" />
+                  <path id="rqb-badge-circle" d="M 50,50 m -38,0 a 38,38 0 1,1 76,0 a 38,38 0 1,1 -76,0" />
                 </defs>
                 <circle cx="50" cy="50" r="49" fill="#2B1B0Ccc" stroke="#E6D3AE55" strokeWidth="1" />
                 <text fill="#E6B873" fontSize="8.2" fontWeight="700" letterSpacing="1.5">
-                  <textPath href="#dnn-badge-circle" startOffset="0%">
+                  <textPath href="#rqb-badge-circle" startOffset="0%">
                     VEDIC RITUAL • ENERGIZED •&nbsp;
                   </textPath>
                 </text>
               </svg>
               <span className="absolute inset-0 flex items-center justify-center">
-                <ShieldCheck className="w-5 h-5 text-[#E6B873]" strokeWidth={1.5} />
+                <Heart className="w-5 h-5 text-[#E6B873]" strokeWidth={1.5} />
               </span>
             </div>
 
-            {/* Sticker tag — small rotated pill, kept inside the top-right corner */}
             <span className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 rotate-[8deg] inline-flex items-center rounded-full bg-[#E6B873] text-[#2B1B0C] font-body font-bold text-[10px] sm:text-[11px] px-3 py-1.5 shadow-neo-gold-md">
               100% Energized
             </span>
           </div>
         </div>
 
-        {/* Headline — clears the image with real, positive spacing; giant serif italic accent */}
         <div className="relative z-10 px-5 sm:px-10 mt-10 sm:mt-14">
           <Reveal className="max-w-4xl mx-auto text-center sm:text-left">
             <h1
               className="leading-[1.05] sm:leading-[0.98] tracking-tight text-[#FFFDF8] text-[2.1rem] sm:text-6xl lg:text-7xl"
               style={{ fontFamily: 'var(--font-fraunces), Georgia, serif' }}
             >
-              Let go of the <span className="italic font-light text-[#E6B873]">misfortune</span> that follows you.
+              Because your heart <span className="italic font-light text-[#E6B873]">deserves</span> softness.
             </h1>
             <p className="font-body text-sm sm:text-base text-[#E6D3AE]/80 max-w-md mx-auto sm:mx-0 mt-5">
-              Invoked to remove durbhagya dosh and open the way for a fresh, prosperous chapter.
+              Invoked for love, compassion and quiet emotional healing — for you or the person you give it to.
             </p>
           </Reveal>
         </div>
 
-        {/* Segmented glass bar — feature promises, price, and the buy CTA in one strip */}
         <div className="relative z-10 px-5 sm:px-10 mt-9 sm:mt-12 pb-10 sm:pb-14">
           <StaggerGroup className="max-w-5xl mx-auto flex flex-col sm:flex-row items-stretch rounded-3xl sm:rounded-full border border-[#E6D3AE]/15 bg-[#FFFDF8]/[0.06] backdrop-blur-md divide-y sm:divide-y-0 sm:divide-x divide-[#E6D3AE]/10 overflow-hidden">
             {HERO_SERVICES.map((s) => {
@@ -346,9 +328,6 @@ export default async function DurbhagyaNashakNariyalPage() {
         </div>
       </section>
 
-      {/* ─── Benefits — equal-size cards (a bento layout with one enlarged "featured"
-          card read as broken/mismatched, not intentional, so every card here is now the
-          same footprint regardless of copy length). ──────────────────────────────────── */}
       {/* ─── Gallery carousel — everything left in galleryImages after the standalone
           photo further down, swiped through instead of dumped into a static grid. ─── */}
       {carouselImages.length > 0 && (
@@ -362,26 +341,27 @@ export default async function DurbhagyaNashakNariyalPage() {
         </section>
       )}
 
+      {/* ─── Benefits ──────────────────────────────────────────────────────── */}
       <section className="relative px-5 pt-6 sm:pt-8 pb-24 sm:pb-32 overflow-hidden">
         <div className="pointer-events-none absolute top-10 right-[-8%] w-72 h-72 rounded-full bg-[#9C5A26]/[0.06] blur-[100px]" />
 
         <Reveal className="max-w-2xl mx-auto text-center mb-14 sm:mb-16">
           <span className="inline-flex items-center gap-2 font-body text-[11px] sm:text-xs font-bold uppercase tracking-[0.3em] text-[#9C5A26] mb-5">
             <span className="w-1.5 h-1.5 rounded-full bg-[#9C5A26]" />
-            Why This Nariyal
+            Why This Bracelet
             <span className="w-1.5 h-1.5 rounded-full bg-[#9C5A26]" />
           </span>
           <h2
             className="tracking-tight leading-[1.08] text-3xl sm:text-5xl text-[#2B1B0C]"
             style={{ fontFamily: 'var(--font-fraunces), Georgia, serif' }}
           >
-            A fresh start built into <span className="italic font-light text-[#9C5A26]">every ritual.</span>
+            Softness built into <span className="italic font-light text-[#9C5A26]">every day.</span>
           </h2>
         </Reveal>
 
         <StaggerGroup className="relative max-w-5xl mx-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 items-stretch">
           {benefits.map((b, i) => {
-            const Icon = BENEFIT_ICONS[i % BENEFIT_ICONS.length] ?? ShieldCheck;
+            const Icon = BENEFIT_ICONS[i % BENEFIT_ICONS.length] ?? Heart;
             return (
               <StaggerItem key={b.title} className="h-full">
                 <div className="group relative h-full overflow-hidden rounded-[1.75rem] border border-[#2B1B0C]/10 bg-[#FFFDF8] shadow-neo-sm hover:shadow-neo-lg hover:-translate-y-1 transition-all duration-300 p-6 sm:p-7 flex flex-col gap-4">
@@ -407,7 +387,7 @@ export default async function DurbhagyaNashakNariyalPage() {
         </StaggerGroup>
       </section>
 
-      {/* ─── Big statement — real, admin-authored copy at giant scale ────────── */}
+      {/* ─── Big statement ─────────────────────────────────────────────────── */}
       <section className="relative bg-[#2B1B0C] text-[#E6D3AE] px-5 py-28 sm:py-40 overflow-hidden">
         <MandalaMotif className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] text-[#C9863F]/[0.035] animate-[spin_120s_linear_infinite] motion-reduce:animate-none" />
         <Reveal className="relative max-w-4xl mx-auto text-center">
@@ -423,9 +403,9 @@ export default async function DurbhagyaNashakNariyalPage() {
           <div className="max-w-3xl mx-auto flex flex-col items-center text-center gap-10">
             <Reveal>
               <h2 className="font-heading font-black text-3xl sm:text-5xl tracking-tight leading-[1.1]">
-                Placed at the altar.
+                Worn on the wrist.
                 <br />
-                Invoked with intention.
+                Felt in the heart.
               </h2>
             </Reveal>
             <Reveal delay={0.1} className="w-full max-w-lg">
@@ -449,9 +429,9 @@ export default async function DurbhagyaNashakNariyalPage() {
         </StaggerGroup>
       </section>
 
-      {/* ─── Standalone photo — a single real product shot as a visual break between the
-          stat strip and the Acharya ask-section, instead of every remaining photo being
-          bunched into one grid at the bottom. ──────────────────────────────────────── */}
+      {/* ─── Standalone photo — single visual break between the stat strip and
+          the Acharya ask-section, instead of every remaining photo bunched into
+          one grid at the bottom. ──────────────────────────────────────────── */}
       {standaloneImage && (
         <section className="px-5 py-16 sm:py-20">
           <Reveal className="max-w-4xl mx-auto">
@@ -468,19 +448,17 @@ export default async function DurbhagyaNashakNariyalPage() {
         </section>
       )}
 
-      {/* ─── Acharya Madhav — misfortune-removal-angled variant of the site-wide AI astrologer ── */}
+      {/* ─── Acharya Madhav — love/relationship-angled variant of the site-wide AI astrologer ── */}
       <AcharyaSection />
 
-      {/* ─── Reviews — real, API-backed customer reviews (same component and endpoint
-          as the regular PDP's ReviewsSection), replacing the generic "how it works"
-          filler with actual social proof for this exact product. ─────────────────── */}
+      {/* ─── Reviews ───────────────────────────────────────────────────────── */}
       <section className="px-5 py-12 sm:py-16">
         <div className="max-w-5xl mx-auto">
           <ReviewsSection productId={product.id} productSlug={product.slug} />
         </div>
       </section>
 
-      {/* ─── FAQ — plain, understated dividers, not a bordered card ──────────── */}
+      {/* ─── FAQ ───────────────────────────────────────────────────────────── */}
       <section className="px-5 py-12 sm:py-16">
         <Reveal>
           <h2 className="font-heading font-black text-3xl sm:text-5xl tracking-tight text-center mb-14">Common Questions</h2>
@@ -500,12 +478,9 @@ export default async function DurbhagyaNashakNariyalPage() {
         </Reveal>
       </section>
 
-      {/* ─── You May Also Need — framed so it reads as a distinct closing gallery,
-          not another edge-to-edge rail ────────────────────────────────────────── */}
+      {/* ─── You May Also Need ────────────────────────────────────────────── */}
       <section className="px-5 pb-24 sm:pb-32">
         <div className="relative max-w-6xl mx-auto rounded-[2rem] border border-[#9C5A26]/25 overflow-hidden p-3 sm:p-4">
-          {/* Ornamental corner flourishes — a temple-frame motif instead of a plain box
-              border, echoing the kundli-chart geometry used elsewhere on this page. */}
           {(['top-3 left-3', 'top-3 right-3 -scale-x-100', 'bottom-3 left-3 -scale-y-100', 'bottom-3 right-3 -scale-x-100 -scale-y-100'] as const).map(
             (pos) => (
               <svg
@@ -522,20 +497,12 @@ export default async function DurbhagyaNashakNariyalPage() {
           )}
 
           <div className="rounded-[1.5rem] overflow-hidden">
-            <ProductRail eyebrow="More" title="Prosperity & Blessings" products={relatedProducts} tinted tightTop tightBottom />
+            <ProductRail eyebrow="More" title="Love & Blessings" products={relatedProducts} tinted tightTop tightBottom />
           </div>
         </div>
       </section>
 
-      {/* Real site footer — this campaign page skipped the (storefront) layout entirely,
-          so it never got the shared Footer; a one-line copyright bar wasn't enough once
-          the page grew this much real content, visitors need the actual site links. */}
       <Footer />
-
-      {/* This page sits outside the (storefront) route group, so it doesn't inherit the
-          ChatWidget mounted in (storefront)/layout.tsx — without this, both the
-          AcharyaSection buttons and any "open-acharya-chat" event on this page fire
-          into a void, since nothing is listening for it. */}
       <ChatWidget />
     </div>
   );

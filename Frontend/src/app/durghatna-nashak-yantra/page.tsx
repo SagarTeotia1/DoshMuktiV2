@@ -9,6 +9,7 @@ import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { ProductRail } from '@/components/storefront/ProductRail';
 import { ViewItemTracker } from '@/components/storefront/ViewItemTracker';
+import { ImageCarousel } from '@/components/storefront/ImageCarousel';
 import { api } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
 import { SITE_URL, RETURN_ELIGIBLE_ABOVE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
@@ -161,6 +162,11 @@ export default async function DurghatnaNashakYantraPage() {
       return true;
     });
   })();
+  // Split the remaining gallery instead of dumping it into one grid: the first extra
+  // photo becomes a single standalone visual break further up the page, everything
+  // left over goes into a swipeable carousel further down. Both derived from the same
+  // galleryImages array above — nothing new fetched or invented.
+  const [standaloneImage, ...carouselImages] = galleryImages;
   // The real, admin-authored copy's second sentence stands alone as the big pull-quote
   // statement below — short enough to actually work at giant type size, unlike the full
   // paragraph. Falls back to the whole thing if it was ever written as a single sentence.
@@ -343,7 +349,20 @@ export default async function DurghatnaNashakYantraPage() {
       {/* ─── Benefits — equal-size cards (a bento layout with one enlarged "featured"
           card read as broken/mismatched, not intentional, so every card here is now the
           same footprint regardless of copy length). ──────────────────────────────────── */}
-      <section className="relative px-5 py-24 sm:py-32 overflow-hidden">
+      {/* ─── Gallery carousel — everything left in galleryImages after the standalone
+          photo further down, swiped through instead of dumped into a static grid. ─── */}
+      {carouselImages.length > 0 && (
+        <section className="px-5 pt-16 sm:pt-20 pb-6 sm:pb-8">
+          <Reveal className="max-w-2xl mx-auto text-center mb-10 sm:mb-12">
+            <h2 className="font-heading font-black text-3xl sm:text-4xl tracking-tight">A Closer Look</h2>
+          </Reveal>
+          <div className="max-w-5xl mx-auto">
+            <ImageCarousel images={carouselImages} alt={product.name} />
+          </div>
+        </section>
+      )}
+
+      <section className="relative px-5 pt-6 sm:pt-8 pb-24 sm:pb-32 overflow-hidden">
         <div className="pointer-events-none absolute top-10 right-[-8%] w-72 h-72 rounded-full bg-[#9C5A26]/[0.06] blur-[100px]" />
 
         <Reveal className="max-w-2xl mx-auto text-center mb-14 sm:mb-16">
@@ -396,47 +415,25 @@ export default async function DurghatnaNashakYantraPage() {
         </Reveal>
       </section>
 
-      {/* ─── Feature image + caption ──────────────────────────────────────── */}
-      <section className="px-5 py-24 sm:py-32">
-        <div className="max-w-3xl mx-auto flex flex-col items-center text-center gap-10">
-          <Reveal>
-            <h2 className="font-heading font-black text-3xl sm:text-5xl tracking-tight leading-[1.1]">
-              Carried with you.
-              <br />
-              Wherever misfortune might strike.
-            </h2>
-          </Reveal>
-          {descriptionImages[0] && (
+      {/* ─── Feature image + caption — whole section skipped, not just the image,
+          when there's no descriptionImages[0]; an orphaned headline with nothing
+          under it read as broken, not intentional. ──────────────────────────── */}
+      {descriptionImages[0] && (
+        <section className="px-5 py-24 sm:py-32">
+          <div className="max-w-3xl mx-auto flex flex-col items-center text-center gap-10">
+            <Reveal>
+              <h2 className="font-heading font-black text-3xl sm:text-5xl tracking-tight leading-[1.1]">
+                Carried with you.
+                <br />
+                Wherever misfortune might strike.
+              </h2>
+            </Reveal>
             <Reveal delay={0.1} className="w-full max-w-lg">
               <div className="rounded-[2rem] overflow-hidden relative aspect-[4/3] shadow-[0_30px_70px_-25px_rgba(43,27,12,0.3)]">
                 <Image src={descriptionImages[0].full} alt={product.name} fill className="object-cover" />
               </div>
             </Reveal>
-          )}
-        </div>
-      </section>
-
-      {/* ─── Gallery — every remaining real product photo, none invented ──── */}
-      {galleryImages.length > 0 && (
-        <section className="px-5 pb-24 sm:pb-32">
-          <Reveal className="max-w-2xl mx-auto text-center mb-12 sm:mb-14">
-            <h2 className="font-heading font-black text-3xl sm:text-4xl tracking-tight">A Closer Look</h2>
-          </Reveal>
-          <StaggerGroup className="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-5">
-            {galleryImages.map((img, i) => (
-              <StaggerItem key={img.full}>
-                <div className="relative aspect-square rounded-2xl overflow-hidden shadow-neo-sm">
-                  <Image
-                    src={img.full}
-                    alt={`${product.name} — photo ${i + 2}`}
-                    fill
-                    className="object-cover"
-                    sizes="(min-width: 640px) 33vw, 50vw"
-                  />
-                </div>
-              </StaggerItem>
-            ))}
-          </StaggerGroup>
+          </div>
         </section>
       )}
 
@@ -451,6 +448,25 @@ export default async function DurghatnaNashakYantraPage() {
           ))}
         </StaggerGroup>
       </section>
+
+      {/* ─── Standalone photo — a single real product shot as a visual break between the
+          stat strip and the Acharya ask-section, instead of every remaining photo being
+          bunched into one grid at the bottom. ──────────────────────────────────────── */}
+      {standaloneImage && (
+        <section className="px-5 py-16 sm:py-20">
+          <Reveal className="max-w-4xl mx-auto">
+            <div className="relative aspect-[16/9] rounded-[2rem] overflow-hidden shadow-[0_30px_70px_-25px_rgba(43,27,12,0.3)]">
+              <Image
+                src={standaloneImage.full}
+                alt={product.name}
+                fill
+                className="object-cover"
+                sizes="(min-width: 640px) 896px, 100vw"
+              />
+            </div>
+          </Reveal>
+        </section>
+      )}
 
       {/* ─── Acharya Madhav — accident/misfortune-angled variant of the site-wide AI astrologer ── */}
       <AcharyaSection />
