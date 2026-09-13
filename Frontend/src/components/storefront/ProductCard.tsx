@@ -9,7 +9,7 @@ import { Tag, ShoppingBag, Eye } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { useActiveCartScope } from '@/hooks/use-active-cart-scope';
 import { formatCurrency } from '@/lib/formatters';
-import { trackSelectItem } from '@/lib/analytics';
+import { trackSelectItem, trackAddToCart } from '@/lib/analytics';
 import type { Product } from '@/types/api.types';
 
 const MotionLink = motion.create(Link);
@@ -41,6 +41,7 @@ export function ProductCard({ product, listName = 'product_grid' }: { product: P
     if (!variant) return;
     try {
       await addItemAsync({ variantId: variant.id, quantity: 1 });
+      trackAddToCart({ id: variant.id, name: product.name, price: variant.priceOverride ?? product.basePrice, quantity: 1 });
       toast.success('Added to cart');
     } catch {
       toast.error('Could not add to cart — try again');
