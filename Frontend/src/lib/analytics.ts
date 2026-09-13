@@ -67,3 +67,8 @@ export function trackContact() {
   ga.trackContact();
   fb.trackContact();
 }
+
+export function trackLead() {
+  ga.trackLead();
+  fb.trackLead();
+}

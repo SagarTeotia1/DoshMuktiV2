@@ -4,6 +4,7 @@ import { SearchX } from 'lucide-react';
 import Link from 'next/link';
 import { ProductCard } from '@/components/storefront/ProductCard';
 import { ProductCardHorizontal } from '@/components/storefront/ProductCardHorizontal';
+import { ImpressionTracker } from '@/components/storefront/ImpressionTracker';
 import { ShopFilters } from './shop-filters';
 import { ShopFiltersMobile } from './shop-filters-mobile';
 import { ShopToolbar } from './shop-toolbar';
@@ -114,6 +115,10 @@ export default async function ShopPage({
           </div>
         ) : (
           <>
+            <ImpressionTracker
+              listName="Shop"
+              products={data.products}
+            />
             <div
               className={
                 sp.view === 'list'
@@ -123,9 +128,9 @@ export default async function ShopPage({
             >
               {data.products.map((product) =>
                 sp.view === 'list' ? (
-                  <ProductCardHorizontal key={product.id} product={product} />
+                  <ProductCardHorizontal key={product.id} product={product} listName="Shop" />
                 ) : (
-                  <ProductCard key={product.id} product={product} />
+                  <ProductCard key={product.id} product={product} listName="Shop" />
                 )
               )}
             </div>

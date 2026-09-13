@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { X, Send, Sparkles, Mic } from 'lucide-react';
 import { useAcharyaChat } from '@/hooks/use-acharya-chat';
 import { useVoiceInput } from '@/hooks/use-voice-input';
+import { trackLead } from '@/lib/analytics';
 
 const VOICE_ERROR_MESSAGES: Record<string, string> = {
   'no-speech-detected': "Couldn't hear anything — check your mic, or your network may be blocking voice input.",
@@ -66,6 +67,14 @@ export function ChatWidget() {
     setShowPop(false);
   }
 
+  // Meta/GA4 Lead event — fired once, the very first message actually sent in this
+  // chat session (not just opening the panel), from either send path below. Both
+  // call sites route through this instead of calling sendMessage directly.
+  function trackedSendMessage(message: string) {
+    if (messages.length === 0) trackLead();
+    void sendMessage(message);
+  }
+
   // Lets other components (e.g. the homepage "Chat with Acharya Madhav" CTA, which
   // used to link out to WhatsApp) open this same in-page AI chat instead — a custom
   // DOM event rather than lifting state, since those components don't otherwise share
@@ -74,18 +83,19 @@ export function ChatWidget() {
     function handleExternalOpen(e: Event) {
       handleOpen();
       const message = (e as CustomEvent<{ message?: string }>).detail?.message;
-      if (message) void sendMessage(message);
+      if (message) trackedSendMessage(message);
     }
     window.addEventListener('open-acharya-chat', handleExternalOpen);
     return () => window.removeEventListener('open-acharya-chat', handleExternalOpen);
-  }, [sendMessage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sendMessage, messages.length]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = input.trim();
     if (!trimmed || isSending) return;
     setInput('');
-    void sendMessage(trimmed);
+    trackedSendMessage(trimmed);
   }
 
   return (

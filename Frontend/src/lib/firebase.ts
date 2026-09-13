@@ -98,3 +98,9 @@ export function trackAddPaymentInfo(total: number) {
 export function trackContact() {
   track('contact');
 }
+
+// GA4's standard event for a lead-gen action — fired once, the first message sent to
+// the Acharya AI chat in a session.
+export function trackLead() {
+  track('generate_lead', { content_type: 'acharya_chat' });
+}

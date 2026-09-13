@@ -5,10 +5,13 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Star, Tag } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
+import { trackSelectItem } from '@/lib/analytics';
 import { CardFrame } from './CardFrame';
 import type { Product } from '@/types/api.types';
 
-export function ProductCardHorizontal({ product }: { product: Product }) {
+// `listName` matches ProductCard's same-purpose prop — lets GA4/Meta attribute which
+// list/position drove the click on the list-view layout, not just that the PDP loaded.
+export function ProductCardHorizontal({ product, listName = 'product_grid' }: { product: Product; listName?: string }) {
   const router = useRouter();
   const href = `/products/${product.slug}`;
   const prefetch = () => router.prefetch(href);
@@ -28,6 +31,7 @@ export function ProductCardHorizontal({ product }: { product: Product }) {
       href={href}
       onMouseEnter={prefetch}
       onTouchStart={prefetch}
+      onClick={() => trackSelectItem(listName, { id: product.id, name: product.name, price })}
       className="neo-card group relative flex items-stretch gap-4 rounded-2xl bg-[#C49A6C] border border-[#2B1B0C]/8 shadow-neo-sm pt-3 pl-3 pr-4 pb-4 sm:pt-4 sm:pl-4 sm:pr-5 sm:pb-5"
     >
       <CardFrame />

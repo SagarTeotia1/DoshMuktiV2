@@ -113,3 +113,10 @@ export function trackAddPaymentInfo(total: number) {
 export function trackContact() {
   fbTrack('Contact');
 }
+
+// Lead — fired once, the first time a visitor actually sends a message to the Acharya
+// AI chat (not just opens the panel) in a given session. A real lead-gen moment for
+// an astrology-consultation business, distinct from Contact (a support/WhatsApp click).
+export function trackLead() {
+  fbTrack('Lead', { content_name: 'acharya_chat' });
+}
