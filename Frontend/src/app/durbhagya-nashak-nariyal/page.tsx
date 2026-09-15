@@ -253,11 +253,11 @@ export default async function DurbhagyaNashakNariyalPage() {
           feature promises + CTA closing the section. Composition, not colorway, borrowed
           from a "product-hero" reference the client liked — this stays Temple Warmth bronze. */}
       <section className="relative bg-[#2B1B0C] overflow-hidden pt-24 sm:pt-28">
-        <div className="pointer-events-none absolute top-[-15%] left-1/2 -translate-x-1/2 w-[900px] h-[700px] rounded-full bg-[#9C5A26]/20 blur-[140px]" />
-        <div className="pointer-events-none absolute bottom-0 right-[-10%] w-[420px] h-[420px] rounded-full bg-[#C9863F]/15 blur-[110px]" />
+        <div className="pointer-events-none hidden sm:block absolute top-[-15%] left-1/2 -translate-x-1/2 w-[900px] h-[700px] rounded-full bg-[#9C5A26]/20 blur-[140px]" />
+        <div className="pointer-events-none hidden sm:block absolute bottom-0 right-[-10%] w-[420px] h-[420px] rounded-full bg-[#C9863F]/15 blur-[110px]" />
         <MandalaMotif
           petals={20}
-          className="pointer-events-none absolute top-[8%] left-1/2 -translate-x-1/2 w-[900px] h-[900px] text-[#E6D3AE]/[0.05] animate-[spin_90s_linear_infinite] motion-reduce:animate-none"
+          className="pointer-events-none absolute top-[8%] left-1/2 -translate-x-1/2 w-[900px] h-[900px] text-[#E6D3AE]/[0.05] sm:animate-[spin_90s_linear_infinite] motion-reduce:animate-none"
         />
 
         <span className="relative z-10 block text-center font-body text-[11px] sm:text-xs font-bold uppercase tracking-[0.35em] text-[#E6B873] mb-8 sm:mb-10">
@@ -326,7 +326,7 @@ export default async function DurbhagyaNashakNariyalPage() {
 
         {/* Segmented glass bar — feature promises, price, and the buy CTA in one strip */}
         <div className="relative z-10 px-5 sm:px-10 mt-9 sm:mt-12 pb-10 sm:pb-14">
-          <StaggerGroup className="max-w-5xl mx-auto flex flex-col sm:flex-row items-stretch rounded-3xl sm:rounded-full border border-[#E6D3AE]/15 bg-[#FFFDF8]/[0.06] backdrop-blur-md divide-y sm:divide-y-0 sm:divide-x divide-[#E6D3AE]/10 overflow-hidden">
+          <StaggerGroup className="max-w-5xl mx-auto flex flex-col sm:flex-row items-stretch rounded-3xl sm:rounded-full border border-[#E6D3AE]/15 bg-[#FFFDF8]/[0.06] backdrop-blur-sm sm:backdrop-blur-md divide-y sm:divide-y-0 sm:divide-x divide-[#E6D3AE]/10 overflow-hidden">
             {HERO_SERVICES.map((s) => {
               const Icon = s.icon;
               return (
@@ -383,7 +383,7 @@ export default async function DurbhagyaNashakNariyalPage() {
       )}
 
       <section className="relative px-5 pt-6 sm:pt-8 pb-24 sm:pb-32 overflow-hidden">
-        <div className="pointer-events-none absolute top-10 right-[-8%] w-72 h-72 rounded-full bg-[#9C5A26]/[0.06] blur-[100px]" />
+        <div className="pointer-events-none hidden sm:block absolute top-10 right-[-8%] w-72 h-72 rounded-full bg-[#9C5A26]/[0.06] blur-[100px]" />
 
         <Reveal className="max-w-2xl mx-auto text-center mb-14 sm:mb-16">
           <span className="inline-flex items-center gap-2 font-body text-[11px] sm:text-xs font-bold uppercase tracking-[0.3em] text-[#9C5A26] mb-5">
@@ -429,7 +429,7 @@ export default async function DurbhagyaNashakNariyalPage() {
 
       {/* ─── Big statement — real, admin-authored copy at giant scale ────────── */}
       <section className="relative bg-[#2B1B0C] text-[#E6D3AE] px-5 py-28 sm:py-40 overflow-hidden">
-        <MandalaMotif className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] text-[#C9863F]/[0.035] animate-[spin_120s_linear_infinite] motion-reduce:animate-none" />
+        <MandalaMotif className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] text-[#C9863F]/[0.035] sm:animate-[spin_120s_linear_infinite] motion-reduce:animate-none" />
         <Reveal className="relative max-w-4xl mx-auto text-center">
           <p className="font-heading font-black text-3xl sm:text-5xl lg:text-6xl leading-[1.1] tracking-tight">{pullQuote}</p>
         </Reveal>
