@@ -82,8 +82,8 @@ export default function ProductsPage() {
     <>
       <Topbar title="Products" />
       <div className="p-6 flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex gap-2 flex-wrap">
             {['', 'DRAFT', 'ACTIVE', 'ARCHIVED'].map((s) => (
               <button
                 key={s}
@@ -97,15 +97,15 @@ export default function ProductsPage() {
             ))}
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="relative">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="relative w-full sm:w-72">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name or SKU..."
-                className="w-72 pl-9 pr-8 py-1.5 rounded-lg text-sm border border-slate-200 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#9C5A26]/30 focus:border-[#9C5A26]"
+                className="w-full pl-9 pr-8 py-1.5 rounded-lg text-sm border border-slate-200 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#9C5A26]/30 focus:border-[#9C5A26]"
               />
               {search && (
                 <button
@@ -120,7 +120,7 @@ export default function ProductsPage() {
 
             <Link
               href="/products/new"
-              className="flex items-center gap-1.5 bg-[#9C5A26] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#6B3D19] transition-colors"
+              className="flex items-center justify-center gap-1.5 bg-[#9C5A26] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#6B3D19] transition-colors shrink-0"
             >
               <Plus className="w-4 h-4" />
               New Product

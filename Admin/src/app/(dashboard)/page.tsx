@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { IndianRupee, ShoppingBag, AlertTriangle, PackageX } from 'lucide-react';
+import { IndianRupee, ShoppingBag, AlertTriangle, PackageX, Wallet } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { StatCard } from '@/components/ui/StatCard';
 import { SalesChart } from '@/components/charts/SalesChart';
@@ -15,9 +15,15 @@ export default function DashboardPage() {
     <>
       <Topbar title="Dashboard" />
       <div className="p-6 flex flex-col gap-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="Today's Revenue" value={summary.data ? formatCurrency(summary.data.todayRevenue) : '—'} icon={IndianRupee} />
           <StatCard label="Today's Orders" value={summary.data?.todayOrderCount ?? '—'} icon={ShoppingBag} />
+          <StatCard
+            label="Total Sales (All Time)"
+            value={summary.data ? formatCurrency(summary.data.allTimeRevenue) : '—'}
+            subValue={summary.data ? `${summary.data.allTimeOrderCount} orders` : undefined}
+            icon={Wallet}
+          />
           <StatCard label="Needs Packing" value={summary.data?.ordersNeedingAction ?? '—'} icon={AlertTriangle} tone="warning" />
           <StatCard label="Low Stock Items" value={summary.data?.lowStockCount ?? '—'} icon={PackageX} tone="danger" />
         </div>

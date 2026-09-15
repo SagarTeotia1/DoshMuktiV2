@@ -4,10 +4,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
 import type { PaginatedOrders, Order, GstReport } from '@/types/api.types';
 
-export function useOrders(status?: string) {
+export function useOrders(status?: string, dateRange?: { from?: string; to?: string }) {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (dateRange?.from) params.set('from', dateRange.from);
+  if (dateRange?.to) params.set('to', dateRange.to);
+  const qs = params.toString();
+
   return useQuery({
-    queryKey: ['admin-orders', status],
-    queryFn: () => api.get<PaginatedOrders>(`/api/admin/orders${status ? `?status=${status}` : ''}`),
+    queryKey: ['admin-orders', status, dateRange?.from, dateRange?.to],
+    queryFn: () => api.get<PaginatedOrders>(`/api/admin/orders${qs ? `?${qs}` : ''}`),
   });
 }
 
@@ -45,7 +51,8 @@ export function useUpdateOrderStatus(id: string) {
 // Not a mutation — fetches on demand and returns the PDF URL, no server state changes.
 export function useGenerateLabel(id: string) {
   return useMutation({
-    mutationFn: () => api.get<{ pdfUrl: string }>(`/api/admin/orders/${id}/shipment/label`),
+    mutationFn: (size: '4x6' | 'A4') =>
+      api.get<{ pdfBase64: string }>(`/api/admin/orders/${id}/shipment/label?size=${size}`),
   });
 }
 

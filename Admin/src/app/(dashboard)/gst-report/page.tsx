@@ -12,13 +12,13 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function firstOfMonthIso(): string {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
-}
+// GST report only ever needs to cover orders placed since the current order/data
+// cutover (2026-09-13) — everything before that is out of scope for reporting, same
+// cutoff as the Orders list's default filter.
+const REPORT_CUTOFF_ISO = '2026-09-13';
 
 export default function GstReportPage() {
-  const [from, setFrom] = useState(firstOfMonthIso());
+  const [from, setFrom] = useState(REPORT_CUTOFF_ISO);
   const [to, setTo] = useState(todayIso());
   const { data, isLoading } = useGstReport(from, to);
 

@@ -10,6 +10,7 @@ import {
   ewaybillUpdateSchema,
   riskFlagSchema,
   packageWeightSchema,
+  labelSizeQuerySchema,
 } from './schema';
 import {
   getOrderByNumber,
@@ -168,9 +169,11 @@ function shippingErrorReply(reply: FastifyReply, err: unknown) {
 export async function shipmentLabelHandler(req: FastifyRequest, reply: FastifyReply) {
   const parsed = idParamSchema.safeParse(req.params);
   if (!parsed.success) return reply.code(400).send({ error: 'Invalid id' });
+  const query = labelSizeQuerySchema.safeParse(req.query);
+  if (!query.success) return reply.code(400).send({ error: 'Invalid size' });
 
   try {
-    const label = await getShipmentLabel(parsed.data.id);
+    const label = await getShipmentLabel(parsed.data.id, query.data.size);
     return reply.send(label);
   } catch (err) {
     return shippingErrorReply(reply, err);

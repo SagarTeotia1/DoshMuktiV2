@@ -8,7 +8,7 @@ export async function getDashboardSummary() {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const [todayOrders, actionNeeded, lowStockRows] = await Promise.all([
+  const [todayOrders, actionNeeded, lowStockRows, allTimeAgg] = await Promise.all([
     db.order.findMany({
       where: { status: { in: ['PAID', 'PROCESSING', 'PACKED', 'SHIPPED', 'DELIVERED'] }, createdAt: { gte: startOfDay } },
       select: { total: true },
@@ -18,6 +18,11 @@ export async function getDashboardSummary() {
       SELECT COUNT(*) as count FROM "ProductVariant"
       WHERE "isActive" = true AND "stockQuantity" <= "lowStockThreshold"
     `,
+    db.order.aggregate({
+      where: { status: { in: ['PAID', 'PROCESSING', 'PACKED', 'SHIPPED', 'DELIVERED'] } },
+      _sum: { total: true },
+      _count: true,
+    }),
   ]);
 
   const todayRevenue = todayOrders.reduce((sum, o) => sum + Number(o.total), 0);
@@ -27,6 +32,8 @@ export async function getDashboardSummary() {
     todayRevenue,
     ordersNeedingAction: actionNeeded,
     lowStockCount: Number(lowStockRows[0]?.count ?? 0),
+    allTimeRevenue: Number(allTimeAgg._sum.total ?? 0),
+    allTimeOrderCount: allTimeAgg._count,
   };
 }
 

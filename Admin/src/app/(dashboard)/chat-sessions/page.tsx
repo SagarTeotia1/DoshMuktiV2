@@ -16,7 +16,7 @@ function TranscriptPanel({ sessionId, onClose }: { sessionId: string; onClose: (
   const { data: session, isLoading } = useChatSessionDetail(sessionId);
 
   return (
-    <div className="w-[380px] shrink-0 bg-white border border-slate-200 rounded-lg shadow-card flex flex-col h-[calc(100vh-140px)] sticky top-24">
+    <div className="w-full lg:w-[380px] shrink-0 bg-white border border-slate-200 rounded-lg shadow-card flex flex-col h-[calc(100vh-140px)] lg:sticky lg:top-24">
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
         <div className="min-w-0">
           <p className="text-xs font-bold text-slate-900 truncate">{sessionId}</p>
@@ -55,7 +55,7 @@ export default function ChatSessionsPage() {
     <div>
       <Topbar title="Chat Sessions" />
 
-      <div className="px-6 pt-6 grid grid-cols-2 gap-4 max-w-md">
+      <div className="px-6 pt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
         <div className="bg-white border border-slate-200 rounded-lg shadow-card p-4">
           <p className="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Messages today</p>
           <p className="text-2xl font-heading font-bold text-slate-900 mt-1">{totalToday}</p>
@@ -73,9 +73,9 @@ export default function ChatSessionsPage() {
         </div>
       </div>
 
-      <div className="p-6 flex gap-4 items-start">
-        <div className="flex-1 bg-white border border-slate-200 rounded-lg shadow-card overflow-hidden">
-          <table className="w-full text-sm">
+      <div className="p-6 flex flex-col lg:flex-row gap-4 items-start">
+        <div className="flex-1 w-full min-w-0 bg-white border border-slate-200 rounded-lg shadow-card overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-wide text-slate-400">
                 <th className="px-4 py-3 font-semibold">Location</th>

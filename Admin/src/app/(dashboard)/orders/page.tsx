@@ -11,9 +11,28 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { ORDER_STATUSES } from '@/lib/constants';
 import type { Order } from '@/types/api.types';
 
+// Default lower bound for the admin orders list — orders before this date are hidden
+// unless the admin explicitly clears/changes the "From" filter. Nothing is deleted or
+// hard-hidden server-side; this is purely a UI default (see Backend's from/to query params).
+const DEFAULT_FROM_DATE = '2026-09-13';
+
 const columns: ColumnDef<Order, unknown>[] = [
   { accessorKey: 'orderNumber', header: 'Order #' },
   { accessorKey: 'customerName', header: 'Customer' },
+  { accessorKey: 'customerPhone', header: 'Phone' },
+  {
+    id: 'loginStatus',
+    header: 'Account',
+    cell: ({ row }) => (
+      <span
+        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+          row.original.userId ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+        }`}
+      >
+        {row.original.userId ? 'Logged in' : 'Guest'}
+      </span>
+    ),
+  },
   { accessorKey: 'total', header: 'Total', cell: ({ row }) => formatCurrency(row.original.total) },
   { id: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
   {
@@ -48,7 +67,11 @@ function OrdersPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState(searchParams.get('status') ?? '');
-  const { data, isLoading } = useOrders(status || undefined);
+  // "from" defaults to DEFAULT_FROM_DATE only when the URL doesn't already specify one —
+  // this is a UI default, not a hard block: the admin can clear/change it to see any date.
+  const [from, setFrom] = useState(searchParams.get('from') ?? DEFAULT_FROM_DATE);
+  const [to, setTo] = useState(searchParams.get('to') ?? '');
+  const { data, isLoading } = useOrders(status || undefined, { from: from || undefined, to: to || undefined });
 
   return (
     <>
@@ -74,6 +97,38 @@ function OrdersPageContent() {
               {s}
             </button>
           ))}
+        </div>
+
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">From</label>
+            <input
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              className="border border-slate-300 rounded px-2 py-1.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">To</label>
+            <input
+              type="date"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              className="border border-slate-300 rounded px-2 py-1.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none"
+            />
+          </div>
+          {(from || to) && (
+            <button
+              onClick={() => {
+                setFrom('');
+                setTo('');
+              }}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              Clear dates
+            </button>
+          )}
         </div>
 
         {isLoading ? (

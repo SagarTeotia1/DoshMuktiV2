@@ -18,6 +18,7 @@ import { orderRoutes } from './modules/orders/routes';
 import { inventoryRoutes } from './modules/inventory/routes';
 import { uploadRoutes } from './modules/upload/routes';
 import { dashboardRoutes } from './modules/dashboard/routes';
+import { usersRoutes } from './modules/users/routes';
 import { offersRoutes } from './modules/offers/routes';
 import { couponsRoutes } from './modules/coupons/routes';
 import { reviewsRoutes } from './modules/reviews/routes';
@@ -76,6 +77,7 @@ export async function buildApp() {
   await app.register(inventoryRoutes, { prefix: '/api' });
   await app.register(uploadRoutes, { prefix: '/api' });
   await app.register(dashboardRoutes, { prefix: '/api' });
+  await app.register(usersRoutes, { prefix: '/api' });
   await app.register(offersRoutes, { prefix: '/api' });
   await app.register(couponsRoutes, { prefix: '/api' });
   await app.register(reviewsRoutes, { prefix: '/api' });

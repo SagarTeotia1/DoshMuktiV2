@@ -156,9 +156,18 @@ export default function OrderDetailPage() {
 
         <div className="flex flex-col gap-6">
           <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">
-            <h2 className="font-heading font-bold text-sm text-slate-900 mb-3">Customer</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-heading font-bold text-sm text-slate-900">Customer</h2>
+              <span
+                className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                  order.userId ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                {order.userId ? 'Logged in' : 'Guest'}
+              </span>
+            </div>
             <p className="text-sm text-slate-700">{order.customerName}</p>
-            <p className="text-sm text-slate-500">{order.customerPhone}</p>
+            <p className="text-sm font-semibold text-slate-900">{order.customerPhone}</p>
             {order.customerEmail && <p className="text-sm text-slate-500">{order.customerEmail}</p>}
             <p className="text-sm text-slate-500 mt-2">
               {order.shippingAddress.line1}

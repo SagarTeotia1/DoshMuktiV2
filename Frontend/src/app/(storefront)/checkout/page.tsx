@@ -16,7 +16,7 @@ import { getSessionId, getBuyNowSessionId } from '@/lib/session';
 import { getToken } from '@/lib/auth';
 import { formatCurrency } from '@/lib/formatters';
 import { SHIPPING_FEE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
-import { trackBeginCheckout, trackAddPaymentInfo, trackPurchase } from '@/lib/analytics';
+import { trackBeginCheckout, trackAddPaymentInfo } from '@/lib/analytics';
 import type { Address, CheckoutInput, CheckoutResponse, CouponPreviewResponse, SuggestedCoupon } from '@/types/api.types';
 import type { RazorpayResponse } from '@/hooks/use-razorpay';
 
@@ -510,7 +510,11 @@ function CheckoutPageContent() {
         prefill: { name: form.customerName, email: form.customerEmail, contact: form.customerPhone },
         theme: { color: '#9C5A26' },
         handler: async (response: RazorpayResponse) => {
-          trackPurchase({ orderNumber: result.orderNumber, total, itemCount: items.length });
+          // Purchase conversion (GA4 + Meta Pixel) is NOT fired here — Razorpay reporting
+          // client-side success doesn't mean the order stays PAID (verify can still fail,
+          // or an admin/webhook can cancel/refund it after). It fires from
+          // /checkout/success instead, gated on the order's real payment status. See
+          // PurchaseTracker's comment for why this moved.
           // Address is already saved (see handleSubmit, fires the moment Pay Now was
           // pressed) — nothing address-related left to do here.
           // Payment has already succeeded by the time this fires — this call is only

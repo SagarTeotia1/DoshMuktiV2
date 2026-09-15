@@ -7,6 +7,7 @@ import {
   updateEwaybill,
   type NdrAction,
 } from '../../shared/integrations/delhivery/client';
+import { fixLabelPdf, type LabelSize } from '../../shared/integrations/delhivery/labelPdf';
 import { refundPayment } from '../../shared/integrations/razorpay/client';
 import { logger } from '../../shared/logger/pino';
 import { addItemToCart } from '../cart/service';
@@ -142,11 +143,17 @@ export async function updateOrderPackageWeight(orderId: string, weight: number |
   await db.order.update({ where: { id: orderId }, data: { packageWeightOverride: weight } });
 }
 
-export async function getShipmentLabel(orderId: string): Promise<{ pdfUrl: string }> {
+export async function getShipmentLabel(orderId: string, size: LabelSize): Promise<{ pdfBase64: string }> {
   const waybill = await getWaybillOrThrow(orderId);
   const label = await fetchShippingLabel(waybill);
   if (!label) throw new Error('Delhivery did not return a label for this waybill');
-  return label;
+
+  const res = await fetch(label.pdfUrl);
+  if (!res.ok) throw new Error('Could not download label PDF from Delhivery');
+  const sourceBytes = Buffer.from(await res.arrayBuffer());
+
+  const fixedBytes = await fixLabelPdf(sourceBytes, size);
+  return { pdfBase64: fixedBytes.toString('base64') };
 }
 
 export async function takeOrderNdrAction(
@@ -228,8 +235,15 @@ export async function getOrderById(id: string) {
   });
 }
 
-export async function listOrdersForAdmin(query: { status?: OrderStatus; page: number; limit: number }) {
-  const where = query.status ? { status: query.status } : {};
+export async function listOrdersForAdmin(query: { status?: OrderStatus; from?: string; to?: string; page: number; limit: number }) {
+  const where: Prisma.OrderWhereInput = {};
+  if (query.status) where.status = query.status;
+  if (query.from || query.to) {
+    where.createdAt = {
+      ...(query.from ? { gte: new Date(`${query.from}T00:00:00.000Z`) } : {}),
+      ...(query.to ? { lte: new Date(`${query.to}T23:59:59.999Z`) } : {}),
+    };
+  }
   const [orders, total] = await Promise.all([
     db.order.findMany({
       where,
@@ -305,13 +319,15 @@ export interface GstReport {
 
 // Every order in [from, to] (inclusive, by createdAt) with at least one item whose
 // variantSnapshot.gstRate is a set number — orders with no GST-rated items are omitted
-// entirely rather than showing as zero rows.
+// entirely rather than showing as zero rows. Restricted to orders whose payment actually
+// CAPTURED — a PENDING_PAYMENT, CANCELLED, or REFUNDED order never collected real GST-able
+// revenue and must never appear on a tax filing, regardless of how far it got through checkout.
 export async function getGstReport(from: string, to: string): Promise<GstReport> {
   const fromDate = new Date(`${from}T00:00:00.000Z`);
   const toDate = new Date(`${to}T23:59:59.999Z`);
 
   const orders = await db.order.findMany({
-    where: { createdAt: { gte: fromDate, lte: toDate } },
+    where: { createdAt: { gte: fromDate, lte: toDate }, payment: { status: 'CAPTURED' } },
     orderBy: { createdAt: 'asc' },
     include: { items: true },
   });

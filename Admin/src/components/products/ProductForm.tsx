@@ -335,7 +335,7 @@ export function ProductForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
           <div>
             <label className="text-xs font-semibold text-slate-600 mb-1 block">Badge (optional)</label>
             <input {...register('badge')} placeholder="Bestseller, New, Limited Edition" className={inputClass} />

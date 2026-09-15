@@ -187,19 +187,21 @@ export async function generateMetadata({
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const data = await getProduct(slug);
+
+  // Product and reviews are independent Backend calls (reviews only need the slug, not
+  // the product record) but used to run one `await` after the other — a pure sequential
+  // waterfall that added a full second round trip of latency before ANY of the page
+  // (price, title, gallery) could render, even though nothing above the fold needs
+  // reviews data. Promise.all runs them concurrently so the page pays for whichever
+  // fetch is slower, not both added together. This was the same class of bug already
+  // fixed on the campaign pages (see durghatna-nashak-yantra/page.tsx's RelatedRail).
+  const [data, reviewsData] = await Promise.all([
+    getProduct(slug),
+    api.get<ProductReviewsResponse>(`/api/products/${slug}/reviews`, undefined, revalidate).catch(() => null),
+  ]);
   if (!data) notFound();
 
   const { product, related } = data;
-
-  // Fetched here too (ReviewsSection client-fetches the same endpoint for the interactive
-  // list) purely so real review text lands in the server-rendered JSON-LD below — a
-  // crawler reading only the initial HTML (common for Googlebot's first pass) sees actual
-  // customer review content and ratings, not just the aggregate number. Same 60s ISR
-  // cache as the product fetch, so this costs nothing extra per-visitor.
-  const reviewsData = await api
-    .get<ProductReviewsResponse>(`/api/products/${slug}/reviews`, undefined, revalidate)
-    .catch(() => null);
   const activeVariants = product.variants.filter((v) => v.isActive && v.attributes.type !== 'service');
   const price =
     activeVariants.length > 0

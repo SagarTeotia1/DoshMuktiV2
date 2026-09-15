@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
 import { api, invoiceUrl } from '@/lib/api-client';
+import { PurchaseTracker } from '@/components/storefront/PurchaseTracker';
 import type { OrderTrackingResponse } from '@/types/api.types';
 
 async function getOrder(orderNumber: string): Promise<OrderTrackingResponse | null> {
@@ -26,6 +27,16 @@ export default async function CheckoutSuccessPage({
 
   return (
     <div className="max-w-lg mx-auto px-4 py-20 text-center">
+      {/* Only reports a Purchase conversion once the order is confirmed CAPTURED server-side
+          — never on a payment Razorpay reported as successful but that failed verification
+          or was later cancelled/refunded. See PurchaseTracker's comment for the full history. */}
+      {invoiceEligible && order && (
+        <PurchaseTracker
+          orderNumber={order.orderNumber}
+          total={order.total}
+          itemCount={order.items.length}
+        />
+      )}
       <CheckCircle2 className="w-16 h-16 text-[#9C5A26] mx-auto mb-6" />
       <h1 className="font-heading font-black tracking-tight leading-tight text-2xl sm:text-3xl text-[#2B1B0C] mb-3">Order Confirmed</h1>
       {orderNumber && (

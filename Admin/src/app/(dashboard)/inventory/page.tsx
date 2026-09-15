@@ -97,8 +97,8 @@ export default function InventoryPage() {
         {isLoading ? (
           <p className="text-sm text-slate-400 py-8 text-center">Loading...</p>
         ) : (
-          <div className="bg-white border border-slate-200 rounded-lg shadow-card overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-white border border-slate-200 rounded-lg shadow-card overflow-x-auto">
+            <table className="w-full text-sm min-w-[640px]">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-500">Product</th>

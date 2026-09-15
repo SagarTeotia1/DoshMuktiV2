@@ -17,6 +17,8 @@ export const CAMPAIGN_PAGE_SLUGS: Record<string, string> = {
   'vahan-suraksha-kavach': '/vahan-suraksha-kavach',
   'durghatna-nashak-yantra': '/durghatna-nashak-yantra',
   'durbhagya-nashak-nariyal': '/durbhagya-nashak-nariyal',
+  'divya-hawan-powder': '/divya-hawan-powder',
+  'ghoda-ki-naal': '/ghoda-ki-naal',
 };
 
 export const SOCIAL_LINKS = {

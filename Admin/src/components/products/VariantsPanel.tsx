@@ -157,29 +157,31 @@ export function VariantsPanel({ product }: { product: Product }) {
         </form>
       )}
 
-      <table className="w-full text-sm">
-        <thead className="bg-slate-50 border-b border-slate-200">
-          <tr>
-            <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-slate-500">SKU</th>
-            <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-slate-500">Attributes</th>
-            <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-slate-500">Price Override</th>
-            <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-slate-500">Stock</th>
-            <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-slate-500">Weight</th>
-            <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-slate-500">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {product.variants.length === 0 ? (
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
+          <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
-              <td colSpan={6} className="px-4 py-6 text-center text-slate-400 text-sm">
-                No variants yet
-              </td>
+              <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-slate-500">SKU</th>
+              <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-slate-500">Attributes</th>
+              <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-slate-500">Price Override</th>
+              <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-slate-500">Stock</th>
+              <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-slate-500">Weight</th>
+              <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-slate-500">Status</th>
             </tr>
-          ) : (
-            product.variants.map((v) => <VariantRow key={v.id} variant={v} productId={product.id} />)
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {product.variants.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-6 text-center text-slate-400 text-sm">
+                  No variants yet
+                </td>
+              </tr>
+            ) : (
+              product.variants.map((v) => <VariantRow key={v.id} variant={v} productId={product.id} />)
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

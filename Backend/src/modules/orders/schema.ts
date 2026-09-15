@@ -12,6 +12,8 @@ export const phoneQuerySchema = z.object({
 
 export const listOrdersQuerySchema = z.object({
   status: z.enum(['PENDING_PAYMENT', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'REFUNDED', 'PACKED']).optional(),
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'from must be YYYY-MM-DD').optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'to must be YYYY-MM-DD').optional(),
   page: z.coerce.number().int().min(1).max(999).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -42,6 +44,10 @@ export const riskFlagSchema = z.object({
 // Grams — null clears the override and falls back to the auto-calculated weight again.
 export const packageWeightSchema = z.object({
   weight: z.number().int().min(1).max(50000).nullable(),
+});
+
+export const labelSizeQuerySchema = z.object({
+  size: z.enum(['4x6', 'A4']).default('4x6'),
 });
 
 export const gstReportQuerySchema = z.object({

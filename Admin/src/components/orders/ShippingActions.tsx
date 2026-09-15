@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { FileText, Truck, AlertTriangle, Receipt } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useGenerateLabel, useBookShipment, useNdrAction, useUpdateEwaybill, useSetRiskFlag } from '@/hooks/use-orders';
 import { ApiError } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
+import { getStoredLabelSize, setStoredLabelSize, openLabelWindow, writeLabelToWindow, type LabelSize } from '@/lib/print-label';
 import type { Order } from '@/types/api.types';
 
 const inputClass =
@@ -47,6 +48,13 @@ export function ShippingActions({ order }: { order: Order }) {
 
   const [ewaybillNumber, setEwaybillNumber] = useState(order.shipment?.ewaybillNumber ?? '');
 
+  const [labelSize, setLabelSize] = useState<LabelSize>('4x6');
+  useEffect(() => setLabelSize(getStoredLabelSize()), []);
+  function handleLabelSizeChange(size: LabelSize) {
+    setLabelSize(size);
+    setStoredLabelSize(size);
+  }
+
   function handleBookShipment() {
     bookShipment.mutate(undefined, {
       onSuccess: () => toast.success('Shipment booked with Delhivery'),
@@ -73,9 +81,16 @@ export function ShippingActions({ order }: { order: Order }) {
   }
 
   function handleGenerateLabel() {
-    generateLabel.mutate(undefined, {
-      onSuccess: (data) => window.open(data.pdfUrl, '_blank'),
-      onError: (err) => toast.error(errMsg(err, 'Could not fetch label')),
+    const win = openLabelWindow();
+    generateLabel.mutate(labelSize, {
+      onSuccess: (data) => {
+        if (win) writeLabelToWindow(win, data.pdfBase64, labelSize);
+        else toast.error('Popup blocked — allow popups for this site to print labels');
+      },
+      onError: (err) => {
+        win?.close();
+        toast.error(errMsg(err, 'Could not fetch label'));
+      },
     });
   }
 
@@ -107,14 +122,25 @@ export function ShippingActions({ order }: { order: Order }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <button
-        onClick={handleGenerateLabel}
-        disabled={generateLabel.isPending}
-        className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-700 border border-slate-300 hover:border-slate-400 disabled:opacity-40 transition-colors"
-      >
-        <FileText className="w-4 h-4" />
-        {generateLabel.isPending ? 'Fetching...' : 'Generate Shipping Label'}
-      </button>
+      <div className="flex gap-2">
+        <select
+          value={labelSize}
+          onChange={(e) => handleLabelSizeChange(e.target.value as LabelSize)}
+          className={cn(inputClass, 'w-28 flex-shrink-0')}
+          aria-label="Label size"
+        >
+          <option value="4x6">4in x 6in</option>
+          <option value="A4">A4</option>
+        </select>
+        <button
+          onClick={handleGenerateLabel}
+          disabled={generateLabel.isPending}
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-700 border border-slate-300 hover:border-slate-400 disabled:opacity-40 transition-colors"
+        >
+          <FileText className="w-4 h-4" />
+          {generateLabel.isPending ? 'Fetching...' : 'Print Shipping Label'}
+        </button>
+      </div>
 
       {order.shipment?.pickupRequestId && (
         <p className="text-xs text-slate-500">

@@ -247,6 +247,7 @@ export interface OrderItem {
 export interface Order {
   id: string;
   orderNumber: string;
+  userId: string | null;
   customerName: string;
   customerPhone: string;
   customerEmail: string | null;
@@ -285,11 +286,48 @@ export interface PaginatedOrders {
   page: number;
 }
 
+// One row per phone+OTP account (guest checkouts never create a User row — see
+// Backend's User model comment: "Identity is the phone number; login is OTP-only").
+export interface AdminUser {
+  id: string;
+  phone: string;
+  name: string | null;
+  dob: string | null;
+  orderCount: number;
+  totalSpent: number;
+  createdAt: string;
+}
+
+// Backend's getUserById only joins `payment` onto each order (not items/shipment) —
+// a lighter shape than the full Order type used by the Orders module, deliberately
+// enough for a "recent orders" list on the user detail page.
+export interface AdminUserOrderSummary {
+  id: string;
+  orderNumber: string;
+  status: string;
+  total: number;
+  createdAt: string;
+  payment: { status: string } | null;
+}
+
+export interface AdminUserDetail extends AdminUser {
+  orders: AdminUserOrderSummary[];
+}
+
+export interface PaginatedUsers {
+  users: AdminUser[];
+  total: number;
+  pages: number;
+  page: number;
+}
+
 export interface DashboardSummary {
   todayOrderCount: number;
   todayRevenue: number;
   ordersNeedingAction: number;
   lowStockCount: number;
+  allTimeRevenue: number;
+  allTimeOrderCount: number;
 }
 
 export interface SalesTrendPoint {

@@ -6,8 +6,8 @@ export function DataTable<T>({ data, columns, onRowClick }: { data: T[]; columns
   const table = useReactTable({ data, columns, getCoreRowModel: getCoreRowModel() });
 
   return (
-    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-card">
-      <table className="w-full text-sm">
+    <div className="bg-white border border-slate-200 rounded-lg shadow-card overflow-x-auto">
+      <table className="w-full text-sm min-w-[640px]">
         <thead className="bg-slate-50 border-b border-slate-200">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
