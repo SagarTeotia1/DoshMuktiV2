@@ -21,7 +21,8 @@ import { CampaignHeader } from './campaign-header';
 import { BuyNowButton } from './buy-now-button';
 import { AcharyaVahanSection } from './acharya-vahan-section';
 import { ReviewsSection } from '../(storefront)/products/[slug]/reviews-section';
-import type { Product, DescriptionBlock, PaginatedProducts } from '@/types/api.types';
+import { generateProductJsonLd } from '@/lib/seo';
+import type { Product, DescriptionBlock, PaginatedProducts, ProductReviewsResponse } from '@/types/api.types';
 
 // A one-product campaign page, not the regular PDP — deliberately outside the
 // (storefront) route group so it skips the catalog Navbar/Footer/AnnouncementBar and
@@ -139,11 +140,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function VahanSurakshaKavachPage() {
-  // Only the product fetch blocks the page shell now — related-products is fetched
-  // inside its own Suspense boundary further down (see RelatedRail) so Next.js can stream
-  // the whole page (hero, price, gallery, benefits, reviews...) out immediately instead of
-  // waiting on a second Backend round-trip nothing above the fold actually needs.
-  const product = await getProduct();
+  // Concurrently fetch product and reviews — no waterfall, gives SSR instant access
+  // to reviews data for structured schema (aggregateRating + review) and eliminates client layout shift.
+  const [product, reviewsData] = await Promise.all([
+    getProduct(),
+    api.get<ProductReviewsResponse>(`/api/products/${PRODUCT_SLUG}/reviews`, undefined, revalidate).catch(() => null),
+  ]);
   if (!product) notFound();
 
   const activeVariants = product.variants.filter((v) => v.isActive && v.attributes.type !== 'service');
@@ -202,30 +204,15 @@ export default async function VahanSurakshaKavachPage() {
           { title: 'Built for Every Road', description: 'Invoked for safe roads and steady journeys, wherever the road takes you.' },
         ];
 
-  const productJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: product.name,
-    image: heroImage ? [heroImage] : undefined,
-    description: product.excerpt || fullDescription,
-    offers: {
-      '@type': 'Offer',
-      priceCurrency: 'INR',
-      price,
-      availability: soldOut ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
-      url: `${SITE_URL}/products/${product.slug}`,
-    },
-    // Google requires an actual review count for aggregateRating — omitting it
-    // entirely (rather than sending 0/0) avoids a "missing field" rich-results error
-    // on products that don't have reviews yet.
-    ...(product.rating.count > 0 && {
-      aggregateRating: {
-        '@type': 'AggregateRating',
-        ratingValue: product.rating.average,
-        reviewCount: product.rating.count,
-      },
-    }),
-  };
+  const productJsonLd = generateProductJsonLd({
+    product,
+    reviewsData,
+    canonicalPath: `/${PRODUCT_SLUG}`,
+    variantPrice: price,
+    inStock: !soldOut,
+    heroImage,
+    fullDescription,
+  });
 
   // FAQ_ITEMS is already rendered as a visible accordion below — this schema is
   // what makes it eligible for Google's FAQ rich-result snippet under the SERP entry.
@@ -496,7 +483,7 @@ export default async function VahanSurakshaKavachPage() {
           filler with actual social proof for this exact product. ─────────────────── */}
       <section className="px-5 py-12 sm:py-16">
         <div className="max-w-5xl mx-auto">
-          <ReviewsSection productId={product.id} productSlug={product.slug} />
+          <ReviewsSection productId={product.id} productSlug={product.slug} initialData={reviewsData ?? undefined} />
         </div>
       </section>
 

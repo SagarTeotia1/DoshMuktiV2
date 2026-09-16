@@ -17,6 +17,7 @@ import { ExclusiveOffers } from '@/components/storefront/ExclusiveOffers';
 import { api } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
 import { SITE_URL, RETURN_ELIGIBLE_ABOVE, FREE_SHIPPING_ABOVE, CAMPAIGN_PAGE_SLUGS } from '@/lib/constants';
+import { generateProductJsonLd } from '@/lib/seo';
 import type { Product, ProductReviewsResponse } from '@/types/api.types';
 
 // No searchParams/cookies/headers() on this route, so with the ISR pieces below, each
@@ -261,36 +262,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   ];
   const detailSections = rawDetailSections.filter((s): s is DetailSection => !!s);
 
-  const productJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: product.name,
-    description: product.excerpt || product.name,
-    image: product.images.map((img) => img.full),
-    sku: product.variants[0]?.sku,
-    brand: { '@type': 'Brand', name: 'Doshhmukti' },
-    aggregateRating:
-      product.rating.count > 0
-        ? { '@type': 'AggregateRating', ratingValue: product.rating.average, reviewCount: product.rating.count }
-        : undefined,
-    review: reviewsData?.reviews.length
-      ? reviewsData.reviews.map((r) => ({
-          '@type': 'Review',
-          author: { '@type': 'Person', name: r.customerName },
-          datePublished: r.createdAt,
-          reviewRating: { '@type': 'Rating', ratingValue: r.rating, bestRating: 5, worstRating: 1 },
-          ...(r.title ? { name: r.title } : {}),
-          reviewBody: r.body,
-        }))
-      : undefined,
-    offers: {
-      '@type': 'Offer',
-      url: `${SITE_URL}${CAMPAIGN_PAGE_SLUGS[product.slug] ?? `/products/${product.slug}`}`,
-      priceCurrency: 'INR',
-      price,
-      availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-    },
-  };
+  const productJsonLd = generateProductJsonLd({
+    product,
+    reviewsData,
+    canonicalPath: CAMPAIGN_PAGE_SLUGS[product.slug] ?? `/products/${product.slug}`,
+    variantPrice: price,
+    inStock,
+  });
 
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',

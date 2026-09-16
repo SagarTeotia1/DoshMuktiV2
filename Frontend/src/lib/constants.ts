@@ -19,6 +19,7 @@ export const CAMPAIGN_PAGE_SLUGS: Record<string, string> = {
   'durbhagya-nashak-nariyal': '/durbhagya-nashak-nariyal',
   'divya-hawan-powder': '/divya-hawan-powder',
   'ghoda-ki-naal': '/ghoda-ki-naal',
+  'rose-quartz-bracelet': '/rose-quartz-bracelet',
 };
 
 export const SOCIAL_LINKS = {

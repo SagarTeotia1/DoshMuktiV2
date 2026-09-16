@@ -25,6 +25,7 @@ const STATIC_ROUTES = [
   '/durbhagya-nashak-nariyal',
   '/divya-hawan-powder',
   '/ghoda-ki-naal',
+  '/rose-quartz-bracelet',
 ];
 
 // Backend caps `limit` at 100 (products/schema.ts) — requesting more 400s. A prior
