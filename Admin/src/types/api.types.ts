@@ -6,6 +6,10 @@ export interface ChatVolumePoint {
 export interface ChatSessionSummary {
   sessionId: string;
   ip: string;
+  phone: string | null;
+  name: string | null;
+  dob: string | null;
+  problem: string | null;
   city: string | null;
   country: string | null;
   startedAt: string;
@@ -23,11 +27,40 @@ export interface ChatLoggedMessage {
 export interface ChatSessionDetail {
   sessionId: string;
   ip: string;
+  phone?: string | null;
+  name?: string | null;
+  dob?: string | null;
+  problem?: string | null;
   city: string | null;
   country: string | null;
   startedAt: string;
   lastMessageAt: string;
   messages: ChatLoggedMessage[];
+}
+
+export type ChatLeadStatus = 'NEW' | 'CONTACTED' | 'CONVERTED' | 'CLOSED';
+
+export interface ChatLead {
+  id: string;
+  sessionId: string | null;
+  phone: string;
+  name: string | null;
+  dob: string | null;
+  problem: string | null;
+  purpose: string | null;
+  notes: string | null;
+  city: string | null;
+  country: string | null;
+  status: ChatLeadStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaginatedChatLeads {
+  leads: ChatLead[];
+  total: number;
+  pages: number;
+  page: number;
 }
 
 export type OfferBehavior = 'DISPLAY_ONLY' | 'AUTO_APPLIED' | 'COUPON_BASED';

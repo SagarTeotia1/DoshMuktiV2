@@ -1,7 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import { verifyAdmin } from '../../shared/middleware/auth.middleware';
 import { chatHandler } from './controller';
-import { listChatSessionsHandler, getChatSessionHandler, getChatVolumeHandler } from './adminController';
+import {
+  listChatSessionsHandler,
+  getChatSessionHandler,
+  getChatVolumeHandler,
+  listChatLeadsHandler,
+  updateChatLeadStatusHandler,
+} from './adminController';
 
 export async function chatRoutes(app: FastifyInstance) {
   // Public + costs real money per call — keep this tight regardless of how generous other routes are.
@@ -11,4 +17,8 @@ export async function chatRoutes(app: FastifyInstance) {
   app.get('/admin/chat-sessions', { preHandler: verifyAdmin }, listChatSessionsHandler);
   app.get('/admin/chat-sessions/volume', { preHandler: verifyAdmin }, getChatVolumeHandler);
   app.get('/admin/chat-sessions/:sessionId', { preHandler: verifyAdmin }, getChatSessionHandler);
+
+  // Admin lead management
+  app.get('/admin/chat-leads', { preHandler: verifyAdmin }, listChatLeadsHandler);
+  app.patch('/admin/chat-leads/:id/status', { preHandler: verifyAdmin }, updateChatLeadStatusHandler);
 }

@@ -561,3 +561,32 @@ model HomepageSectionItem {
   @@unique([sectionId, productId])
   @@index([sectionId, order])
 }
+
+// ─── Chat Leads ─────────────────────────────────────────────────────────────
+
+model ChatLead {
+  id        String         @id @default(cuid())
+  sessionId String?
+  phone     String         // normalized +91XXXXXXXXXX
+  name      String?
+  dob       String?        // DOB string e.g. "1995-08-15" or raw birth date
+  problem   String?        @db.Text
+  purpose   String?        // "love" | "wealth" | "health" | "success" | "protection" | "clarity"
+  notes     String?        @db.Text
+  city      String?
+  country   String?
+  status    ChatLeadStatus @default(NEW)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([phone])
+  @@index([sessionId])
+  @@index([status, createdAt])
+}
+
+enum ChatLeadStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  CLOSED
+}

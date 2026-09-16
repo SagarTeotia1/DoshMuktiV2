@@ -13,7 +13,7 @@ export type DisplayMessage = ChatMessage & {
 const GREETING: DisplayMessage = {
   role: 'assistant',
   content:
-    "Hello, kaise hain aap? 🙏 Main hoon Acharya Madhav. Batayein — dil ki baat ho, career ho, paisa ho ya sehat — jo bhi chal raha hai, khulke bataiye, main sun raha hoon.",
+    "Namaste, kaise hain aap? 🙏 Main hoon Acharya Madhav.\n\nCareer, paisa, prem, ya parivaar me koi samasya chal rahi ho, ya apni Kundli vishleshan janna ho — aap apni Date of Birth (janma tithi) ya sawal batayein, main aapke grahon ki sthiti dekhkar sahi margdarshan karunga.",
 };
 
 // Cap what we send — mirrors the Backend's own 20-message limit, keeps requests small.
