@@ -346,11 +346,19 @@ export async function getGstReport(from: string, to: string): Promise<GstReport>
       const gstRate = typeof snapshot.gstRate === 'number' ? snapshot.gstRate : null;
       if (gstRate === null) continue;
 
+      const isFreeAttar =
+        snapshot.sku === 'ATTAR-25-ML-DEFAULT' ||
+        snapshot.productName === 'ATTAR-25-ML-DEFAULT' ||
+        (!snapshot.productName && snapshot.sku?.includes('ATTAR'));
+      const sku = isFreeAttar ? 'FREE ATTAR' : (snapshot.sku ?? '-');
+      const productName = isFreeAttar ? 'FREE ATTAR' : (snapshot.productName ?? '-');
+
       const lineTotal = Number(item.priceAtPurchase) * item.quantity;
       const { taxableValue, gstAmount } = computeItemGst(lineTotal, gstRate);
+
       itemRows.push({
-        sku: snapshot.sku ?? '-',
-        productName: snapshot.productName ?? '-',
+        sku,
+        productName,
         quantity: item.quantity,
         gstRate,
         lineTotal,

@@ -61,6 +61,13 @@ export default function OrdersPage() {
             const firstItem = order.items[0];
             const thumb = firstItem?.variant?.product?.images?.[0]?.thumb;
             const extraCount = order.items.length - 1;
+            const isFreeAttar =
+              firstItem?.variantSnapshot.sku === 'ATTAR-25-ML-DEFAULT' ||
+              firstItem?.variantSnapshot.productName === 'ATTAR-25-ML-DEFAULT' ||
+              (!firstItem?.variantSnapshot.productName && firstItem?.variantSnapshot.sku?.includes('ATTAR'));
+            const firstItemTitle = isFreeAttar
+              ? 'FREE ATTAR'
+              : (firstItem?.variantSnapshot.productName || firstItem?.variantSnapshot.sku || 'Order');
             const tone = ORDER_STATUS_TONE[order.status] ?? 'bg-[#9C5A26] text-white border-[#2B1B0C]';
 
             return (
@@ -90,7 +97,7 @@ export default function OrdersPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="font-body text-sm font-semibold text-[#2B1B0C] truncate">
-                          {firstItem?.variantSnapshot.productName ?? 'Order'}
+                          {firstItemTitle}
                           {extraCount > 0 ? ` + ${extraCount} more` : ''}
                         </p>
                         <p className="font-body text-xs text-[#8A7A63] mt-0.5">
