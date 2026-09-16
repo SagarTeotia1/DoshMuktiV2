@@ -608,7 +608,7 @@ function CheckoutPageContent() {
         {(cart?.freeItems ?? []).map((item) => (
           <div key={item.variantId} className="flex justify-between font-body text-xs text-[#9C5A26] font-semibold">
             <span className="truncate pr-2">
-              🎁 {item.productName}
+              🎁 {item.sku.includes('ATTAR') || item.productName.toUpperCase().includes('ATTAR') ? 'FREE ATTAR' : item.productName}
               {item.quantity > 1 ? ` × ${item.quantity}` : ''}
             </span>
             <span className="flex-shrink-0">FREE</span>

@@ -171,7 +171,14 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
           totalGstAmount += gstAmount;
         }
 
-        const nameHeight = doc.font('Helvetica').fontSize(9.5).heightOfString(snapshot.productName ?? '-', { width: colSku - colProduct - 20 });
+        const isFreeAttar =
+          snapshot.sku === 'ATTAR-25-ML-DEFAULT' ||
+          snapshot.productName === 'ATTAR-25-ML-DEFAULT' ||
+          (!snapshot.productName && snapshot.sku?.includes('ATTAR'));
+        const displayName = isFreeAttar ? 'FREE ATTAR' : (snapshot.productName ?? snapshot.sku ?? '-');
+        const displaySku = isFreeAttar ? 'FREE ATTAR' : (snapshot.sku ?? '-');
+
+        const nameHeight = doc.font('Helvetica').fontSize(9.5).heightOfString(displayName, { width: colSku - colProduct - 20 });
         const rowHeight = Math.max(nameHeight, 14) + rowPad * 2;
 
         // New page if this row would overflow
@@ -184,10 +191,10 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
         if (idx % 2 === 1) doc.rect(PAGE_LEFT, y, PAGE_RIGHT - PAGE_LEFT, rowHeight).fill(PANEL).fillColor(INK);
 
         const textY = y + rowPad;
-        const skuLabel = gstRate !== null ? `${snapshot.sku ?? '-'} (GST ${gstRate}%)` : (snapshot.sku ?? '-');
+        const skuLabel = gstRate !== null ? `${displaySku} (GST ${gstRate}%)` : displaySku;
 
         doc.font('Helvetica').fontSize(9.5).fillColor(INK);
-        doc.text(snapshot.productName ?? '-', colProduct + 10, textY, { width: colSku - colProduct - 20 });
+        doc.text(displayName, colProduct + 10, textY, { width: colSku - colProduct - 20 });
         doc.fillColor(MUTED).fontSize(8.5).text(skuLabel, colSku, textY, { width: colQty - colSku - 10 });
         doc.fillColor(INK).fontSize(9.5);
         doc.text(String(item.quantity), colQty, textY, { width: colPrice - colQty - 10 });

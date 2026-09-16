@@ -340,7 +340,11 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
             freeItems.flatMap((f) => {
               const v = giftVariants.find((x) => x.id === f.variantId);
               if (!v) return [];
-              return [{ variantId: f.variantId, productName: v.product.name, sku: v.sku, quantity: f.quantity, weight: v.weight }];
+              const productName =
+                v.sku.includes('ATTAR') || v.product.name.toLowerCase().includes('attar')
+                  ? 'FREE ATTAR'
+                  : v.product.name;
+              return [{ variantId: f.variantId, productName, sku: v.sku, quantity: f.quantity, weight: v.weight }];
             })
           );
 

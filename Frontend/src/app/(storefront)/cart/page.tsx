@@ -153,7 +153,7 @@ export default function CartPage() {
                 Free Gift
               </span>
               <p className="font-heading font-bold text-xs sm:text-sm text-[#2B1B0C] truncate">
-                {item.productName} {item.quantity > 1 ? `× ${item.quantity}` : ''}
+                {item.sku.includes('ATTAR') || item.productName.toUpperCase().includes('ATTAR') ? 'FREE ATTAR' : item.productName} {item.quantity > 1 ? `× ${item.quantity}` : ''}
               </p>
               <p className="font-body text-[10px] sm:text-xs text-[#8A7A63]">On the house, with your order 🙏</p>
             </div>

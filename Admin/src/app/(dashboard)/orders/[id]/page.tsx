@@ -111,14 +111,33 @@ export default function OrderDetailPage() {
 
             <h2 className="font-heading font-bold text-sm text-slate-900 mb-3">Items</h2>
             <div className="flex flex-col gap-2">
-              {order.items.map((item) => (
-                <div key={item.id} className="flex justify-between text-sm">
-                  <span className="text-slate-700">
-                    {item.variantSnapshot.productName} ({item.variantSnapshot.sku}) × {item.quantity}
-                  </span>
-                  <span className="text-slate-900 font-medium">{formatCurrency(item.priceAtPurchase * item.quantity)}</span>
-                </div>
-              ))}
+              {order.items.map((item) => {
+                const isFreeAttar =
+                  item.variantSnapshot.sku === 'ATTAR-25-ML-DEFAULT' ||
+                  item.variantSnapshot.productName === 'ATTAR-25-ML-DEFAULT' ||
+                  (!item.variantSnapshot.productName && item.variantSnapshot.sku?.includes('ATTAR'));
+                const displayTitle = isFreeAttar
+                  ? 'FREE ATTAR'
+                  : `${item.variantSnapshot.productName || item.variantSnapshot.sku} (${item.variantSnapshot.sku})`;
+
+                return (
+                  <div key={item.id} className="flex justify-between text-sm">
+                    <span className="text-slate-700 font-medium">
+                      {isFreeAttar ? (
+                        <span className="inline-flex items-center gap-1.5 font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-xs">
+                          🎁 FREE ATTAR
+                        </span>
+                      ) : (
+                        displayTitle
+                      )}{' '}
+                      × {item.quantity}
+                    </span>
+                    <span className="text-slate-900 font-medium">
+                      {item.priceAtPurchase === 0 ? 'FREE' : formatCurrency(item.priceAtPurchase * item.quantity)}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="border-t border-slate-100 mt-4 pt-4 flex flex-col gap-1">
