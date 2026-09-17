@@ -139,7 +139,7 @@ export async function calculateShippingFee(
 ): Promise<{ fee: number; originalFee: number }> {
   const liveRate = await getLiveShippingRate(destPincode, weightGrams);
   const originalFee = liveRate ?? SHIPPING_FEE;
-  const fee = subtotal >= FREE_SHIPPING_ABOVE ? 0 : originalFee;
+  const fee = subtotal > FREE_SHIPPING_ABOVE ? 0 : originalFee;
   return { fee, originalFee };
 }
 

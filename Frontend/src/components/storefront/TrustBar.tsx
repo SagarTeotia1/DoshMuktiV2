@@ -5,7 +5,7 @@ import { FREE_SHIPPING_ABOVE, RETURN_ELIGIBLE_ABOVE } from '@/lib/constants';
 
 const ITEMS = [
   { icon: Gem, label: 'Authentic & Energized', sub: 'Sourced directly from verified artisans' },
-  { icon: Truck, label: `Free Shipping ₹${FREE_SHIPPING_ABOVE}+`, sub: 'Pan-India delivery via Delhivery' },
+  { icon: Truck, label: `Free Shipping Above ₹${FREE_SHIPPING_ABOVE}`, sub: 'Pan-India delivery via Delhivery' },
   { icon: ShieldCheck, label: 'Secure Payments', sub: 'Powered by Razorpay' },
   { icon: RotateCcw, label: `7-Day Returns ₹${RETURN_ELIGIBLE_ABOVE}+`, sub: 'On eligible orders, hassle-free' },
 ];
