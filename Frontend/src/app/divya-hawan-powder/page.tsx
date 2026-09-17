@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { Fraunces } from 'next/font/google';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Flame, FlameKindling, Wind, Sparkles, ShieldCheck, HeartHandshake, Truck, RotateCcw, Lock } from 'lucide-react';
+import { Flame, FlameKindling, Wind, Sparkles, ShieldCheck, HeartHandshake, Lock } from 'lucide-react';
 import { Reveal } from '@/components/motion/Reveal';
 import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
@@ -14,7 +14,7 @@ import { ViewItemTracker } from '@/components/storefront/ViewItemTracker';
 import { ImageCarousel } from '@/components/storefront/ImageCarousel';
 import { api } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
-import { SITE_URL, RETURN_ELIGIBLE_ABOVE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
+import { SITE_URL } from '@/lib/constants';
 import { ChatWidgetLoader } from '@/components/chat/ChatWidgetLoader';
 import { Footer } from '@/components/layout/Footer';
 import { CampaignHeader } from './campaign-header';
@@ -48,8 +48,8 @@ const fraunces = Fraunces({ subsets: ['latin'], weight: ['400', '600'], style: [
 
 const HERO_SERVICES = [
   { icon: Sparkles, label: '100% Pure Havan Samagri' },
-  { icon: Truck, label: `Free Delivery ₹${FREE_SHIPPING_ABOVE}+` },
-  { icon: RotateCcw, label: `7-Day Returns ₹${RETURN_ELIGIBLE_ABOVE}+` },
+  { icon: Flame, label: 'Traditional Vedic Herbs' },
+  { icon: ShieldCheck, label: 'Authentic & Energized' },
   { icon: Lock, label: 'Secure Payment' },
 ];
 
@@ -57,7 +57,7 @@ const STATS = [
   { value: '100%', label: 'Pure & Natural' },
   { value: '24-48h', label: 'Dispatch Time' },
   { value: '5-7', label: 'Days to Deliver' },
-  { value: '7-Day', label: `Returns ₹${RETURN_ELIGIBLE_ABOVE}+` },
+  { value: '100%', label: 'Vedic Samagri' },
 ];
 
 const FAQ_ITEMS = [
@@ -74,8 +74,8 @@ const FAQ_ITEMS = [
     a: 'Orders are dispatched within 24-48 hours and typically arrive within 5-7 business days anywhere in India, via Delhivery.',
   },
   {
-    q: 'What if I want to return it?',
-    a: `Eligible orders of ₹${RETURN_ELIGIBLE_ABOVE} and above come with a 7-day change-of-mind return window from delivery. Damaged or incorrect items are replaced free within 48 hours, regardless of price. As a consumable ritual item, an opened pack cannot be returned for change of mind.`,
+    q: 'What if the product arrives damaged or incorrect?',
+    a: 'If you receive a damaged or incorrect package, contact our support within 48 hours of delivery and we will arrange a 100% free replacement immediately.',
   },
   {
     q: 'What payment methods are accepted?',
