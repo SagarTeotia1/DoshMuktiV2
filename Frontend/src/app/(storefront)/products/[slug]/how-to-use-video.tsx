@@ -235,7 +235,7 @@ export function HowToUseVideo({ url, bare = false }: { url: string | null; bare?
 
   return (
     <div className="border-t border-[#2B1B0C]/10 pt-6 mb-6">
-      <h2 className="font-heading font-black text-base uppercase tracking-wide text-[#2B1B0C] mb-4 text-center">How to Use</h2>
+      <h2 className="font-heading font-black text-base uppercase tracking-wide text-[#2B1B0C] mb-4 text-center">How to Use/Wear</h2>
       {player}
     </div>
   );
