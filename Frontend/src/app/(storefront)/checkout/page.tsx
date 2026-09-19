@@ -388,13 +388,13 @@ function CheckoutPageContent() {
   // at all — the Razorpay charge was always correct, but the customer never saw the price
   // move before paying, which is exactly the "total isn't going down" gap this closes.
   const shippingFee =
-    liveShipping.data?.fee ?? cart?.shippingFee ?? (subtotal >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE);
+    liveShipping.data?.fee ?? cart?.shippingFee ?? (subtotal > FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE);
   const shippingFeeOriginal = liveShipping.data?.originalFee ?? cart?.shippingFeeOriginal ?? shippingFee;
   // A real pincode hasn't been entered yet means shippingFee/shippingFeeOriginal above are
   // still riding the cart-preview's origin-to-origin guess (see useShippingEstimate above) —
   // never show that guess as if it were the real charge. Free-shipping orders are exempt:
   // ₹0 is correct regardless of pincode, no guess involved.
-  const hasResolvedPincodeRate = subtotal >= FREE_SHIPPING_ABOVE || (/^\d{6}$/.test(form.pincode) && !!liveShipping.data);
+  const hasResolvedPincodeRate = subtotal > FREE_SHIPPING_ABOVE || (/^\d{6}$/.test(form.pincode) && !!liveShipping.data);
   const autoAppliedDiscount = cart?.autoAppliedDiscount ?? 0;
   const preDiscountTotal = subtotal + shippingFee - autoAppliedDiscount;
   const couponDiscount = appliedCoupon?.discountAmount ?? 0;
@@ -608,7 +608,7 @@ function CheckoutPageContent() {
         {(cart?.freeItems ?? []).map((item) => (
           <div key={item.variantId} className="flex justify-between font-body text-xs text-[#9C5A26] font-semibold">
             <span className="truncate pr-2">
-              🎁 {item.productName}
+              🎁 {item.sku.includes('ATTAR') || item.productName.toUpperCase().includes('ATTAR') ? 'FREE ATTAR' : item.productName}
               {item.quantity > 1 ? ` × ${item.quantity}` : ''}
             </span>
             <span className="flex-shrink-0">FREE</span>
@@ -749,7 +749,7 @@ function CheckoutPageContent() {
       </div>
       {!hasResolvedPincodeRate && (
         <p className="font-body text-[10px] text-[#8A7A63] text-right -mt-1">
-          Add item worth {formatCurrency(Math.max(FREE_SHIPPING_ABOVE - subtotal, 0))} more and claim free delivery.
+          Add item worth {formatCurrency(Math.max(FREE_SHIPPING_ABOVE + 1 - subtotal, 0))} more and claim free delivery.
         </p>
       )}
       {hasResolvedPincodeRate && gstAmount > 0 && (
@@ -904,11 +904,11 @@ function CheckoutPageContent() {
                             showing it here reads as a real price. Only liveShipping.data (a
                             resolved quote for the exact digits in form.pincode) counts as real. */}
                         <p className="text-[10px] text-[#8A7A63] mt-1.5 font-body">
-                          {subtotal >= FREE_SHIPPING_ABOVE
+                          {subtotal > FREE_SHIPPING_ABOVE
                             ? `Orders above ${formatCurrency(FREE_SHIPPING_ABOVE)} ship free.`
                             : hasResolvedPincodeRate
-                            ? `Delivery charges are added for orders below ${formatCurrency(FREE_SHIPPING_ABOVE)} (${formatCurrency(shippingFeeOriginal)} for this order).`
-                            : `Add item worth ${formatCurrency(Math.max(FREE_SHIPPING_ABOVE - subtotal, 0))} more and claim free delivery.`}
+                            ? `Delivery charges are added for orders of ${formatCurrency(FREE_SHIPPING_ABOVE)} or below (${formatCurrency(shippingFeeOriginal)} for this order).`
+                            : `Add item worth ${formatCurrency(Math.max(FREE_SHIPPING_ABOVE + 1 - subtotal, 0))} more and claim free delivery.`}
                         </p>
                       </div>
                       <input

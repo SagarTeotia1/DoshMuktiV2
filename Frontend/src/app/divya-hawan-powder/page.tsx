@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { Fraunces } from 'next/font/google';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Flame, FlameKindling, Wind, Sparkles, ShieldCheck, HeartHandshake, Truck, RotateCcw, Lock } from 'lucide-react';
+import { Flame, FlameKindling, Wind, Sparkles, ShieldCheck, HeartHandshake, Lock } from 'lucide-react';
 import { Reveal } from '@/components/motion/Reveal';
 import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
@@ -14,14 +14,15 @@ import { ViewItemTracker } from '@/components/storefront/ViewItemTracker';
 import { ImageCarousel } from '@/components/storefront/ImageCarousel';
 import { api } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
-import { SITE_URL, RETURN_ELIGIBLE_ABOVE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
+import { SITE_URL } from '@/lib/constants';
 import { ChatWidgetLoader } from '@/components/chat/ChatWidgetLoader';
 import { Footer } from '@/components/layout/Footer';
 import { CampaignHeader } from './campaign-header';
 import { BuyNowButton } from './buy-now-button';
 import { AcharyaSection } from './acharya-section';
 import { ReviewsSection } from '../(storefront)/products/[slug]/reviews-section';
-import type { Product, DescriptionBlock, PaginatedProducts } from '@/types/api.types';
+import { generateProductJsonLd } from '@/lib/seo';
+import type { Product, DescriptionBlock, PaginatedProducts, ProductReviewsResponse } from '@/types/api.types';
 
 // A one-product campaign page, not the regular PDP — deliberately outside the
 // (storefront) route group so it skips the catalog Navbar/Footer/AnnouncementBar and
@@ -47,8 +48,8 @@ const fraunces = Fraunces({ subsets: ['latin'], weight: ['400', '600'], style: [
 
 const HERO_SERVICES = [
   { icon: Sparkles, label: '100% Pure Havan Samagri' },
-  { icon: Truck, label: `Free Delivery ₹${FREE_SHIPPING_ABOVE}+` },
-  { icon: RotateCcw, label: `7-Day Returns ₹${RETURN_ELIGIBLE_ABOVE}+` },
+  { icon: Flame, label: 'Traditional Vedic Herbs' },
+  { icon: ShieldCheck, label: 'Authentic & Energized' },
   { icon: Lock, label: 'Secure Payment' },
 ];
 
@@ -56,7 +57,7 @@ const STATS = [
   { value: '100%', label: 'Pure & Natural' },
   { value: '24-48h', label: 'Dispatch Time' },
   { value: '5-7', label: 'Days to Deliver' },
-  { value: '7-Day', label: `Returns ₹${RETURN_ELIGIBLE_ABOVE}+` },
+  { value: '100%', label: 'Vedic Samagri' },
 ];
 
 const FAQ_ITEMS = [
@@ -73,8 +74,8 @@ const FAQ_ITEMS = [
     a: 'Orders are dispatched within 24-48 hours and typically arrive within 5-7 business days anywhere in India, via Delhivery.',
   },
   {
-    q: 'What if I want to return it?',
-    a: `Eligible orders of ₹${RETURN_ELIGIBLE_ABOVE} and above come with a 7-day change-of-mind return window from delivery. Damaged or incorrect items are replaced free within 48 hours, regardless of price. As a consumable ritual item, an opened pack cannot be returned for change of mind.`,
+    q: 'What if the product arrives damaged or incorrect?',
+    a: 'If you receive a damaged or incorrect package, contact our support within 48 hours of delivery and we will arrange a 100% free replacement immediately.',
   },
   {
     q: 'What payment methods are accepted?',
@@ -140,11 +141,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function DivyaHawanPowderPage() {
-  // Only the product fetch blocks the page shell now — related-products is fetched
-  // inside its own Suspense boundary further down (see RelatedRail) so Next.js can stream
-  // the whole page (hero, price, gallery, benefits, reviews...) out immediately instead of
-  // waiting on a second Backend round-trip nothing above the fold actually needs.
-  const product = await getProduct();
+  // Concurrently fetch product and reviews — no waterfall, gives SSR instant access
+  // to reviews data for structured schema (aggregateRating + review) and eliminates client layout shift.
+  const [product, reviewsData] = await Promise.all([
+    getProduct(),
+    api.get<ProductReviewsResponse>(`/api/products/${PRODUCT_SLUG}/reviews`, undefined, revalidate).catch(() => null),
+  ]);
   if (!product) notFound();
 
   const activeVariants = product.variants.filter((v) => v.isActive && v.attributes.type !== 'service');
@@ -203,30 +205,15 @@ export default async function DivyaHawanPowderPage() {
           { title: 'Fits Any Ritual', description: 'Works for a daily puja, a weekly havan, or a full ceremony — as little or as much as your practice needs.' },
         ];
 
-  const productJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: product.name,
-    image: heroImage ? [heroImage] : undefined,
-    description: product.excerpt || fullDescription,
-    offers: {
-      '@type': 'Offer',
-      priceCurrency: 'INR',
-      price,
-      availability: soldOut ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
-      url: `${SITE_URL}/products/${product.slug}`,
-    },
-    // Google requires an actual review count for aggregateRating — omitting it
-    // entirely (rather than sending 0/0) avoids a "missing field" rich-results error
-    // on products that don't have reviews yet.
-    ...(product.rating.count > 0 && {
-      aggregateRating: {
-        '@type': 'AggregateRating',
-        ratingValue: product.rating.average,
-        reviewCount: product.rating.count,
-      },
-    }),
-  };
+  const productJsonLd = generateProductJsonLd({
+    product,
+    reviewsData,
+    canonicalPath: `/${PRODUCT_SLUG}`,
+    variantPrice: price,
+    inStock: !soldOut,
+    heroImage,
+    fullDescription,
+  });
 
   // FAQ_ITEMS is already rendered as a visible accordion below — this schema is
   // what makes it eligible for Google's FAQ rich-result snippet under the SERP entry.
@@ -497,7 +484,7 @@ export default async function DivyaHawanPowderPage() {
           filler with actual social proof for this exact product. ─────────────────── */}
       <section className="px-5 py-12 sm:py-16">
         <div className="max-w-5xl mx-auto">
-          <ReviewsSection productId={product.id} productSlug={product.slug} />
+          <ReviewsSection productId={product.id} productSlug={product.slug} initialData={reviewsData ?? undefined} />
         </div>
       </section>
 

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { X, Send, Sparkles, Mic } from 'lucide-react';
+import { X, Send, Sparkles, Mic, Calendar } from 'lucide-react';
 import { useAcharyaChat } from '@/hooks/use-acharya-chat';
 import { useVoiceInput } from '@/hooks/use-voice-input';
 import { trackLead } from '@/lib/analytics';
@@ -17,10 +17,6 @@ const VOICE_ERROR_MESSAGES: Record<string, string> = {
   'no-speech': "Couldn't hear anything — try again a little closer to the mic.",
 };
 
-// Shown once, the first time the mic button appears, so a first-time user knows this is
-// tap-to-start/tap-to-stop (not press-and-hold, which the Web Speech API doesn't need) —
-// without this, people either held it down uselessly or never realized it was still
-// recording once they let go.
 const MIC_HINT_SEEN_KEY = 'acharya-mic-hint-seen';
 
 export function ChatWidget() {
@@ -30,6 +26,7 @@ export function ChatWidget() {
   const [showMicHint, setShowMicHint] = useState(false);
   const { messages, sendMessage, isSending } = useAcharyaChat();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleVoiceResult = useCallback((transcript: string) => {
     setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
@@ -67,18 +64,11 @@ export function ChatWidget() {
     setShowPop(false);
   }
 
-  // Meta/GA4 Lead event — fired once, the very first message actually sent in this
-  // chat session (not just opening the panel), from either send path below. Both
-  // call sites route through this instead of calling sendMessage directly.
   function trackedSendMessage(message: string) {
-    if (messages.length === 0) trackLead();
+    if (messages.length === 1) trackLead();
     void sendMessage(message);
   }
 
-  // Lets other components (e.g. the homepage "Chat with Acharya Madhav" CTA, which
-  // used to link out to WhatsApp) open this same in-page AI chat instead — a custom
-  // DOM event rather than lifting state, since those components don't otherwise share
-  // any parent/store with this widget.
   useEffect(() => {
     function handleExternalOpen(e: Event) {
       handleOpen();
@@ -100,8 +90,7 @@ export function ChatWidget() {
 
   return (
     <>
-      {/* Chat panel — full-screen takeover on mobile (its own page, not a corner widget),
-          a generously sized panel on desktop with real presence, not a cramped support-bot box. */}
+      {/* Chat panel */}
       {open && (
         <div className="fixed inset-0 z-50 sm:inset-auto sm:bottom-6 sm:right-6 sm:left-auto sm:top-auto w-full h-full sm:w-[420px] sm:h-[680px] sm:max-h-[85vh] bg-white sm:rounded-3xl shadow-2xl sm:border sm:border-[#2B1B0C]/15 flex flex-col overflow-hidden animate-fade-in-up">
           {/* Header */}
@@ -111,10 +100,7 @@ export function ChatWidget() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="font-heading font-bold text-sm text-[#E6D3AE] truncate">Acharya Madhav</p>
-              {/* #9C5A26 (mid bronze) on this dark header only measures ~3.1:1 — fails
-                  WCAG AA's 4.5:1 for normal text. #C9863F (already in this same palette
-                  as the "lighter bronze" accent — see acharya-section.tsx) measures ~5.5:1. */}
-              <p className="font-body text-[11px] text-[#C9863F]">Vedic Astrologer · Online</p>
+              <p className="font-body text-[11px] text-[#C9863F]">Vedic Astrologer & Numerologist · Online</p>
             </div>
             <button
               onClick={() => setOpen(false)}
@@ -133,7 +119,7 @@ export function ChatWidget() {
                   className={`rounded-2xl px-4 py-3 font-body text-sm leading-relaxed whitespace-pre-line ${
                     m.role === 'user'
                       ? 'bg-[#9C5A26] text-white rounded-br-sm'
-                      : 'bg-[#F6E4C2]/60 text-[#2B1B0C] rounded-bl-sm'
+                      : 'bg-[#F6E4C2]/60 text-[#2B1B0C] rounded-bl-sm shadow-xs'
                   }`}
                 >
                   {m.content}
@@ -141,8 +127,6 @@ export function ChatWidget() {
                 {m.recommendedProducts && m.recommendedProducts.length > 0 && (
                   <div className="flex flex-col gap-1.5">
                     {m.recommendationReason && (
-                      // #8A7A63 on white only measures ~4.3:1 (fails 4.5:1 AA) — #7E6E58 is
-                      // the same muted warm gray, darkened just enough to clear it (~4.9:1).
                       <p className="font-body text-xs italic text-[#7E6E58] px-1 leading-relaxed">
                         {m.recommendationReason}
                       </p>
@@ -168,6 +152,44 @@ export function ChatWidget() {
                 )}
               </div>
             ))}
+
+            {/* Quick Prompt Chips */}
+            {messages.length === 1 && !isSending && (
+              <div className="flex flex-wrap gap-2 pt-1 animate-fade-in-up">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInput('Meri Date of Birth hai: ');
+                    inputRef.current?.focus();
+                  }}
+                  className="text-xs bg-amber-50 hover:bg-amber-100 text-[#9C5A26] border border-[#9C5A26]/30 rounded-full px-3 py-1.5 transition-colors font-medium flex items-center gap-1.5 shadow-sm"
+                >
+                  <Calendar className="w-3.5 h-3.5" /> Meri Kundli dekhein (DOB)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => trackedSendMessage('Career aur dhan labh ke baare me margdarshan chahiye')}
+                  className="text-xs bg-[#F6E4C2]/40 hover:bg-[#F6E4C2]/70 text-[#2B1B0C] border border-[#2B1B0C]/10 rounded-full px-3 py-1.5 transition-colors font-medium"
+                >
+                  💼 Career & Dhan Labh
+                </button>
+                <button
+                  type="button"
+                  onClick={() => trackedSendMessage('Prem aur rishton me shanti ke liye upay batayein')}
+                  className="text-xs bg-[#F6E4C2]/40 hover:bg-[#F6E4C2]/70 text-[#2B1B0C] border border-[#2B1B0C]/10 rounded-full px-3 py-1.5 transition-colors font-medium"
+                >
+                  ❤️ Prem & Rishte
+                </button>
+                <button
+                  type="button"
+                  onClick={() => trackedSendMessage('Nazar dosh ya graha shanti ke liye kya karna chahiye?')}
+                  className="text-xs bg-[#F6E4C2]/40 hover:bg-[#F6E4C2]/70 text-[#2B1B0C] border border-[#2B1B0C]/10 rounded-full px-3 py-1.5 transition-colors font-medium"
+                >
+                  🧿 Nazar Dosh Nivaran
+                </button>
+              </div>
+            )}
+
             {isSending && (
               <div className="self-start bg-[#F6E4C2]/60 rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#9C5A26]/50 animate-pulse" />
@@ -209,10 +231,10 @@ export function ChatWidget() {
               </div>
             )}
             <input
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={voice.listening ? 'Listening...' : 'Ask about love, money, career...'}
-              // Same #8A7A63 -> #7E6E58 contrast fix as the recommendationReason text above.
+              placeholder={voice.listening ? 'Listening...' : 'Apna DOB dalein ya sawal puchein...'}
               className="flex-1 bg-white border border-[#2B1B0C]/15 rounded-full px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none font-body placeholder:text-[#7E6E58]"
             />
             <button
@@ -227,7 +249,7 @@ export function ChatWidget() {
         </div>
       )}
 
-      {/* Floating launcher — bubble + toggle button, hidden once the panel is open */}
+      {/* Floating launcher */}
       <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 flex flex-col items-end gap-3">
         {showPop && !open && (
           <div className="relative animate-fade-in-up">
@@ -240,9 +262,9 @@ export function ChatWidget() {
             </button>
             <button
               onClick={handleOpen}
-              className="bg-white border border-[#2B1B0C]/10 shadow-xl rounded-2xl rounded-br-sm px-4 py-3 font-body text-xs font-semibold text-[#2B1B0C] max-w-[200px] text-left hover:-translate-y-0.5 transition-transform duration-200"
+              className="bg-white border border-[#2B1B0C]/10 shadow-xl rounded-2xl rounded-br-sm px-4 py-3 font-body text-xs font-semibold text-[#2B1B0C] max-w-[210px] text-left hover:-translate-y-0.5 transition-transform duration-200"
             >
-              Chat With Acharya <span className="text-[#9C5A26]">For Free</span> ✨
+              Kundli & Astrological Advice <span className="text-[#9C5A26]">Free</span> ✨
             </button>
           </div>
         )}

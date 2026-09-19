@@ -139,7 +139,7 @@ export async function calculateShippingFee(
 ): Promise<{ fee: number; originalFee: number }> {
   const liveRate = await getLiveShippingRate(destPincode, weightGrams);
   const originalFee = liveRate ?? SHIPPING_FEE;
-  const fee = subtotal >= FREE_SHIPPING_ABOVE ? 0 : originalFee;
+  const fee = subtotal > FREE_SHIPPING_ABOVE ? 0 : originalFee;
   return { fee, originalFee };
 }
 
@@ -220,11 +220,12 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
   // need their sku/attributes for the OrderItem snapshot.
   const freeVariantById = new Map<
     string,
-    Prisma.ProductVariantGetPayload<object>
+    Prisma.ProductVariantGetPayload<{ include: { product: { select: { name: true } } } }>
   >();
   if (freeItems.length > 0) {
     const freeVariants = await db.productVariant.findMany({
       where: { id: { in: freeItems.map((f) => f.variantId) } },
+      include: { product: { select: { name: true } } },
     });
     for (const v of freeVariants) freeVariantById.set(v.id, v);
   }
@@ -301,12 +302,17 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
                 }),
                 ...freeItems.map((item) => {
                   const fv = freeVariantById.get(item.variantId)!;
+                  const productName =
+                    fv.sku.includes('ATTAR') || fv.product?.name?.toLowerCase().includes('attar')
+                      ? 'FREE ATTAR'
+                      : (fv.product?.name ? `FREE ${fv.product.name.toUpperCase()}` : 'FREE GIFT');
                   return {
                     variantId: item.variantId,
                     quantity: item.quantity,
                     priceAtPurchase: 0,
                     variantSnapshot: {
                       sku: fv.sku,
+                      productName,
                       attributes: fv.attributes,
                       isFreeGift: true,
                       gstRate: null,

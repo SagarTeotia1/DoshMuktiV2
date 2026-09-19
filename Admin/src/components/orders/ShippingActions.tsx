@@ -7,7 +7,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useGenerateLabel, useBookShipment, useNdrAction, useUpdateEwaybill, useSetRiskFlag } from '@/hooks/use-orders';
 import { ApiError } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
-import { getStoredLabelSize, setStoredLabelSize, openLabelWindow, writeLabelToWindow, type LabelSize } from '@/lib/print-label';
+import { getStoredLabelSize, setStoredLabelSize, openLabelWindow, writeLabelToWindow, base64ToBlobUrl, type LabelSize } from '@/lib/print-label';
 import type { Order } from '@/types/api.types';
 
 const inputClass =
@@ -84,8 +84,13 @@ export function ShippingActions({ order }: { order: Order }) {
     const win = openLabelWindow();
     generateLabel.mutate(labelSize, {
       onSuccess: (data) => {
-        if (win) writeLabelToWindow(win, data.pdfBase64, labelSize);
-        else toast.error('Popup blocked — allow popups for this site to print labels');
+        if (win && !win.closed) {
+          writeLabelToWindow(win, data.pdfBase64, labelSize);
+        } else {
+          // If popup was blocked or closed, open directly via Blob URL
+          const blobUrl = base64ToBlobUrl(data.pdfBase64);
+          window.open(blobUrl, '_blank');
+        }
       },
       onError: (err) => {
         win?.close();

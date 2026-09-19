@@ -41,6 +41,8 @@ const nextConfig: NextConfig = {
       { source: '/durghatna-nashak-yantra', headers: campaignPageCacheHeaders },
       { source: '/durbhagya-nashak-nariyal', headers: campaignPageCacheHeaders },
       { source: '/rose-quartz-bracelet', headers: campaignPageCacheHeaders },
+      { source: '/divya-hawan-powder', headers: campaignPageCacheHeaders },
+      { source: '/ghoda-ki-naal', headers: campaignPageCacheHeaders },
     ];
   },
 };

@@ -211,7 +211,7 @@ export function ReviewsSection({
   }
 
   return (
-    <section id="reviews-section" className="mt-16 sm:mt-24 max-w-5xl scroll-mt-24" itemScope itemType="https://schema.org/Product">
+    <section id="reviews-section" className="mt-16 sm:mt-24 max-w-5xl scroll-mt-24">
       <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-[#9C5A26] mb-2">
@@ -261,9 +261,6 @@ export function ReviewsSection({
             {data.reviews.map((review) => (
               <div
                 key={review.id}
-                itemProp="review"
-                itemScope
-                itemType="https://schema.org/Review"
                 className="relative bg-[#FFFDF8] border border-[#2B1B0C]/10 rounded-2xl p-5 sm:p-6 shadow-neo-sm hover:shadow-neo-md hover:-translate-y-0.5 transition-all duration-250 flex flex-col"
               >
                 <Quote className="absolute top-4 right-4 w-6 h-6 text-[#9C5A26]/15 fill-[#9C5A26]/10" />
@@ -273,23 +270,21 @@ export function ReviewsSection({
                     {review.customerName.charAt(0).toUpperCase()}
                   </span>
                   <div className="min-w-0">
-                    <p itemProp="author" className="font-heading font-bold text-xs text-[#2B1B0C] truncate">
+                    <p className="font-heading font-bold text-xs text-[#2B1B0C] truncate">
                       {review.customerName}
                     </p>
                     <p className="font-body text-[10px] text-[#8A7A63]">{formatDate(review.createdAt)}</p>
                   </div>
                 </div>
 
-                <div itemProp="reviewRating" itemScope itemType="https://schema.org/Rating">
-                  <meta itemProp="ratingValue" content={String(review.rating)} />
-                  <meta itemProp="bestRating" content="5" />
+                <div>
                   <Stars rating={review.rating} />
                 </div>
 
                 {review.title && (
                   <p className="font-heading font-bold text-sm text-[#2B1B0C] mt-2.5 mb-1">{review.title}</p>
                 )}
-                <p itemProp="reviewBody" className="font-body text-sm text-[#6B5539] leading-relaxed mt-1 flex-1">
+                <p className="font-body text-sm text-[#6B5539] leading-relaxed mt-1 flex-1">
                   {review.body}
                 </p>
               </div>

@@ -29,10 +29,10 @@ export default function CartPage() {
   // Backend-computed (see cart/service.ts's computeCartPricing) — same resolution path
   // checkout itself uses for AUTO_APPLIED offer discounts, so this preview total can
   // never drift from what checkout actually charges.
-  const shippingFee = cart?.shippingFee ?? (subtotal >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE);
+  const shippingFee = cart?.shippingFee ?? (subtotal > FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE);
   const shippingFeeOriginal = cart?.shippingFeeOriginal ?? shippingFee;
   const autoAppliedDiscount = cart?.autoAppliedDiscount ?? 0;
-  const remainingForFreeShipping = Math.max(0, FREE_SHIPPING_ABOVE - subtotal);
+  const remainingForFreeShipping = Math.max(0, FREE_SHIPPING_ABOVE + 1 - subtotal);
   const total = Math.max(subtotal + shippingFee - autoAppliedDiscount, 0);
   // Inclusive breakup of subtotal (product price already includes GST — never an added
   // charge), same math the invoice PDF uses. 0 when nothing in the cart carries a GST rate.
@@ -153,7 +153,7 @@ export default function CartPage() {
                 Free Gift
               </span>
               <p className="font-heading font-bold text-xs sm:text-sm text-[#2B1B0C] truncate">
-                {item.productName} {item.quantity > 1 ? `× ${item.quantity}` : ''}
+                {item.sku.includes('ATTAR') || item.productName.toUpperCase().includes('ATTAR') ? 'FREE ATTAR' : item.productName} {item.quantity > 1 ? `× ${item.quantity}` : ''}
               </p>
               <p className="font-body text-[10px] sm:text-xs text-[#8A7A63]">On the house, with your order 🙏</p>
             </div>

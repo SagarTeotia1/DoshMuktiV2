@@ -206,7 +206,11 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ ord
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-body text-sm font-semibold text-[#2B1B0C] truncate">
-                      {item.variantSnapshot.productName}
+                      {item.variantSnapshot.sku === 'ATTAR-25-ML-DEFAULT' ||
+                      item.variantSnapshot.productName === 'ATTAR-25-ML-DEFAULT' ||
+                      (!item.variantSnapshot.productName && item.variantSnapshot.sku?.includes('ATTAR'))
+                        ? 'FREE ATTAR'
+                        : (item.variantSnapshot.productName || item.variantSnapshot.sku)}
                     </p>
                     <ItemAttributes attributes={item.variantSnapshot.attributes} />
                     <p className="font-body text-xs text-[#8A7A63] mt-0.5">Qty {item.quantity}</p>

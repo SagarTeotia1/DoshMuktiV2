@@ -1,13 +1,10 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { redis } from '../../shared/cache/client';
 import { cacheKeys } from '../../shared/cache/keys';
-import type { ChatSessionRecord } from './schema';
+import { db } from '../../shared/db/client';
+import { chatLeadListQuerySchema, type ChatSessionRecord } from './schema';
+import { z } from 'zod';
 
-// One Redis command per admin page load (KEYS scan) + one GET per matched session — cheap
-// at the traffic this store is sized for (sessions self-expire after CACHE_TTL.CHAT_SESSION,
-// so the key count never grows unbounded). Worth revisiting (a proper index instead of a
-// KEYS scan) only if the admin team's actual session volume grows enough for this to show
-// up in Redis usage/latency.
 export async function listChatSessionsHandler(_req: FastifyRequest, reply: FastifyReply) {
   const keys = await redis.keys(`${cacheKeys.chatSessionPrefix()}*`);
   const records = await Promise.all(keys.map((k) => redis.get<ChatSessionRecord>(k)));
@@ -18,6 +15,10 @@ export async function listChatSessionsHandler(_req: FastifyRequest, reply: Fasti
     .map((r) => ({
       sessionId: r.sessionId,
       ip: r.ip,
+      phone: r.phone ?? null,
+      name: r.name ?? null,
+      dob: r.dob ?? null,
+      problem: r.problem ?? null,
       city: r.city,
       country: r.country,
       startedAt: r.startedAt,
@@ -29,8 +30,6 @@ export async function listChatSessionsHandler(_req: FastifyRequest, reply: Fasti
   return reply.send({ sessions });
 }
 
-// Direct key construction for each of the last N days, not a KEYS scan — cheap and
-// exact regardless of how much other chat:* data exists in Redis.
 export async function getChatVolumeHandler(req: FastifyRequest, reply: FastifyReply) {
   const query = req.query as { days?: string };
   const days = Math.min(Math.max(Number(query.days) || 30, 1), 90);
@@ -51,4 +50,64 @@ export async function getChatSessionHandler(req: FastifyRequest, reply: FastifyR
   const record = await redis.get<ChatSessionRecord>(cacheKeys.chatSession(sessionId));
   if (!record) return reply.code(404).send({ error: 'Session not found' });
   return reply.send(record);
+}
+
+export async function listChatLeadsHandler(req: FastifyRequest, reply: FastifyReply) {
+  const parsed = chatLeadListQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    return reply.code(400).send({ error: 'Invalid query params', details: parsed.error.flatten().fieldErrors });
+  }
+
+  const { page, limit, search, status } = parsed.data;
+  const where: Record<string, unknown> = {};
+
+  if (status) {
+    where.status = status;
+  }
+
+  if (search) {
+    where.OR = [
+      { phone: { contains: search, mode: 'insensitive' } },
+      { name: { contains: search, mode: 'insensitive' } },
+      { problem: { contains: search, mode: 'insensitive' } },
+      { city: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+
+  const [leads, total] = await Promise.all([
+    db.chatLead.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+    }),
+    db.chatLead.count({ where }),
+  ]);
+
+  return reply.send({
+    leads,
+    total,
+    page,
+    pages: Math.ceil(total / limit) || 1,
+  });
+}
+
+const updateLeadStatusSchema = z.object({
+  status: z.enum(['NEW', 'CONTACTED', 'CONVERTED', 'CLOSED']).optional(),
+  notes: z.string().optional(),
+});
+
+export async function updateChatLeadStatusHandler(req: FastifyRequest, reply: FastifyReply) {
+  const { id } = req.params as { id: string };
+  const parsed = updateLeadStatusSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return reply.code(400).send({ error: 'Invalid body', details: parsed.error.flatten().fieldErrors });
+  }
+
+  const lead = await db.chatLead.update({
+    where: { id },
+    data: parsed.data,
+  });
+
+  return reply.send(lead);
 }
