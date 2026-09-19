@@ -13,10 +13,19 @@ export type { TestimonialVideo };
 // and Chrome right after a fast-refresh/hydration swap) only honor it if `.play()`
 // is also called explicitly once mounted — belt and suspenders so it never sits on
 // the poster frame waiting for a tap that shouldn't be required.
+// iOS Safari additionally requires the video to be muted=true at the time play() is
+// called for autoplay to succeed — muted prop change triggers a re-play attempt.
 function useAutoplay(muted: boolean) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
-    ref.current?.play().catch(() => {});
+    const v = ref.current;
+    if (!v) return;
+    // Ensure muted state is in sync with the DOM element before calling play().
+    // React reconciles the `muted` prop asynchronously in some versions, so
+    // setting it imperatively here guarantees iOS Safari sees muted=true before
+    // the play() call — the only way to pass its autoplay policy check.
+    v.muted = muted;
+    void v.play().catch(() => {});
   }, [muted]);
   return ref;
 }
@@ -33,7 +42,9 @@ function TestimonialCard({ video, onOpen }: { video: TestimonialVideo; onOpen: (
       <video
         ref={videoRef}
         src={video.videoUrl}
-        poster={video.posterUrl ?? `${video.videoUrl}#t=0.001`}
+        // Only use poster if the backend provides one — the #t=0.001 fragment trick
+        // is not supported on iOS Safari and causes the thumbnail to render blank.
+        poster={video.posterUrl ?? undefined}
         autoPlay
         muted
         loop
@@ -101,6 +112,7 @@ function TestimonialModal({
           muted={muted}
           loop
           playsInline
+          preload="metadata"
           className="absolute inset-0 w-full h-full object-cover"
         />
 
