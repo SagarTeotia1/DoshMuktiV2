@@ -39,7 +39,12 @@ function DirectVideoPlayer({ url }: { url: string }) {
   // appear. Checking readyState on mount catches that case.
   useEffect(() => {
     const v = videoRef.current;
-    if (v && v.readyState >= 1 && v.duration) setDuration(v.duration);
+    if (!v) return;
+    if (v.readyState >= 1 && v.duration) setDuration(v.duration);
+    // Bumps this fetch ahead of lower-priority page assets so the first frame
+    // decodes (and the brown placeholder disappears) as early as possible.
+    // Not in React's video prop types yet — set directly on the element.
+    v.setAttribute('fetchpriority', 'high');
   }, []);
   // Hidden while playing so the button doesn't sit over the footage — tapping the
   // video re-shows it briefly (togglePlay bumps this true) before it fades out again.
@@ -107,7 +112,14 @@ function DirectVideoPlayer({ url }: { url: string }) {
         src={url}
         muted={muted}
         playsInline
-        preload="metadata"
+        // No posterUrl exists for this field (unlike TestimonialVideo, which the backend
+        // does supply one for) — Chrome/Firefox paper over that by auto-painting the first
+        // decoded frame as an implicit thumbnail even under preload="metadata", but WebKit
+        // (desktop Safari + all iOS browsers) only decodes far enough to read duration/
+        // dimensions at that preload level and leaves the canvas blank until playback
+        // starts. preload="auto" makes WebKit buffer and decode enough to paint frame 0,
+        // which is what reads as "the poster" here.
+        preload="auto"
         className="absolute inset-0 w-full h-full object-cover"
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
