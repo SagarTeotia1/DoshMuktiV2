@@ -15,10 +15,17 @@ interface RazorpayShippingAddress {
 }
 
 export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPaymentId: string): Promise<void> {
-  // Idempotent: only rows still PENDING get updated — replayed webhooks are a no-op
+  // Idempotent, and covers a customer retry on the same Razorpay order after an earlier
+  // attempt failed: Razorpay lets multiple payment attempts hit one order_id, so a prior
+  // handlePaymentFailed can have already flipped this row to FAILED (and cancelled the
+  // order, releasing stock) before the retry's captured webhook arrives. Widening the
+  // guard to PENDING|FAILED lets that late capture still win instead of silently
+  // no-op'ing — money captured with no matching live order was exactly that bug.
+  // Still replay-safe: once this flips the row to CAPTURED, a duplicate delivery of the
+  // same event finds status outside ('PENDING','FAILED') and no-ops as before.
   const updated: number = await db.$executeRaw`
     UPDATE "Payment" SET status = 'CAPTURED', "razorpayPaymentId" = ${razorpayPaymentId}, "verifiedAt" = NOW()
-    WHERE "razorpayOrderId" = ${razorpayOrderId} AND status = 'PENDING'
+    WHERE "razorpayOrderId" = ${razorpayOrderId} AND status IN ('PENDING', 'FAILED')
   `;
   if (updated === 0) return;
 
@@ -28,13 +35,55 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
   });
   if (!payment) return;
 
-  await db.order.update({
-    where: { id: payment.orderId },
-    data: {
-      status: 'PAID',
-      statusLog: { create: { from: 'PENDING_PAYMENT', to: 'PAID', createdBy: 'system' } },
-    },
-  });
+  if (payment.order.status === 'CANCELLED') {
+    // The failed-attempt path already released this order's reserved stock back to the
+    // pool — before honoring the late capture, re-reserve it for real, the same atomic
+    // guard as checkout's reserveStock. Stock may genuinely be gone by now (sold out via
+    // another order in the meantime); if so, do NOT silently mark this PAID over
+    // unavailable stock — leave it CANCELLED with payment now correctly CAPTURED, log
+    // loudly, and let an admin resolve (refund or manual restock) via Admin's order page.
+    const outOfStock = await db.$transaction(async (tx) => {
+      for (const item of payment.order.items) {
+        const rows: number = await tx.$executeRaw`
+          UPDATE "ProductVariant" SET "stockQuantity" = "stockQuantity" - ${item.quantity}
+          WHERE id = ${item.variantId} AND "stockQuantity" >= ${item.quantity}
+        `;
+        if (rows === 0) return true; // Serializable tx: rolls back any deductions already made this call
+      }
+
+      for (const item of payment.order.items) {
+        await tx.stockMovement.create({
+          data: { variantId: item.variantId, change: -item.quantity, reason: 'SALE', orderId: payment.orderId, createdBy: 'system' },
+        });
+      }
+
+      await tx.order.update({
+        where: { id: payment.orderId },
+        data: {
+          status: 'PAID',
+          statusLog: { create: { from: 'CANCELLED', to: 'PAID', createdBy: 'system', note: `Late capture on retried payment: ${razorpayPaymentId}` } },
+        },
+      });
+      return false;
+    }, { isolationLevel: 'Serializable' });
+
+    if (outOfStock) {
+      logger.error(
+        { orderNumber: payment.order.orderNumber, razorpayPaymentId },
+        'Payment captured on a retry after this order was cancelled, but stock is no longer available — payment marked CAPTURED, order left CANCELLED for manual admin resolution',
+      );
+      return;
+    }
+    await invalidateProductCaches();
+  } else {
+    await db.order.update({
+      where: { id: payment.orderId },
+      data: {
+        status: 'PAID',
+        statusLog: { create: { from: 'PENDING_PAYMENT', to: 'PAID', createdBy: 'system' } },
+      },
+    });
+  }
 
   // Fire-and-forget — never block webhook response on email/shipment calls
   if (payment.order.customerEmail) {

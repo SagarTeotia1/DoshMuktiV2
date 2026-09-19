@@ -231,7 +231,13 @@ export async function listOrdersByPhone(phone: string) {
 export async function getOrderById(id: string) {
   return db.order.findUnique({
     where: { id },
-    include: { items: { include: { variant: true } }, payment: true, shipment: true, statusLog: { orderBy: { createdAt: 'desc' } } },
+    include: {
+      items: { include: { variant: true } },
+      payment: true,
+      shipment: true,
+      statusLog: { orderBy: { createdAt: 'desc' } },
+      coupon: true,
+    },
   });
 }
 

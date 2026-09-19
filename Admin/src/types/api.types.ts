@@ -288,7 +288,10 @@ export interface Order {
   status: string;
   subtotal: number;
   shippingFee: number;
+  discountAmount: number;
   total: number;
+  couponId: string | null;
+  coupon: { id: string; code: string; type: CouponType; value: number } | null;
   // Grams — admin override for this order's real packed parcel weight. Null means "use
   // the auto-calculated weight" (sum of item weights + packaging, see Backend's
   // PACKAGING_WEIGHT_GRAMS) that checkout/booking already fall back to.
