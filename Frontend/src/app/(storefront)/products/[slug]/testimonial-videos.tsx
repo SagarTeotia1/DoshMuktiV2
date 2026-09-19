@@ -33,7 +33,7 @@ function TestimonialCard({ video, onOpen }: { video: TestimonialVideo; onOpen: (
       <video
         ref={videoRef}
         src={video.videoUrl}
-        poster={video.posterUrl ?? undefined}
+        poster={video.posterUrl ?? `${video.videoUrl}#t=0.001`}
         autoPlay
         muted
         loop

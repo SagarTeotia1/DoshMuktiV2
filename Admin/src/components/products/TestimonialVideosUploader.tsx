@@ -94,15 +94,21 @@ export function TestimonialVideosUploader({ product }: { product: Product }) {
                 {v.posterUrl ? (
                   <Image src={v.posterUrl} alt="" fill className="object-cover" />
                 ) : (
-                  <span className="text-[10px] text-slate-400 text-center px-1">No poster</span>
+                  <span className="text-[10px] text-amber-600 font-semibold text-center px-1 leading-tight">
+                    Upload poster<br />(mobile thumbnail)
+                  </span>
                 )}
                 <button
                   onClick={() => inputRefs.current[v.id]?.click()}
                   disabled={uploadingId === v.id}
-                  className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center disabled:opacity-50"
-                  title="Upload poster image"
+                  className={`absolute inset-0 flex items-center justify-center transition-opacity disabled:opacity-50 ${
+                    v.posterUrl
+                      ? 'bg-black/40 opacity-0 hover:opacity-100'
+                      : 'bg-amber-500/20 opacity-100 hover:bg-amber-500/40'
+                  }`}
+                  title="Upload poster image (required for mobile thumbnails)"
                 >
-                  <Upload className="w-4 h-4 text-white" />
+                  <Upload className={`w-4 h-4 ${v.posterUrl ? 'text-white' : 'text-amber-700'}`} />
                 </button>
                 <input
                   ref={(el) => {
