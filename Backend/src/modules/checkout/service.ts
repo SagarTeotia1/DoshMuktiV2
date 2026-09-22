@@ -242,7 +242,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
     const v = freeVariantById.get(item.variantId);
     return sum + (v?.weight ?? 0) * item.quantity;
   }, 0);
-  const { fee: shippingFee } = await calculateShippingFee(
+  const { fee: shippingFee, originalFee: actualShippingCost } = await calculateShippingFee(
     subtotal,
     paidWeight + freeWeight + PACKAGING_WEIGHT_GRAMS,
     input.shippingAddress.pincode
@@ -280,6 +280,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
             shippingAddress: input.shippingAddress,
             subtotal,
             shippingFee,
+            actualShippingCost,
             discountAmount: totalDiscount,
             total: orderTotal,
             couponId: coupon?.id ?? null,

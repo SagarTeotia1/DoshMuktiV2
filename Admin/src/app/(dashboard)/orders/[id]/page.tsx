@@ -146,9 +146,15 @@ export default function OrderDetailPage() {
                 <span>{formatCurrency(order.subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm text-slate-500">
-                <span>Shipping</span>
+                <span>Shipping (charged to customer)</span>
                 <span>{order.shippingFee === 0 ? 'Free' : formatCurrency(order.shippingFee)}</span>
               </div>
+              {order.actualShippingCost !== null && (
+                <div className="flex justify-between text-sm text-slate-500">
+                  <span>Delhivery cost (actual)</span>
+                  <span>{formatCurrency(order.actualShippingCost)}</span>
+                </div>
+              )}
               {order.coupon && order.discountAmount > 0 && (
                 <div className="flex justify-between text-sm text-emerald-600">
                   <span>Coupon &ldquo;{order.coupon.code}&rdquo;</span>

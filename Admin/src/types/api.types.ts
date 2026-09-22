@@ -288,6 +288,7 @@ export interface Order {
   status: string;
   subtotal: number;
   shippingFee: number;
+  actualShippingCost: number | null;
   discountAmount: number;
   total: number;
   couponId: string | null;

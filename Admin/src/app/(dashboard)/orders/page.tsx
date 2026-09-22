@@ -34,6 +34,14 @@ const columns: ColumnDef<Order, unknown>[] = [
     ),
   },
   { accessorKey: 'total', header: 'Total', cell: ({ row }) => formatCurrency(row.original.total) },
+  {
+    id: 'deliveryCost',
+    header: 'Delivery Cost',
+    cell: ({ row }) => {
+      const cost = row.original.actualShippingCost;
+      return cost === null ? <span className="text-slate-400">—</span> : formatCurrency(cost);
+    },
+  },
   { id: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
   {
     id: 'risk',

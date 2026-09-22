@@ -1,7 +1,7 @@
 import { env } from '../../../config/env';
 
 interface ServiceabilityResponse {
-  delivery_codes: Array<{ postal_code: { pin: string; pre_paid: string } }>;
+  delivery_codes: Array<{ postal_code: { pin: string; pre_paid: string; remarks?: string } }>;
 }
 
 export async function checkServiceability(pincode: string): Promise<boolean> {
@@ -14,7 +14,15 @@ export async function checkServiceability(pincode: string): Promise<boolean> {
   if (!res.ok) return false;
 
   const data = (await res.json()) as ServiceabilityResponse;
-  return data.delivery_codes?.[0]?.postal_code?.pre_paid === 'Y';
+  const postalCode = data.delivery_codes?.[0]?.postal_code;
+  if (postalCode?.pre_paid !== 'Y') return false;
+  // `pre_paid: Y` alone doesn't mean deliverable — Delhivery can carry an active
+  // "Embargo" remark on a pincode (local disruption, strike, high-RTO suppression) that
+  // silently rejects the actual shipment-create call later at booking time. Catching it
+  // here, at checkout, is the only way the customer/admin ever sees it instead of a
+  // shipment quietly stuck with no waybill days later.
+  if (/embargo/i.test(postalCode.remarks ?? '')) return false;
+  return true;
 }
 
 // Checkout accepts free-text address lines — customers paste from Maps/WhatsApp with
