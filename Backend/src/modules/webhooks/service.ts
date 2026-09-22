@@ -102,17 +102,21 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
       payment.order.packageWeightOverride ??
       payment.order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS,
   }).then(async (shipment) => {
-    if (shipment) {
+    if (shipment && 'waybill' in shipment) {
       await db.shipment.create({ data: { orderId: payment.orderId, delhiveryWaybill: shipment.waybill, status: 'BOOKED' } });
       if (payment.order.customerEmail) {
         void sendShipmentNotification(payment.order.customerEmail, payment.order.orderNumber, shipment.waybill);
       }
     } else {
-      // createShipment returns null on a Delhivery-side rejection (bad wallet balance,
-      // fraud check, etc) rather than throwing — without this log the order is just
-      // stuck with no waybill and nothing ever says why. Admin can retry via the manual
-      // "Book Shipment" action once the underlying issue (e.g. wallet top-up) is fixed.
-      logger.error({ orderNumber: payment.order.orderNumber }, 'createShipment returned null — Delhivery rejected the shipment');
+      // createShipment returns an error (or null in dev with no API key) on a
+      // Delhivery-side rejection (bad wallet balance, fraud check, bad address, etc)
+      // rather than throwing — without this log the order is just stuck with no waybill
+      // and nothing ever says why. Admin can retry via the manual "Book Shipment" action
+      // once the underlying issue is fixed.
+      logger.error(
+        { orderNumber: payment.order.orderNumber, reason: shipment?.error ?? 'no API key configured' },
+        'createShipment did not return a waybill — Delhivery rejected the shipment',
+      );
     }
   }).catch((err) => {
     // A thrown error here (network failure, etc) would otherwise be an unhandled

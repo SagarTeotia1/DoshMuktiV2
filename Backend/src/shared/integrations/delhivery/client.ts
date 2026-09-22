@@ -23,7 +23,7 @@ export async function createShipment(params: {
   customerPhone: string;
   address: { line1: string; line2?: string; city: string; state: string; pincode: string };
   weight: number;
-}): Promise<{ waybill: string } | null> {
+}): Promise<{ waybill: string } | { error: string } | null> {
   if (!env.DELHIVERY_API_KEY) return null; // graceful degrade in dev
 
   const payload = {
@@ -54,17 +54,23 @@ export async function createShipment(params: {
     headers: { Authorization: `Token ${env.DELHIVERY_API_KEY}`, 'Content-Type': 'application/json' },
     body: `format=json&data=${JSON.stringify(payload)}`,
   });
-  if (!res.ok) return null;
+  if (!res.ok) return { error: `Delhivery returned HTTP ${res.status}` };
 
   // Delhivery can return HTTP 200 with `success: false` and an empty waybill in the
   // package entry (e.g. its fraud/sanity check rejecting the order) — a naive check for
-  // "packages[0] exists" alone silently treats that as a created shipment.
+  // "packages[0] exists" alone silently treats that as a created shipment. `remarks` is
+  // where the actual reject reason (bad pincode, address too long, etc) lives — surface
+  // it instead of a generic "rejected", or every rejection looks identical to whoever's
+  // debugging it.
   const data = (await res.json()) as {
     success?: boolean;
     packages: Array<{ waybill: string; status?: string; remarks?: string[] }>;
   };
   const pkg = data.packages?.[0];
-  if (data.success === false || !pkg?.waybill) return null;
+  if (data.success === false || !pkg?.waybill) {
+    const remarks = pkg?.remarks?.filter(Boolean).join('; ');
+    return { error: remarks || 'Delhivery rejected the shipment with no reason given' };
+  }
   return { waybill: pkg.waybill };
 }
 

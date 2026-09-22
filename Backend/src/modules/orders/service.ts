@@ -124,14 +124,15 @@ export async function bookOrderShipment(orderId: string): Promise<{ waybill: str
     // actually weighed this specific box and knows better than the item-sum estimate.
     weight: order.packageWeightOverride ?? order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS,
   });
-  if (!shipment) throw new Error('Delhivery rejected the shipment — check wallet balance and address details');
+  if (!shipment) throw new Error('Delhivery did not return a waybill — check wallet balance and address details');
+  if ('error' in shipment) throw new Error(shipment.error);
 
   if (existing) {
     await db.shipment.update({ where: { orderId }, data: { delhiveryWaybill: shipment.waybill, status: 'BOOKED' } });
   } else {
     await db.shipment.create({ data: { orderId, delhiveryWaybill: shipment.waybill, status: 'BOOKED' } });
   }
-  return shipment;
+  return { waybill: shipment.waybill };
 }
 
 // Grams, or null to fall back to the auto-calculated weight (item sum + packaging) again.
