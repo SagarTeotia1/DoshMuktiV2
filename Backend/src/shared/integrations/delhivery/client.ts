@@ -17,6 +17,20 @@ export async function checkServiceability(pincode: string): Promise<boolean> {
   return data.delivery_codes?.[0]?.postal_code?.pre_paid === 'Y';
 }
 
+// Checkout accepts free-text address lines — customers paste from Maps/WhatsApp with
+// stray ",,," and "..." runs left over from a trimmed original. Delhivery's own address
+// parser can choke on those (a bad address is one of the few reject reasons it actually
+// gives back via `remarks`), so collapse repeated commas/dots and trim edge punctuation
+// before ever building the payload.
+function sanitizeAddressLine(line: string): string {
+  return line
+    .replace(/\.{2,}/g, '.')
+    .replace(/,{2,}/g, ',')
+    .replace(/\s*,\s*/g, ', ')
+    .replace(/^[\s,.]+|[\s,.]+$/g, '')
+    .trim();
+}
+
 export async function createShipment(params: {
   orderNumber: string;
   customerName: string;
@@ -30,7 +44,11 @@ export async function createShipment(params: {
     shipments: [
       {
         name: params.customerName,
-        add: [params.address.line1, params.address.line2].filter(Boolean).join(', '),
+        add: [params.address.line1, params.address.line2]
+          .filter(Boolean)
+          .map((line) => sanitizeAddressLine(line as string))
+          .filter(Boolean)
+          .join(', '),
         pin: params.address.pincode,
         city: params.address.city,
         state: params.address.state,
