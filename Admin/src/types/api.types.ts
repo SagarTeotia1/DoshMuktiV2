@@ -289,6 +289,7 @@ export interface Order {
   subtotal: number;
   shippingFee: number;
   actualShippingCost: number | null;
+  bookingShippingCost: number | null;
   finalShippingCost: number | null;
   discountAmount: number;
   total: number;

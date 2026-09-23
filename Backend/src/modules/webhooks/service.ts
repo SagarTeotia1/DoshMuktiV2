@@ -4,7 +4,7 @@ import { sendOrderConfirmation, sendShipmentNotification } from '../../shared/in
 import { createShipment } from '../../shared/integrations/delhivery/client';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
-import { syncOrderStatusFromShipment } from '../orders/service';
+import { syncOrderStatusFromShipment, quoteBookingShippingCost } from '../orders/service';
 import { PACKAGING_WEIGHT_GRAMS } from '../../shared/constants/purposes';
 
 interface RazorpayShippingAddress {
@@ -91,20 +91,22 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
     void sendOrderConfirmation(payment.order.customerEmail, payment.order.orderNumber, Number(payment.order.total));
   }
   const addr = payment.order.shippingAddress as unknown as RazorpayShippingAddress;
+  // See PACKAGING_WEIGHT_GRAMS's comment — declared weight must match the real packed
+  // parcel (all items + packaging in ONE box on ONE waybill), same as bookOrderShipment.
+  // An admin-set packageWeightOverride wins if present, same rule as the manual retry path.
+  const bookingWeight =
+    payment.order.packageWeightOverride ??
+    payment.order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS;
   void createShipment({
     orderNumber: payment.order.orderNumber,
     customerName: payment.order.customerName,
     customerPhone: payment.order.customerPhone,
     address: addr,
-    // See PACKAGING_WEIGHT_GRAMS's comment — declared weight must match the real packed
-    // parcel (all items + packaging in ONE box on ONE waybill), same as bookOrderShipment.
-    // An admin-set packageWeightOverride wins if present, same rule as the manual retry path.
-    weight:
-      payment.order.packageWeightOverride ??
-      payment.order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS,
+    weight: bookingWeight,
   }).then(async (shipment) => {
     if (shipment && 'waybill' in shipment) {
       await db.shipment.create({ data: { orderId: payment.orderId, delhiveryWaybill: shipment.waybill, status: 'BOOKED' } });
+      void quoteBookingShippingCost(payment.orderId, bookingWeight, addr.pincode);
       if (payment.order.customerEmail) {
         void sendShipmentNotification(payment.order.customerEmail, payment.order.orderNumber, shipment.waybill);
       }

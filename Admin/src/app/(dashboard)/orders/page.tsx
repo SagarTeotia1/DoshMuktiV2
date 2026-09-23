@@ -37,12 +37,15 @@ const columns: ColumnDef<Order, unknown>[] = [
   {
     id: 'deliveryCost',
     header: 'Delivery Cost',
-    // Final (post-delivery Delhivery re-quote) wins once it exists; before that, the
-    // checkout-time estimate is shown as a placeholder, marked "est." so it's never
-    // confused with what Delhivery actually charged.
+    // Final (post-delivery re-quote) wins once it exists; booking-time re-quote (locked
+    // in once the waybill is actually created) is next-best; checkout-time estimate is
+    // the last resort before a shipment even exists. Only the final figure is shown
+    // without a qualifier — the other two are marked so they're never mistaken for what
+    // Delhivery actually charged.
     cell: ({ row }) => {
-      const { finalShippingCost, actualShippingCost } = row.original;
+      const { finalShippingCost, bookingShippingCost, actualShippingCost } = row.original;
       if (finalShippingCost !== null) return formatCurrency(finalShippingCost);
+      if (bookingShippingCost !== null) return <span className="text-slate-400">{formatCurrency(bookingShippingCost)} (booked)</span>;
       if (actualShippingCost !== null) return <span className="text-slate-400">{formatCurrency(actualShippingCost)} (est.)</span>;
       return <span className="text-slate-400">—</span>;
     },

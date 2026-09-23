@@ -155,6 +155,12 @@ export default function OrderDetailPage() {
                   <span>{formatCurrency(order.actualShippingCost)}</span>
                 </div>
               )}
+              {order.bookingShippingCost !== null && (
+                <div className="flex justify-between text-sm text-slate-500">
+                  <span>Delhivery cost (at booking)</span>
+                  <span>{formatCurrency(order.bookingShippingCost)}</span>
+                </div>
+              )}
               {order.finalShippingCost !== null && (
                 <div className="flex justify-between text-sm text-slate-500">
                   <span>Delhivery cost (final, post-delivery)</span>

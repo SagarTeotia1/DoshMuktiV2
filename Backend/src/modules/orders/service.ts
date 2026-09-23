@@ -134,7 +134,36 @@ export async function bookOrderShipment(orderId: string): Promise<{ waybill: str
   } else {
     await db.shipment.create({ data: { orderId, delhiveryWaybill: shipment.waybill, status: 'BOOKED' } });
   }
+
+  const bookedAddress = order.shippingAddress as unknown as BookableAddress;
+  void quoteBookingShippingCost(
+    orderId,
+    order.packageWeightOverride ?? order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS,
+    bookedAddress.pincode
+  );
+
   return { waybill: shipment.waybill };
+}
+
+// Best-effort: re-quotes Delhivery's rate calculator the moment a shipment is booked,
+// with the exact weight just sent in the booking call (so it reflects a
+// packageWeightOverride set before booking, unlike actualShippingCost which is frozen
+// at checkout). Shared by bookOrderShipment above and the payment.captured auto-book in
+// webhooks/service.ts. Never throws into the caller — a failed re-quote just leaves
+// bookingShippingCost null; it never blocks the shipment booking itself.
+export async function quoteBookingShippingCost(orderId: string, weightGrams: number, destPincode: string): Promise<void> {
+  try {
+    const result = await fetchDelhiveryShippingCost({
+      originPincode: env.DELHIVERY_WAREHOUSE_PINCODE,
+      destPincode,
+      weightGrams,
+      paymentMode: 'Pre-paid',
+    });
+    if (!result) return;
+    await db.order.update({ where: { id: orderId }, data: { bookingShippingCost: result.amount } });
+  } catch (err) {
+    logger.error({ err, orderId }, 'Failed to fetch booking-time Delhivery shipping cost');
+  }
 }
 
 // Grams, or null to fall back to the auto-calculated weight (item sum + packaging) again.
