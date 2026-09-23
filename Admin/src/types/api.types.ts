@@ -313,6 +313,7 @@ export interface Order {
     pickupRequestId: string | null;
     riskFlag: 'BAD_ADDRESS' | 'HIGH_RISK' | null;
     riskReason: string | null;
+    weightDiscrepancyNote: string | null;
   } | null;
   statusLog?: Array<{ from: string; to: string; note: string | null; createdBy: string; createdAt: string }>;
   createdAt: string;

@@ -4,7 +4,7 @@ import { sendOrderConfirmation, sendShipmentNotification } from '../../shared/in
 import { createShipment } from '../../shared/integrations/delhivery/client';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
-import { syncOrderStatusFromShipment, quoteBookingShippingCost } from '../orders/service';
+import { syncOrderStatusFromShipment, quoteBookingShippingCost, applyWeightDiscrepancyCost } from '../orders/service';
 import { PACKAGING_WEIGHT_GRAMS } from '../../shared/constants/purposes';
 
 interface RazorpayShippingAddress {
@@ -190,6 +190,7 @@ export async function handleDelhiveryStatusUpdate(waybill: string, event: { stat
   events.push(event);
 
   const risk = detectRiskFlag(event.description);
+  const weightMismatch = detectWeightMismatch(event.description);
 
   const mappedStatus = mapDelhiveryStatus(event.status);
 
@@ -201,10 +202,22 @@ export async function handleDelhiveryStatusUpdate(waybill: string, event: { stat
       // Only ever set here, never cleared — an NDR remark once seen stays true until an
       // admin resolves it via an NDR action (see takeOrderNdrAction, which clears it).
       ...(risk ? { riskFlag: risk.flag, riskReason: risk.reason } : {}),
+      // Overwritten (not accumulated) on every new mismatch remark — the latest one is
+      // the relevant one, and the raw description is preserved in trackingEvents anyway.
+      ...(weightMismatch ? { weightDiscrepancyNote: weightMismatch.note } : {}),
     },
   });
 
   await syncOrderStatusFromShipment(shipment.orderId, mappedStatus);
+
+  // Best-effort: if the remark gave us Delhivery's corrected weight, re-quote the
+  // shipping cost with it so the order's displayed cost reflects the higher (or lower)
+  // real charge instead of silently staying wrong. If no weight could be parsed out of
+  // the free-text remark, the note alone still shows on the order for admin to check
+  // manually — see applyWeightDiscrepancyCost's own comment for why this can't be exact.
+  if (weightMismatch?.correctedWeightGrams) {
+    void applyWeightDiscrepancyCost(shipment.orderId, weightMismatch.correctedWeightGrams);
+  }
 }
 
 // Delhivery's NDR remarks are free text, not a coded reason field — this is a best-effort
@@ -218,6 +231,29 @@ function detectRiskFlag(description: string): { flag: 'BAD_ADDRESS' | 'HIGH_RISK
     return { flag: 'HIGH_RISK', reason: description };
   }
   return null;
+}
+
+// Same best-effort keyword match as detectRiskFlag, for Delhivery's re-weigh / declared-
+// vs-actual weight discrepancy remarks. Also tries to pull the corrected weight out of
+// the free text (formats like "actual weight 850gm" / "actual wt: 0.85 kg") — this
+// format is NOT confirmed against real Delhivery remarks (same caveat as the rest of
+// this file's best-effort parsing), so a failed extraction is expected and handled: the
+// note still gets shown, just without an automatic cost update.
+function detectWeightMismatch(description: string): { note: string; correctedWeightGrams?: number } | null {
+  const text = description.toLowerCase();
+  if (!/weight discrepancy|weight mismatch|re-?weigh(ed)?|weight dispute/.test(text)) return null;
+
+  const match = /actual\s*(?:weight|wt)?\s*[:\-]?\s*([\d.]+)\s*(kgs?|gms?|g)\b/i.exec(description);
+  const rawValue = match?.[1];
+  const rawUnit = match?.[2];
+  if (!rawValue || !rawUnit) return { note: description };
+
+  const value = parseFloat(rawValue);
+  if (!Number.isFinite(value) || value <= 0) return { note: description };
+  const unit = rawUnit.toLowerCase();
+  const grams = unit.startsWith('kg') ? Math.round(value * 1000) : Math.round(value);
+
+  return { note: description, correctedWeightGrams: grams };
 }
 
 export function mapDelhiveryStatus(status: string): 'PENDING' | 'BOOKED' | 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'FAILED' | 'RETURNED' {

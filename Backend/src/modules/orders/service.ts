@@ -580,3 +580,33 @@ async function fetchFinalShippingCost(orderId: string): Promise<void> {
     logger.error({ err, orderId }, 'Failed to fetch final Delhivery shipping cost');
   }
 }
+
+// Called when a Delhivery tracking remark reports a re-weigh with a parsed corrected
+// weight (see webhooks/service.ts's detectWeightMismatch) — re-quotes the shipping cost
+// with THAT weight instead of our own declared one, so the order's cost figure reflects
+// what Delhivery is actually going to bill instead of silently staying at the
+// (now-wrong) original quote. Still not their literal invoice (this re-quote is our own
+// rate-calculator call, not a number Delhivery sent us directly) — closest available
+// automatic correction, same caveat as fetchFinalShippingCost/quoteBookingShippingCost.
+// Updates whichever cost field is "current" for this order: finalShippingCost once
+// delivered, bookingShippingCost otherwise (mirrors the same priority the admin UI shows).
+export async function applyWeightDiscrepancyCost(orderId: string, correctedWeightGrams: number): Promise<void> {
+  try {
+    const order = await db.order.findUnique({ where: { id: orderId }, select: { status: true, shippingAddress: true } });
+    if (!order) return;
+
+    const address = order.shippingAddress as unknown as { pincode: string };
+    const result = await fetchDelhiveryShippingCost({
+      originPincode: env.DELHIVERY_WAREHOUSE_PINCODE,
+      destPincode: address.pincode,
+      weightGrams: correctedWeightGrams,
+      paymentMode: 'Pre-paid',
+    });
+    if (!result) return;
+
+    const field = order.status === 'DELIVERED' ? 'finalShippingCost' : 'bookingShippingCost';
+    await db.order.update({ where: { id: orderId }, data: { [field]: result.amount } });
+  } catch (err) {
+    logger.error({ err, orderId, correctedWeightGrams }, 'Failed to apply weight-discrepancy shipping cost correction');
+  }
+}

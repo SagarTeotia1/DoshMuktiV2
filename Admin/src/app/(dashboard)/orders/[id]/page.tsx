@@ -167,6 +167,13 @@ export default function OrderDetailPage() {
                   <span>{formatCurrency(order.finalShippingCost)}</span>
                 </div>
               )}
+              {order.shipment?.weightDiscrepancyNote && (
+                <div className="mt-1 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                  <strong>Delhivery reported a weight discrepancy</strong> — cost above was
+                  re-quoted where possible, but verify the real charge on Delhivery&apos;s side.
+                  <div className="mt-1 text-amber-700">&ldquo;{order.shipment.weightDiscrepancyNote}&rdquo;</div>
+                </div>
+              )}
               {order.coupon && order.discountAmount > 0 && (
                 <div className="flex justify-between text-sm text-emerald-600">
                   <span>Coupon &ldquo;{order.coupon.code}&rdquo;</span>

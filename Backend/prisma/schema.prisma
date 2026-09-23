@@ -385,6 +385,14 @@ model Shipment {
   // when an NDR action (REATTEMPT/RTO) is taken, since that's the admin resolving it.
   riskFlag          ShipmentRiskFlag?
   riskReason         String?
+  // Set from Delhivery's own tracking remarks when they report a re-weigh / declared-vs-
+  // actual weight discrepancy on this parcel (keyword match, same mechanism as riskFlag
+  // above) — Delhivery bills the corrected weight in that case, which our own
+  // booking/finalShippingCost re-quotes never see (they only know the weight WE declared,
+  // not what Delhivery's scale actually read). This is a visibility flag for admin to
+  // manually check the real charge, not an automatic cost correction. Never auto-cleared;
+  // overwritten with the latest remark if Delhivery reports it again.
+  weightDiscrepancyNote String?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
