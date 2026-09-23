@@ -14,3 +14,15 @@ export async function refundPayment(razorpayPaymentId: string, amountRupees: num
   const refund = await razorpay.payments.refund(razorpayPaymentId, { amount: Math.round(amountRupees * 100) });
   return { refundId: refund.id };
 }
+
+// Used by jobs/release-holds.ts before it cancels a PENDING_PAYMENT order past its
+// reservation window — our own /api/checkout/verify call (client-driven) and the
+// Razorpay webhook are both the usual ways a payment gets reconciled, and both can miss
+// an order (network blip, webhook not configured, etc). Asking Razorpay directly here is
+// the actual source of truth: never auto-cancel an order the customer genuinely paid for
+// just because neither of our own reconciliation paths happened to fire for it.
+export async function findCapturedPayment(razorpayOrderId: string): Promise<{ razorpayPaymentId: string } | null> {
+  const result = await razorpay.orders.fetchPayments(razorpayOrderId);
+  const captured = result.items.find((p) => p.status === 'captured');
+  return captured ? { razorpayPaymentId: captured.id } : null;
+}
