@@ -8,7 +8,7 @@ Same threats as V1 (`../docs/SECURITY.md`), plus a new one: Backend is now a net
 |---|---|---|
 | Backend↔Frontend | Unauthenticated write access | Public routes are read-only or guest-scoped (cart, checkout, track); all admin routes require JWT |
 | Backend CORS | Arbitrary origin calling the API | `@fastify/cors` allowlist = Frontend origin only (env-configured), no wildcard |
-| Razorpay webhook | Forged requests, replay | `timingSafeEqual` HMAC verify on raw body, idempotent processing |
+| HDFC SmartGateway webhook | Forged requests, replay | HTTP Basic Auth (dashboard-configured creds) checked with `timingSafeEqual`, idempotent processing |
 | Admin routes | Unauthorized access | `verifyAdmin` preHandler (JWT) on every `/admin/*` route — no exceptions |
 | Future AI bot access | Overly broad access if bolted on carelessly | `verifyServiceKey` middleware stub, scoped to specific routes only when the bot ships — never given the admin JWT |
 | Checkout API | Oversell, price manipulation | Atomic SQL stock update, server-side price lookup only, never trust client-sent price |
@@ -44,17 +44,17 @@ x-api-key: <service key, stored hashed in Secret Manager>
 ### `POST /checkout`
 ```
 ✅ Zod validate: name, email, phone, address, pincode, items (quantity > 0)
-✅ Pincode serviceability check before Razorpay order (Redis cached)
+✅ Pincode serviceability check before SmartGateway order session (Redis cached)
 ✅ Price loaded from DB — NEVER trust client-sent price
 ✅ Stock reservation: Postgres tx, UPDATE WHERE stockQuantity >= quantity
-✅ Razorpay order created with server-computed amount, OUTSIDE the DB tx
+✅ SmartGateway order session created with server-computed amount, OUTSIDE the DB tx
 ✅ Rate limit: 10 req/min per IP (@fastify/rate-limit)
 ```
 
-### `POST /webhooks/razorpay`
+### `POST /webhooks/hdfc-smartgateway`
 ```
-✅ Raw body captured via custom content-type parser (not the default JSON parser)
-✅ HMAC-SHA256 with timingSafeEqual — buffers must be equal length before compare
+✅ HTTP Basic Auth checked against dashboard-configured username/password
+✅ Both sides compared with timingSafeEqual — buffers must be equal length before compare
 ✅ Return 200 immediately after verify, process async
 ✅ Idempotent: UPDATE Payment WHERE status='PENDING', check rowCount === 1
 ```
@@ -118,16 +118,17 @@ db.$executeRawUnsafe(`SELECT * WHERE slug = '${slug}'`)
 | Secret | Lives In | Notes |
 |---|---|---|
 | `DATABASE_URL` / `DIRECT_URL` | Backend only | Never sent to Frontend |
-| `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | Backend only | Never in Frontend bundle |
+| `HDFC_PRIVATE_KEY`, `HDFC_RESPONSE_KEY`, `HDFC_WEBHOOK_USERNAME`, `HDFC_WEBHOOK_PASSWORD` | Backend only | Never in Frontend bundle |
 | `JWT_SECRET` | Backend only | Signs admin JWTs |
 | `AI_BOT_SERVICE_KEY` | Backend only (stub, unused today) | For future bot |
 | `CRON_SECRET` | Backend only | Gates `/jobs/*` routes |
-| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Frontend, intentionally public | Checkout.js needs it client-side |
 | `NEXT_PUBLIC_BACKEND_URL` | Frontend, intentionally public | Just the API base URL |
-| Firebase `NEXT_PUBLIC_*` | Frontend, intentionally public | Analytics keys, read-only |
+| Firebase `NEXT_PUBLIC_*` | Frontend, intentionally public | Analytics keys, read-only (currently disabled, see `Frontend/src/lib/firebase.ts`) |
+
+Checkout never needs a public gateway key in Frontend — the whole SmartGateway flow is server-to-server (Backend creates the order session, hands the customer a hosted `paymentLink` to redirect to).
 
 **Never commit `.env` / `.env.local` in either app.**
-**Pre-deploy check:** `grep -r "RAZORPAY_KEY_SECRET" Frontend/.next/` → zero results. Backend secrets should never even be *available* to Frontend's build, but grep it anyway.
+**Pre-deploy check:** `grep -r "HDFC_PRIVATE_KEY\|HDFC_RESPONSE_KEY" Frontend/.next/` → zero results. Backend secrets should never even be *available* to Frontend's build, but grep it anyway.
 
 ## Rate Limiting (`@fastify/rate-limit` on Backend)
 
@@ -150,7 +151,7 @@ Permissions-Policy: camera=(), microphone=(), geolocation=()
 
 ## Pre-Deploy Security Checklist
 
-- [ ] `grep -r "RAZORPAY_KEY_SECRET\|JWT_SECRET\|DATABASE_URL" Frontend/.next/` → zero results
+- [ ] `grep -r "HDFC_PRIVATE_KEY\|JWT_SECRET\|DATABASE_URL" Frontend/.next/` → zero results
 - [ ] Backend CORS rejects a request from a non-allowlisted origin
 - [ ] Webhook with wrong signature → 401, zero DB writes
 - [ ] Checkout with negative quantity → 400

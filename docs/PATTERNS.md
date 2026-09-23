@@ -157,15 +157,19 @@ export async function checkout(input: CheckoutInput) {
     await reserveStock(tx, input.items);
     const orderNumber = await nextOrderNumber(tx);
     const order = await tx.order.create({ data: { orderNumber, ...input } });
-    await tx.payment.create({ data: { orderId: order.id, razorpayOrderId: 'pending', amount: order.total, status: 'PENDING' } });
+    // orderNumber doubles as SmartGateway's order_id — known up front, no post-call update needed
+    await tx.payment.create({ data: { orderId: order.id, hdfcOrderId: orderNumber, amount: order.total, status: 'PENDING' } });
     return order;
   }, { isolationLevel: 'Serializable' });
 
-  // Razorpay call OUTSIDE the transaction — network call inside a DB tx holds the connection open
-  const razorpayOrder = await razorpay.orders.create({ amount: Number(order.total) * 100, currency: 'INR' });
-  await db.payment.update({ where: { orderId: order.id }, data: { razorpayOrderId: razorpayOrder.id } });
+  // SmartGateway call OUTSIDE the transaction — network call inside a DB tx holds the connection open
+  const session = await createOrderSession({
+    orderId: order.orderNumber,
+    amount: Number(order.total),
+    returnUrl: `${env.BACKEND_PUBLIC_URL}/api/checkout/return`,
+  });
 
-  return { order, razorpayOrderId: razorpayOrder.id };
+  return { order, paymentLink: session.paymentLink };
 }
 ```
 
@@ -175,33 +179,31 @@ export async function checkout(input: CheckoutInput) {
 
 ```typescript
 // Backend/src/modules/webhooks/controller.ts
-export async function razorpayWebhookHandler(req: FastifyRequest, reply: FastifyReply) {
-  const rawBody = req.rawBody as string; // captured via addContentTypeParser, see app.ts
-  const signature = req.headers['x-razorpay-signature'] as string;
-
-  const expected = crypto.createHmac('sha256', env.RAZORPAY_WEBHOOK_SECRET).update(rawBody).digest('hex');
-  const sigBuf = Buffer.from(signature ?? '', 'hex');
-  const expBuf = Buffer.from(expected, 'hex');
-  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
-    return reply.code(401).send('Invalid signature');
+export async function hdfcWebhookHandler(req: FastifyRequest, reply: FastifyReply) {
+  // Auth is HTTP Basic (dashboard-configured username/password), not HMAC — SmartGateway
+  // doesn't sign its webhook body, so this is the verification mechanism available.
+  if (!verifyWebhookBasicAuth(req.headers.authorization)) {
+    return reply.code(401).send({ error: 'Invalid credentials' });
   }
 
-  reply.code(200).send('OK'); // ack before processing — Razorpay retries if no 200 within 5s
+  reply.code(200).send({ status: 'ok' }); // ack before processing — SmartGateway retries if no 200 within a few seconds
 
-  const event = JSON.parse(rawBody);
-  if (event.event === 'payment.captured') {
-    const { order_id, id: paymentId } = event.payload.payment.entity;
+  const event = req.body as SmartGatewayWebhookBody;
+  const order = event.content?.order;
+  if (!order) return;
+
+  if (event.event_name === 'ORDER_SUCCEEDED') {
     const updated = await db.$executeRaw`
-      UPDATE "Payment" SET status = 'CAPTURED', "razorpayPaymentId" = ${paymentId}, "verifiedAt" = NOW()
-      WHERE "razorpayOrderId" = ${order_id} AND status = 'PENDING'
+      UPDATE "Payment" SET status = 'CAPTURED', "hdfcTxnId" = ${order.txn_id ?? order.id}, "verifiedAt" = NOW()
+      WHERE "hdfcOrderId" = ${order.order_id} AND status = 'PENDING'
     `;
-    if (updated === 0) return; // already processed
-    await fulfillOrder(order_id);
+    if (updated === 0) return; // already processed — /checkout/return may have beaten the webhook here
+    await fulfillOrder(order.order_id);
   }
 }
 ```
 
-**Fastify note:** register a raw-body content parser for the webhook route specifically — do not use the default JSON parser, you need the raw bytes for HMAC verification.
+This is also a durability backstop for `/checkout/return` (which never fires if the customer closes the tab before the bank redirects them back) — both paths call the same idempotent `UPDATE ... WHERE status = 'PENDING'`, so whichever arrives first wins and the other is a no-op.
 
 ---
 

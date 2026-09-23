@@ -6,7 +6,7 @@ Spiritual/wellness D2C storefront (Rudraksha, gemstones, pyrite, attars, dosh-mu
 
 ```
 DoshMuktiV2/
-├── Backend/     Fastify REST API (port 4000) — owns Postgres, Redis, R2, Razorpay, Delhivery, Resend, MSG91
+├── Backend/     Fastify REST API (port 4000) — owns Postgres, Redis, R2, HDFC SmartGateway, Delhivery, Resend, MSG91
 ├── Frontend/    Next.js 15 storefront (port 3000) — zero DB access, talks to Backend over HTTP only
 └── Admin/       Next.js 15 admin panel (port 3001) — zero DB access, talks to Backend over HTTP only
 ```
@@ -23,7 +23,7 @@ Three independent Node projects, each with its own `package.json` and `.env`. Th
 | DB | Prisma 5 → Neon Postgres | — (no DB access) | — (no DB access) |
 | Cache | Upstash Redis | — | — |
 | Storage | Cloudflare R2 (`@aws-sdk/client-s3`) | — | uploads via Backend `/admin/upload` |
-| Payments | Razorpay Node SDK | `razorpay` checkout.js (client-side) | — |
+| Payments | HDFC SmartGateway (expresscheckout), server-to-server session create | Redirects to SmartGateway's hosted payment page, no client-side SDK | — |
 | Logistics | Delhivery (serviceability, rate quote, shipment booking, pickup requests, NDR, e-way bill, tracking sync) | — | — |
 | PDF | `pdfkit` (order invoices, generated on demand) | — | — |
 | Auth | Phone OTP (customers, MSG91) · email+password JWT (admin) | JWT cookie, `Authorization: Bearer` | JWT cookie, `Authorization: Bearer` |
@@ -41,7 +41,7 @@ Three independent Node projects, each with its own `package.json` and `.env`. Th
 - Product detail pages: variants, image gallery, offers, benefits, how-to-wear, reviews, related products.
 - Cart (guest, session-based via `x-session-id`) with live pricing preview — subtotal, auto-applied offer discounts, MRP savings, free-gift line items, and a shipping estimate (origin-to-origin pre-checkout, re-quoted against the real destination pincode once entered).
 - **"Buy Now"** — an isolated single-item pseudo-cart for a direct PDP purchase; merges with whatever's added to the real cart afterward instead of losing it, and clears itself once that order is paid.
-- Checkout: inline phone-OTP login (no separate `/login` detour), saved-address book, live pincode serviceability, coupon code entry with suggested-offer chips, order-summary quantity controls, Razorpay payment.
+- Checkout: inline phone-OTP login (no separate `/login` detour), saved-address book, live pincode serviceability, coupon code entry with suggested-offer chips, order-summary quantity controls, redirect to HDFC SmartGateway's hosted payment page.
 - Order tracking by order number (`/track/[orderNumber]`), full order history for logged-in customers (`/orders`, excludes cancelled/abandoned attempts), downloadable PDF invoice once payment is captured.
 - Customer profile (`/profile`): name, phone, date of birth (asked once at signup), last used shipping address.
 - Acharya Madhav AI chat widget (Groq-backed) — recommends real products for a stated concern (love/wealth/health/...), voice input supported.
@@ -106,7 +106,7 @@ Integrations that need real credentials fall back to safe defaults in developmen
 |---|---|---|
 | Delhivery (serviceability/shipping/booking) | `DELHIVERY_API_KEY` | Every pincode returns serviceable; rate quote falls back to the flat `SHIPPING_FEE`; shipment creation is a no-op |
 | MSG91 (OTP login) | `MSG91_AUTH_KEY` | Fixed OTP `000000` accepted; sent OTP is logged as `[dev OTP] +91XXXXXXXXXX -> 000000` in the Backend console |
-| Razorpay | `RAZORPAY_KEY_ID` / `SECRET` | Use test-mode keys (`rzp_test_...`) — payment modal opens in Test Mode |
+| HDFC SmartGateway | `HDFC_MERCHANT_ID` / `HDFC_KEY_UUID` / `HDFC_PRIVATE_KEY` / `HDFC_PUBLIC_KEY` | Point `HDFC_BASE_URL` at the sandbox host and use sandbox-issued credentials |
 | Cloudflare R2 | `R2_*` | Required for image upload; no dev fallback |
 | Resend | `RESEND_API_KEY` | Required for transactional email; no dev fallback |
 | Groq (Acharya chat) | `GROQ_API_KEY` | Required for the chat widget; no dev fallback |
@@ -134,7 +134,7 @@ Postgres via Prisma, single schema at `Backend/prisma/schema.prisma` (only copy 
 These exist because of specific failure modes at checkout-critical-path scale — they don't change because the transport changed from a monolith to REST:
 
 1. **Atomic stock** — every deduction is `UPDATE ... WHERE stockQuantity >= qty`, checked row count, never read-then-write.
-2. **Checkout is one Serializable transaction** — stock reserve + Order + OrderItems + Payment record. Razorpay's `orders.create()` call happens **outside** the transaction — never hold a DB connection open across a network call.
+2. **Checkout is one Serializable transaction** — stock reserve + Order + OrderItems + Payment record. HDFC SmartGateway's order-session-create call happens **outside** the transaction — never hold a DB connection open across a network call.
 3. **OrderNumber via atomic `OrderSequence` upsert** — never `COUNT(*) + 1`.
 4. **Webhook signatures verified with `crypto.timingSafeEqual`** — never `===`.
 5. **Webhook processing is idempotent** — `UPDATE ... WHERE status = 'PENDING'`, check `rowCount`, no-op if 0.

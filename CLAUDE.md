@@ -12,7 +12,7 @@ A single admin editing a Next.js Server Action doesn't need an API. A team of ad
 
 ```
 DoshMuktiV2/
-├── Backend/     ← Fastify REST API. Owns Postgres, Redis, R2, Razorpay, Delhivery, Resend.
+├── Backend/     ← Fastify REST API. Owns Postgres, Redis, R2, HDFC SmartGateway, Delhivery, Resend.
 ├── Frontend/    ← Next.js 15 storefront. Zero DB access. Talks to Backend over HTTP only.
 └── Admin/       ← Next.js 15 admin panel (port 3001). Zero DB access. Talks to Backend over HTTP only.
 ```
@@ -31,7 +31,7 @@ No monorepo tooling (no npm workspaces, no shared package). Three independent No
 | DB | Prisma 5 → Neon Postgres | — (no DB access) | — (no DB access) |
 | Cache | Upstash Redis | — (reads via Backend) | — (reads via Backend) |
 | Storage | Cloudflare R2 (via `@aws-sdk/client-s3`) | — | — (uploads via Backend `/admin/upload`) |
-| Payments | Razorpay Node SDK | `razorpay` checkout.js loaded client-side only | — |
+| Payments | HDFC SmartGateway (expresscheckout), server-to-server session create | Redirects to SmartGateway's hosted payment page, no client-side SDK | — |
 | Logistics | Delhivery Partner API | — | — |
 | Auth | `@fastify/jwt` (admin), API key (service-to-service, stub) | Guest-only, no auth | JWT from login stored in a cookie, `Authorization: Bearer` on every Backend call |
 | Email | Resend | — | — |
@@ -46,7 +46,7 @@ No monorepo tooling (no npm workspaces, no shared package). Three independent No
 These rules exist because of specific failure modes at checkout-critical-path scale. They don't change because the transport changed from Server Actions to REST.
 
 1. **Atomic stock** — every deduction is `UPDATE ... WHERE stockQuantity >= qty`, checked row count, never read-then-write.
-2. **Checkout is one Serializable transaction** — stock reserve + Order + OrderItems + Payment record. Razorpay's `orders.create()` call happens **outside** the transaction — never hold a DB connection open across a network call.
+2. **Checkout is one Serializable transaction** — stock reserve + Order + OrderItems + Payment record. HDFC SmartGateway's order-session-create call happens **outside** the transaction — never hold a DB connection open across a network call.
 3. **OrderNumber via atomic `OrderSequence` upsert** — never `COUNT(*) + 1`.
 4. **Webhook signatures verified with `crypto.timingSafeEqual`** — never `===`.
 5. **Webhook processing is idempotent** — `UPDATE ... WHERE status = 'PENDING'`, check `rowCount`, no-op if 0.
@@ -77,7 +77,7 @@ Backend/src/
 │   ├── cart/                 # Redis-only, x-session-id header
 │   ├── serviceability/       # GET /serviceability?pincode= (Redis 48h cache)
 │   ├── checkout/             # POST /checkout — the critical path
-│   ├── webhooks/             # POST /webhooks/razorpay, /webhooks/delhivery
+│   ├── webhooks/             # POST /webhooks/hdfc-smartgateway, /webhooks/delhivery
 │   ├── orders/               # GET /orders/:orderNumber (public track); admin: list, GET/:id, PATCH/:id/status (JWT)
 │   ├── inventory/            # admin: list, adjust, CSV import + export (JWT)
 │   ├── upload/                # admin image upload → R2 (JWT)
@@ -88,7 +88,7 @@ Backend/src/
 ├── shared/
 │   ├── db/client.ts           # Prisma singleton
 │   ├── cache/{client,keys}.ts # Upstash Redis + typed key builders
-│   ├── integrations/{razorpay,delhivery,r2,resend}/client.ts
+│   ├── integrations/{hdfc-smartgateway,delhivery,r2,resend}/client.ts
 │   ├── middleware/{auth,error-handler}.ts
 │   ├── constants/purposes.ts
 │   └── logger/pino.ts
@@ -107,7 +107,7 @@ Frontend/src/
 │   ├── api-client.ts            # typed fetch wrapper, NEXT_PUBLIC_BACKEND_URL, throws on !res.ok
 │   ├── constants.ts              # PURPOSES, SORTS (mirrors Backend)
 │   └── firebase.ts               # analytics, graceful degrade if env empty
-├── hooks/                        # use-cart, use-pincode-check, use-razorpay
+├── hooks/                        # use-cart, use-pincode-check
 ├── providers/query-provider.tsx
 └── types/api.types.ts            # Zod schemas mirroring Backend responses
 ```

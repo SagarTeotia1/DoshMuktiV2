@@ -14,6 +14,11 @@ const config = {
 let app: FirebaseApp | null = null;
 let analytics: Analytics | null = null;
 
+// Firebase disconnected for now — flip this back to false to re-enable. Every
+// trackX() call below stays a harmless no-op while this is true, since analytics
+// never gets initialized.
+const FIREBASE_DISABLED = true;
+
 // Graceful degrade: if env vars are empty, analytics simply doesn't load.
 // firebase/app + firebase/analytics are dynamically imported here instead of at
 // module top-level — this was ~113KiB of unused/render-blocking JS parsed on every
@@ -21,7 +26,7 @@ let analytics: Analytics | null = null;
 // isn't needed for anything visible. Dynamic import moves it to its own chunk,
 // fetched only once the browser is idle after first paint.
 export async function initFirebase() {
-  if (!config.apiKey || typeof window === 'undefined') return;
+  if (FIREBASE_DISABLED || !config.apiKey || typeof window === 'undefined') return;
 
   const [{ initializeApp }, { getAnalytics, isSupported }] = await Promise.all([
     import('firebase/app'),

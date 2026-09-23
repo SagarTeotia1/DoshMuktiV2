@@ -265,7 +265,7 @@ function computeCartGst(cart: Cart): { taxableValue: number; gstAmount: number }
 
 // The cart/checkout pages previously computed their displayed total client-side as just
 // `subtotal + shippingFee - walletRedeem`, never accounting for AUTO_APPLIED offer
-// discounts (percent/flat/free-gift offers not tied to a coupon) — the actual Razorpay
+// discounts (percent/flat/free-gift offers not tied to a coupon) — the actual SmartGateway
 // charge was always correct (checkout computes its own total server-side), but the
 // customer never saw the price move before paying. This reuses the exact same
 // resolveAutoAppliedRewardsForCheckout checkout itself calls, so the preview here can

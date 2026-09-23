@@ -62,6 +62,23 @@ export async function buildApp() {
     }
   );
 
+  // SmartGateway's hosted payment page returns the customer here via an auto-submitted
+  // HTML form POST (application/x-www-form-urlencoded), not a query-string GET — see
+  // modules/checkout/routes.ts's /checkout/return. No plugin registered for this
+  // content-type otherwise, so without this parser Fastify 404s the POST before it ever
+  // reaches a route handler.
+  app.addContentTypeParser(
+    'application/x-www-form-urlencoded',
+    { parseAs: 'string' },
+    (req, body, done) => {
+      try {
+        done(null, Object.fromEntries(new URLSearchParams(body as string)));
+      } catch (err) {
+        done(err as Error, undefined);
+      }
+    }
+  );
+
   app.setErrorHandler(errorHandler);
 
   app.get('/health', async () => ({ status: 'ok' }));

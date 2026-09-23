@@ -65,10 +65,16 @@ export async function checkoutHandler(req: FastifyRequest, reply: FastifyReply) 
 // yet" is safer here than an allowlist of "known failure codes": a status HDFC/Juspay
 // adds later that we've never seen defaults to failed (recoverable via the "Complete
 // Payment" retry flow) instead of defaulting to a stuck order no one notices.
-const IN_PROGRESS_STATUSES = new Set(['NEW', 'PENDING', 'PENDING_VBV', 'STARTED', 'AUTHORIZING', 'CAPTURE_INITIATED']);
+// AUTHORIZED confirmed live: the card/payment auth succeeded but capture hasn't
+// settled yet (a normal step for auto-capture, not a decline) — the webhook or a
+// later return_url hit is what eventually confirms CHARGED. Treating it as a failure
+// here cancelled orders for payments that had actually gone through.
+const IN_PROGRESS_STATUSES = new Set(['NEW', 'PENDING', 'PENDING_VBV', 'STARTED', 'AUTHORIZING', 'AUTHORIZED', 'CAPTURE_INITIATED']);
 
 export async function returnUrlHandler(req: FastifyRequest, reply: FastifyReply) {
-  const query = req.query as Record<string, unknown>;
+  // POST: SmartGateway's actual behavior — fields arrive as a form-urlencoded body.
+  // GET: kept as a fallback in case that ever changes — fields would arrive as query params.
+  const query = (req.method === 'POST' ? req.body : req.query) as Record<string, unknown>;
   const parsed = returnUrlSchema.safeParse(query);
   if (!parsed.success) {
     return reply.code(400).send({ error: 'Invalid return_url params', details: parsed.error.flatten().fieldErrors });

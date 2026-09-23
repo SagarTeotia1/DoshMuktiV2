@@ -49,7 +49,7 @@ export async function cancelPendingOrderTx(
   });
 }
 
-// A cancelled/failed Razorpay payment left the order stuck at PENDING_PAYMENT with no
+// A cancelled/failed payment left the order stuck at PENDING_PAYMENT with no
 // way back in — the order itself was never designed to be paid twice, so instead of
 // trying to resurrect the same Order row, this re-adds its items into the customer's
 // live cart and lets them go through checkout again normally (new order, new payment).

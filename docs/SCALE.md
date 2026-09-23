@@ -16,11 +16,11 @@ Same load target as V1 (`../docs/SCALE.md`): 10,000 orders/day headroom, realist
 ## Absolute Rules
 
 ### 1. Checkout Path — Zero Blocking Operations
-`POST /checkout → stock reserve → Razorpay order create → response`, inside Backend.
+`POST /checkout → stock reserve → HDFC SmartGateway order-session create → response`, inside Backend.
 - DB transaction: max 3 statements (reserve stock + create order + create payment record)
-- Razorpay call OUTSIDE the DB tx — Fastify holds no DB connection during the network call
+- SmartGateway call OUTSIDE the DB tx — Fastify holds no DB connection during the network call
 - No email in the checkout path — queued post-webhook (Resend, fire-and-forget)
-- No Delhivery call in the checkout path — triggered by `payment.captured` webhook
+- No Delhivery call in the checkout path — triggered by the `ORDER_SUCCEEDED` webhook
 - Target p95: < 800ms for `POST /checkout` response
 
 ### 2. Backend↔Frontend Network Hop
