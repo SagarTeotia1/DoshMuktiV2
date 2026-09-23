@@ -4,12 +4,34 @@ import { api, invoiceUrl } from '@/lib/api-client';
 import { PurchaseTracker } from '@/components/storefront/PurchaseTracker';
 import type { OrderTrackingResponse } from '@/types/api.types';
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function getOrder(orderNumber: string): Promise<OrderTrackingResponse | null> {
   try {
     return await api.get<OrderTrackingResponse>(`/api/orders/${orderNumber}`, undefined, 0);
   } catch {
     return null;
   }
+}
+
+// /api/checkout/verify (fired from the checkout page's Razorpay handler) is awaited
+// before the redirect here, so payment.status is normally already CAPTURED by the time
+// this renders — but that call swallows its own errors silently (network blip, cold
+// Neon connection, transient 5xx), and the webhook backstop that would otherwise catch
+// it is fragile in this deployment. A single fetch here previously meant: miss that
+// narrow window and the Purchase conversion (GA4 + Meta Pixel) never fires for that
+// order, ever — no second chance, since PurchaseTracker only ever mounts once off this
+// server-rendered gate. Retrying a few times over ~6s catches the transient case without
+// meaningfully delaying the page for the common case (already CAPTURED on the first try).
+async function getOrderWithRetry(orderNumber: string): Promise<OrderTrackingResponse | null> {
+  let order = await getOrder(orderNumber);
+  for (let attempt = 0; attempt < 4 && order?.payment?.status !== 'CAPTURED'; attempt++) {
+    await sleep(1500);
+    order = await getOrder(orderNumber);
+  }
+  return order;
 }
 
 export default async function CheckoutSuccessPage({
@@ -22,7 +44,7 @@ export default async function CheckoutSuccessPage({
   // handler) is best-effort and can still be in flight when this page renders — gate the
   // invoice link on the order's actual payment status rather than showing a link that's
   // likely to 409 on the very first click.
-  const order = orderNumber ? await getOrder(orderNumber) : null;
+  const order = orderNumber ? await getOrderWithRetry(orderNumber) : null;
   const invoiceEligible = order?.payment?.status === 'CAPTURED';
 
   return (

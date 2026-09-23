@@ -531,8 +531,13 @@ function CheckoutPageContent() {
             }, {
               Authorization: `Bearer ${getToken()}`,
             });
-          } catch {
-            // Non-fatal — no toast, no rethrow. Webhook backstop will reconcile.
+          } catch (err) {
+            // Non-fatal — no toast, no rethrow. Webhook backstop will reconcile, and
+            // /checkout/success itself retries a few times before giving up (see its
+            // getOrderWithRetry). Logged (not swallowed silently) purely so a spike in
+            // this failing is visible somewhere instead of only ever showing up as an
+            // unexplained gap in Purchase conversions days later.
+            console.error('[checkout] /api/checkout/verify failed — webhook backstop will reconcile', err);
           }
           // Buy Now: Backend already cleared this pseudo-cart server-side on order
           // creation (safe since it's disposable) — this refetch just syncs the cache.
