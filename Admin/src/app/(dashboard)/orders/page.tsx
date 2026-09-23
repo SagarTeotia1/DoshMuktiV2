@@ -37,9 +37,14 @@ const columns: ColumnDef<Order, unknown>[] = [
   {
     id: 'deliveryCost',
     header: 'Delivery Cost',
+    // Final (post-delivery Delhivery re-quote) wins once it exists; before that, the
+    // checkout-time estimate is shown as a placeholder, marked "est." so it's never
+    // confused with what Delhivery actually charged.
     cell: ({ row }) => {
-      const cost = row.original.actualShippingCost;
-      return cost === null ? <span className="text-slate-400">—</span> : formatCurrency(cost);
+      const { finalShippingCost, actualShippingCost } = row.original;
+      if (finalShippingCost !== null) return formatCurrency(finalShippingCost);
+      if (actualShippingCost !== null) return <span className="text-slate-400">{formatCurrency(actualShippingCost)} (est.)</span>;
+      return <span className="text-slate-400">—</span>;
     },
   },
   { id: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.original.status} /> },

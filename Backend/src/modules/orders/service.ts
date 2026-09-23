@@ -5,6 +5,7 @@ import {
   fetchShippingLabel,
   takeNdrAction,
   updateEwaybill,
+  calculateShippingCost as fetchDelhiveryShippingCost,
   type NdrAction,
 } from '../../shared/integrations/delhivery/client';
 import { fixLabelPdf, type LabelSize } from '../../shared/integrations/delhivery/labelPdf';
@@ -14,6 +15,7 @@ import { addItemToCart } from '../cart/service';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
 import { PACKAGING_WEIGHT_GRAMS } from '../../shared/constants/purposes';
+import { env } from '../../config/env';
 
 export class OrderNotResumableError extends Error {
   constructor() {
@@ -514,4 +516,38 @@ export async function syncOrderStatusFromShipment(orderId: string, shipmentStatu
       data: { orderId, from: order.status, to: target, note: 'Auto-updated from Delhivery tracking', createdBy: 'system:delhivery' },
     });
   });
+
+  if (target === 'DELIVERED') void fetchFinalShippingCost(orderId);
+}
+
+// Best-effort: re-quotes Delhivery's rate calculator with this order's final declared
+// weight once it's DELIVERED, as the closest automatic stand-in for what Delhivery
+// actually billed (see finalShippingCost's schema comment — not a real invoice lookup,
+// that API isn't available). Never throws into the caller — a failed re-quote just
+// leaves finalShippingCost null, same as before delivery; it never blocks or reverts
+// the DELIVERED status transition that triggered it.
+async function fetchFinalShippingCost(orderId: string): Promise<void> {
+  try {
+    const order = await db.order.findUnique({
+      where: { id: orderId },
+      include: { items: { include: { variant: true } } },
+    });
+    if (!order || order.finalShippingCost !== null) return;
+
+    const address = order.shippingAddress as unknown as { pincode: string };
+    const weight =
+      order.packageWeightOverride ?? order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS;
+
+    const result = await fetchDelhiveryShippingCost({
+      originPincode: env.DELHIVERY_WAREHOUSE_PINCODE,
+      destPincode: address.pincode,
+      weightGrams: weight,
+      paymentMode: 'Pre-paid',
+    });
+    if (!result) return;
+
+    await db.order.update({ where: { id: orderId }, data: { finalShippingCost: result.amount } });
+  } catch (err) {
+    logger.error({ err, orderId }, 'Failed to fetch final Delhivery shipping cost');
+  }
 }

@@ -151,8 +151,14 @@ export default function OrderDetailPage() {
               </div>
               {order.actualShippingCost !== null && (
                 <div className="flex justify-between text-sm text-slate-500">
-                  <span>Delhivery cost (actual)</span>
+                  <span>Delhivery cost (estimate at checkout)</span>
                   <span>{formatCurrency(order.actualShippingCost)}</span>
+                </div>
+              )}
+              {order.finalShippingCost !== null && (
+                <div className="flex justify-between text-sm text-slate-500">
+                  <span>Delhivery cost (final, post-delivery)</span>
+                  <span>{formatCurrency(order.finalShippingCost)}</span>
                 </div>
               )}
               {order.coupon && order.discountAmount > 0 && (

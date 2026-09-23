@@ -1,0 +1,45 @@
+// One-off: run AFTER the finalShippingCost migration is deployed. Orders that were
+// already DELIVERED before this feature existed never got the DELIVERED-trigger that
+// fetches it — this re-quotes Delhivery for each of them once, same logic as
+// fetchFinalShippingCost in orders/service.ts.
+import { db } from '../src/shared/db/client';
+import { env } from '../src/config/env';
+import { calculateShippingCost } from '../src/shared/integrations/delhivery/client';
+import { PACKAGING_WEIGHT_GRAMS } from '../src/shared/constants/purposes';
+
+async function main() {
+  const orders = await db.order.findMany({
+    where: { status: 'DELIVERED', finalShippingCost: null },
+    include: { items: { include: { variant: true } } },
+  });
+
+  console.log(`Found ${orders.length} delivered orders missing finalShippingCost.\n`);
+
+  for (const order of orders) {
+    const address = order.shippingAddress as unknown as { pincode: string };
+    const weight =
+      order.packageWeightOverride ?? order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS;
+
+    const result = await calculateShippingCost({
+      originPincode: env.DELHIVERY_WAREHOUSE_PINCODE,
+      destPincode: address.pincode,
+      weightGrams: weight,
+      paymentMode: 'Pre-paid',
+    });
+
+    if (!result) {
+      console.log(`${order.orderNumber} | quote failed — skipped`);
+      continue;
+    }
+
+    await db.order.update({ where: { id: order.id }, data: { finalShippingCost: result.amount } });
+    console.log(`${order.orderNumber} | finalShippingCost = ${result.amount}`);
+  }
+
+  process.exit(0);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
