@@ -79,7 +79,21 @@ function OrdersPageContent() {
   // this is a UI default, not a hard block: the admin can clear/change it to see any date.
   const [from, setFrom] = useState(searchParams.get('from') ?? DEFAULT_FROM_DATE);
   const [to, setTo] = useState(searchParams.get('to') ?? '');
-  const { data, isLoading } = useOrders(status || undefined, { from: from || undefined, to: to || undefined });
+  const [page, setPage] = useState(1);
+  const { data, isLoading } = useOrders(status || undefined, { from: from || undefined, to: to || undefined }, page);
+
+  const setStatusAndResetPage = (s: string) => {
+    setStatus(s);
+    setPage(1);
+  };
+  const setFromAndResetPage = (v: string) => {
+    setFrom(v);
+    setPage(1);
+  };
+  const setToAndResetPage = (v: string) => {
+    setTo(v);
+    setPage(1);
+  };
 
   return (
     <>
@@ -87,7 +101,7 @@ function OrdersPageContent() {
       <div className="p-6 flex flex-col gap-4">
         <div className="flex gap-2 flex-wrap">
           <button
-            onClick={() => setStatus('')}
+            onClick={() => setStatusAndResetPage('')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
               !status ? 'bg-[#9C5A26] text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
             }`}
@@ -97,7 +111,7 @@ function OrdersPageContent() {
           {ORDER_STATUSES.map((s) => (
             <button
               key={s}
-              onClick={() => setStatus(s)}
+              onClick={() => setStatusAndResetPage(s)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                 status === s ? 'bg-[#9C5A26] text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
               }`}
@@ -113,7 +127,7 @@ function OrdersPageContent() {
             <input
               type="date"
               value={from}
-              onChange={(e) => setFrom(e.target.value)}
+              onChange={(e) => setFromAndResetPage(e.target.value)}
               className="border border-slate-300 rounded px-2 py-1.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none"
             />
           </div>
@@ -122,15 +136,15 @@ function OrdersPageContent() {
             <input
               type="date"
               value={to}
-              onChange={(e) => setTo(e.target.value)}
+              onChange={(e) => setToAndResetPage(e.target.value)}
               className="border border-slate-300 rounded px-2 py-1.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none"
             />
           </div>
           {(from || to) && (
             <button
               onClick={() => {
-                setFrom('');
-                setTo('');
+                setFromAndResetPage('');
+                setToAndResetPage('');
               }}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
             >
@@ -142,7 +156,32 @@ function OrdersPageContent() {
         {isLoading ? (
           <p className="text-sm text-slate-400 py-8 text-center">Loading...</p>
         ) : (
-          <DataTable data={data?.orders ?? []} columns={columns} onRowClick={(o) => router.push(`/orders/${o.id}`)} />
+          <>
+            <DataTable data={data?.orders ?? []} columns={columns} onRowClick={(o) => router.push(`/orders/${o.id}`)} />
+            {data && data.pages > 1 && (
+              <div className="flex items-center justify-between text-sm text-slate-600">
+                <span>
+                  Page {data.page} of {data.pages} &middot; {data.total} orders
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={data.page <= 1}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setPage((p) => Math.min(data.pages, p + 1))}
+                    disabled={data.page >= data.pages}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </>

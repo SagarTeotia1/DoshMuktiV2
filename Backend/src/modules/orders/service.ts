@@ -465,3 +465,53 @@ export async function updateOrderStatus(
     return { order, refundError: reason };
   }
 }
+
+// Delhivery-driven shipment status (webhook push or the tracking-sync fallback job)
+// only ever touched Shipment.status before this — Order.status never moved off
+// PAID/PROCESSING/PACKED even once a shipment was out for delivery or delivered,
+// which is why admin dashboards undercounted delivered/in-transit orders.
+// OUT_FOR_DELIVERY deliberately has no entry: Order.status has no distinct value for
+// it, and the order is already SHIPPED by the time it happens (IN_TRANSIT always fires
+// first) — the rank guard below would no-op it anyway. Keeping it out makes that
+// explicit instead of relying on the guard.
+const SHIPMENT_TO_ORDER_STATUS: Partial<Record<string, OrderStatus>> = {
+  IN_TRANSIT: 'SHIPPED',
+  DELIVERED: 'DELIVERED',
+  RETURNED: 'RETURN_REQUESTED',
+};
+
+const ORDER_STATUS_RANK: Record<OrderStatus, number> = {
+  PENDING_PAYMENT: 0,
+  PAID: 1,
+  PROCESSING: 2,
+  PACKED: 3,
+  SHIPPED: 4,
+  DELIVERED: 5,
+  RETURN_REQUESTED: 6,
+  REFUNDED: 7,
+  CANCELLED: 8,
+};
+
+// FAILED shipment status has no mapping here on purpose — an NDR (failed delivery
+// attempt) needs an admin decision (reattempt vs RTO) via takeOrderNdrAction, not an
+// automatic order status flip.
+export async function syncOrderStatusFromShipment(orderId: string, shipmentStatus: string): Promise<void> {
+  const target = SHIPMENT_TO_ORDER_STATUS[shipmentStatus];
+  if (!target) return;
+
+  const order = await db.order.findUnique({ where: { id: orderId }, select: { status: true } });
+  if (!order) return;
+  // CANCELLED/REFUNDED are terminal and outrank everything by design — never let a late
+  // or out-of-order tracking update resurrect a cancelled order. Anything else only
+  // ever moves forward, so a re-delivered webhook replay or the 2-hourly sync job
+  // re-polling an already-synced shipment is a no-op instead of a duplicate log entry.
+  if (order.status === 'CANCELLED' || order.status === 'REFUNDED') return;
+  if (ORDER_STATUS_RANK[target] <= ORDER_STATUS_RANK[order.status]) return;
+
+  await db.$transaction(async (tx) => {
+    await tx.order.update({ where: { id: orderId }, data: { status: target } });
+    await tx.orderStatusLog.create({
+      data: { orderId, from: order.status, to: target, note: 'Auto-updated from Delhivery tracking', createdBy: 'system:delhivery' },
+    });
+  });
+}

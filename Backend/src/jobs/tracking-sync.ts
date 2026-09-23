@@ -1,5 +1,7 @@
 import { db } from '../shared/db/client';
 import { env } from '../config/env';
+import { syncOrderStatusFromShipment } from '../modules/orders/service';
+import { mapDelhiveryStatus } from '../modules/webhooks/service';
 
 // Polls Delhivery for open shipments and updates tracking status. Hit by
 // Cloud Scheduler every 2 hours — Delhivery's own webhook (webhooks/delhivery)
@@ -21,7 +23,9 @@ export async function syncOpenShipments(): Promise<{ synced: number }> {
     const data = (await res.json()) as { ShipmentData?: Array<{ Shipment: { Status: { Status: string } } }> };
     const status = data.ShipmentData?.[0]?.Shipment?.Status?.Status;
     if (status) {
-      await db.shipment.update({ where: { id: shipment.id }, data: { status: status as never } });
+      const mappedStatus = mapDelhiveryStatus(status);
+      await db.shipment.update({ where: { id: shipment.id }, data: { status: mappedStatus } });
+      await syncOrderStatusFromShipment(shipment.orderId, mappedStatus);
       synced++;
     }
   }

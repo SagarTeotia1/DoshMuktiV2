@@ -4,6 +4,7 @@ import { sendOrderConfirmation, sendShipmentNotification } from '../../shared/in
 import { createShipment } from '../../shared/integrations/delhivery/client';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
+import { syncOrderStatusFromShipment } from '../orders/service';
 import { PACKAGING_WEIGHT_GRAMS } from '../../shared/constants/purposes';
 
 interface RazorpayShippingAddress {
@@ -188,16 +189,20 @@ export async function handleDelhiveryStatusUpdate(waybill: string, event: { stat
 
   const risk = detectRiskFlag(event.description);
 
+  const mappedStatus = mapDelhiveryStatus(event.status);
+
   await db.shipment.update({
     where: { id: shipment.id },
     data: {
       trackingEvents: events as unknown as object,
-      status: mapDelhiveryStatus(event.status),
+      status: mappedStatus,
       // Only ever set here, never cleared — an NDR remark once seen stays true until an
       // admin resolves it via an NDR action (see takeOrderNdrAction, which clears it).
       ...(risk ? { riskFlag: risk.flag, riskReason: risk.reason } : {}),
     },
   });
+
+  await syncOrderStatusFromShipment(shipment.orderId, mappedStatus);
 }
 
 // Delhivery's NDR remarks are free text, not a coded reason field — this is a best-effort
@@ -213,7 +218,7 @@ function detectRiskFlag(description: string): { flag: 'BAD_ADDRESS' | 'HIGH_RISK
   return null;
 }
 
-function mapDelhiveryStatus(status: string): 'PENDING' | 'BOOKED' | 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'FAILED' | 'RETURNED' {
+export function mapDelhiveryStatus(status: string): 'PENDING' | 'BOOKED' | 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'FAILED' | 'RETURNED' {
   const map: Record<string, ReturnType<typeof mapDelhiveryStatus>> = {
     Manifested: 'BOOKED',
     'In Transit': 'IN_TRANSIT',
