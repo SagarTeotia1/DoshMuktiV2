@@ -12,4 +12,5 @@ export const shippingEstimateQuerySchema = z.object({
   // Optional — omitted on cart/PDP (destination unknown yet, falls back to an
   // origin-to-origin estimate); passed once checkout has a real, validated pincode.
   destPincode: z.string().regex(/^\d{6}$/).optional(),
+  paymentMethod: z.enum(['PREPAID', 'COD']).default('PREPAID'),
 });

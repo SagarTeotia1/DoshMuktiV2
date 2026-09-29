@@ -380,7 +380,8 @@ function CheckoutPageContent() {
   const liveShipping = useShippingEstimate(
     subtotal,
     cartWeightGrams,
-    /^\d{6}$/.test(form.pincode) ? form.pincode : undefined
+    /^\d{6}$/.test(form.pincode) ? form.pincode : undefined,
+    paymentMethod
   );
 
   // Backend-computed — same resolution path checkout itself uses (see cart/service.ts's

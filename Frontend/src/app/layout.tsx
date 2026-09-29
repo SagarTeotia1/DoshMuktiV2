@@ -145,44 +145,50 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </noscript>
 
         {/* Meta Pixel — hardcoded directly in <head> per client/ad-team request
-            (not env-gated like the rest of this file's analytics, on purpose). */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              !function(f,b,e,v,n,t,s)
-              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-              n.queue=[];t=b.createElement(e);t.async=!0;
-              t.src=v;s=b.getElementsByTagName(e)[0];
-              s.parentNode.insertBefore(t,s)}(window, document,'script',
-              'https://connect.facebook.net/en_US/fbevents.js');
-              fbq('init', '1411881496949201');
-              fbq('init', '1398615991755746');
-              fbq('track', 'PageView');
-            `,
-          }}
-        />
+            (not env-gated like the rest of this file's analytics, on purpose).
+            NODE_ENV-gated so local dev never fires real Pixel events — prod build
+            still loads it unconditionally. */}
+        {process.env.NODE_ENV === 'production' && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                !function(f,b,e,v,n,t,s)
+                {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+                n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+                if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+                n.queue=[];t=b.createElement(e);t.async=!0;
+                t.src=v;s=b.getElementsByTagName(e)[0];
+                s.parentNode.insertBefore(t,s)}(window, document,'script',
+                'https://connect.facebook.net/en_US/fbevents.js');
+                fbq('init', '1411881496949201');
+                fbq('init', '1398615991755746');
+                fbq('track', 'PageView');
+              `,
+            }}
+          />
+        )}
       </head>
       <body>
-        <noscript>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            height="1"
-            width="1"
-            style={{ display: 'none' }}
-            src="https://www.facebook.com/tr?id=1398615991755746&ev=PageView&noscript=1"
-            alt=""
-          />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            height="1"
-            width="1"
-            alt=""
-            style={{ display: 'none' }}
-            src="https://www.facebook.com/tr?id=1411881496949201&ev=PageView&noscript=1"
-          />
-        </noscript>
+        {process.env.NODE_ENV === 'production' && (
+          <noscript>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              height="1"
+              width="1"
+              style={{ display: 'none' }}
+              src="https://www.facebook.com/tr?id=1398615991755746&ev=PageView&noscript=1"
+              alt=""
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              height="1"
+              width="1"
+              alt=""
+              style={{ display: 'none' }}
+              src="https://www.facebook.com/tr?id=1411881496949201&ev=PageView&noscript=1"
+            />
+          </noscript>
+        )}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }} />

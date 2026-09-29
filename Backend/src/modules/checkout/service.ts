@@ -11,6 +11,7 @@ import {
   FREE_SHIPPING_ABOVE,
   RESERVATION_MINUTES,
   PACKAGING_WEIGHT_GRAMS,
+  EKART_FLAT_SHIPPING,
 } from "../../shared/constants/purposes";
 import { resolveAutoAppliedRewardsForCheckout } from "../offers/service";
 import {
@@ -19,7 +20,7 @@ import {
   reserveCouponUsageTx,
   CouponExhaustedError,
 } from "../coupons/service";
-import { computePaymentBreakdown } from "../../shared/shipping/carrier";
+import { chooseCarrier, computePaymentBreakdown, type PaymentMethodId } from "../../shared/shipping/carrier";
 import type { CheckoutInput } from "./schema";
 
 export class OutOfStockError extends Error {
@@ -136,8 +137,14 @@ async function getLiveShippingRate(destPincode: string, weightGrams: number): Pr
 export async function calculateShippingFee(
   subtotal: number,
   weightGrams: number,
-  destPincode: string
+  destPincode: string,
+  paymentMethod: PaymentMethodId = "PREPAID",
 ): Promise<{ fee: number; originalFee: number }> {
+  // Ekart-routed parcels (COD, or prepaid over the weight threshold) use Ekart's flat
+  // rate — no Delhivery lookup, since Delhivery isn't the carrier that will ship them.
+  if (chooseCarrier(paymentMethod, weightGrams) === "EKART") {
+    return { fee: subtotal > FREE_SHIPPING_ABOVE ? 0 : EKART_FLAT_SHIPPING, originalFee: EKART_FLAT_SHIPPING };
+  }
   const liveRate = await getLiveShippingRate(destPincode, weightGrams);
   const originalFee = liveRate ?? SHIPPING_FEE;
   const fee = subtotal > FREE_SHIPPING_ABOVE ? 0 : originalFee;
@@ -246,7 +253,8 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
   const { fee: shippingFee, originalFee: actualShippingCost } = await calculateShippingFee(
     subtotal,
     paidWeight + freeWeight + PACKAGING_WEIGHT_GRAMS,
-    input.shippingAddress.pincode
+    input.shippingAddress.pincode,
+    input.paymentMethod,
   );
   const paymentMethod = input.paymentMethod;
   const reservedUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
