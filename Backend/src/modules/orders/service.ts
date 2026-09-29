@@ -15,6 +15,8 @@ import { addItemToCart } from '../cart/service';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
 import { PACKAGING_WEIGHT_GRAMS } from '../../shared/constants/purposes';
+import { chooseCarrier, type CarrierId } from '../../shared/shipping/carrier';
+import { createEkartShipment } from '../../shared/integrations/ekart/client';
 import { env } from '../../config/env';
 
 export class OrderNotResumableError extends Error {
@@ -107,42 +109,55 @@ type BookableAddress = { line1: string; line2?: string; city: string; state: str
 // that one is fire-and-forget and can fail silently (Delhivery rejection, network blip).
 // This lets Admin re-trigger it once whatever caused the rejection is fixed, without
 // needing a DB console. Refuses if a shipment already exists — never books twice.
-export async function bookOrderShipment(orderId: string): Promise<{ waybill: string }> {
+export async function bookOrderShipment(orderId: string): Promise<{ waybill: string; carrier: CarrierId }> {
   const existing = await db.shipment.findUnique({ where: { orderId } });
-  if (existing?.delhiveryWaybill) throw new Error('This order already has a Delhivery shipment booked.');
+  if (existing?.delhiveryWaybill) throw new Error('This order already has a shipment booked.');
 
   const order = await db.order.findUnique({ where: { id: orderId }, include: { items: { include: { variant: true } } } });
   if (!order) throw new Error('Order not found');
 
-  const shipment = await createShipment({
-    orderNumber: order.orderNumber,
-    customerName: order.customerName,
-    customerPhone: order.customerPhone,
-    address: order.shippingAddress as unknown as BookableAddress,
-    // Declared weight must match the real packed parcel (all items + packaging go into
-    // ONE box on ONE waybill) — under-declaring risks Delhivery re-weighing and billing
-    // the difference. See PACKAGING_WEIGHT_GRAMS's comment. An admin-set
-    // packageWeightOverride (see updateOrderPackageWeight) always wins — it means someone
-    // actually weighed this specific box and knows better than the item-sum estimate.
-    weight: order.packageWeightOverride ?? order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS,
-  });
-  if (!shipment) throw new Error('Delhivery did not return a waybill — check wallet balance and address details');
-  if ('error' in shipment) throw new Error(shipment.error);
+  // Declared weight must match the real packed parcel (all items + packaging go into
+  // ONE box on ONE waybill) — under-declaring risks the carrier re-weighing and billing
+  // the difference. See PACKAGING_WEIGHT_GRAMS's comment. An admin-set
+  // packageWeightOverride (see updateOrderPackageWeight) always wins — it means someone
+  // actually weighed this specific box and knows better than the item-sum estimate.
+  const weight =
+    order.packageWeightOverride ??
+    order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS;
+  const address = order.shippingAddress as unknown as BookableAddress;
+  const carrier = chooseCarrier(order.paymentMethod, weight);
+
+  const result =
+    carrier === 'EKART'
+      ? await createEkartShipment({
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          customerPhone: order.customerPhone,
+          address,
+          weight,
+          codAmount: Number(order.codAmountDue),
+          orderTotal: Number(order.total),
+        })
+      : await createShipment({
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          customerPhone: order.customerPhone,
+          address,
+          weight,
+        });
+  if (!result) throw new Error(`${carrier} did not return a waybill — check API key/wallet balance and address details`);
+  if ('error' in result) throw new Error(result.error);
 
   if (existing) {
-    await db.shipment.update({ where: { orderId }, data: { delhiveryWaybill: shipment.waybill, status: 'BOOKED' } });
+    await db.shipment.update({ where: { orderId }, data: { delhiveryWaybill: result.waybill, carrier, status: 'BOOKED' } });
   } else {
-    await db.shipment.create({ data: { orderId, delhiveryWaybill: shipment.waybill, status: 'BOOKED' } });
+    await db.shipment.create({ data: { orderId, delhiveryWaybill: result.waybill, carrier, status: 'BOOKED' } });
   }
 
-  const bookedAddress = order.shippingAddress as unknown as BookableAddress;
-  void quoteBookingShippingCost(
-    orderId,
-    order.packageWeightOverride ?? order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS,
-    bookedAddress.pincode
-  );
+  // The re-quote calls Delhivery's rate calculator — meaningless for an Ekart parcel.
+  if (carrier === 'DELHIVERY') void quoteBookingShippingCost(orderId, weight, address.pincode);
 
-  return { waybill: shipment.waybill };
+  return { waybill: result.waybill, carrier };
 }
 
 // Best-effort: re-quotes Delhivery's rate calculator the moment a shipment is booked,

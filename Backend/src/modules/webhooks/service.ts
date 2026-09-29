@@ -1,19 +1,9 @@
 import { db } from '../../shared/db/client';
 import { logger } from '../../shared/logger/pino';
 import { sendOrderConfirmation, sendShipmentNotification } from '../../shared/integrations/resend/client';
-import { createShipment } from '../../shared/integrations/delhivery/client';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
-import { syncOrderStatusFromShipment, quoteBookingShippingCost, applyWeightDiscrepancyCost } from '../orders/service';
-import { PACKAGING_WEIGHT_GRAMS } from '../../shared/constants/purposes';
-
-interface RazorpayShippingAddress {
-  line1: string;
-  line2?: string;
-  city: string;
-  state: string;
-  pincode: string;
-}
+import { syncOrderStatusFromShipment, applyWeightDiscrepancyCost, bookOrderShipment } from '../orders/service';
 
 export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPaymentId: string): Promise<void> {
   // Idempotent, and covers a customer retry on the same Razorpay order after an earlier
@@ -90,41 +80,18 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
   if (payment.order.customerEmail) {
     void sendOrderConfirmation(payment.order.customerEmail, payment.order.orderNumber, Number(payment.order.total));
   }
-  const addr = payment.order.shippingAddress as unknown as RazorpayShippingAddress;
-  // See PACKAGING_WEIGHT_GRAMS's comment — declared weight must match the real packed
-  // parcel (all items + packaging in ONE box on ONE waybill), same as bookOrderShipment.
-  // An admin-set packageWeightOverride wins if present, same rule as the manual retry path.
-  const bookingWeight =
-    payment.order.packageWeightOverride ??
-    payment.order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS;
-  void createShipment({
-    orderNumber: payment.order.orderNumber,
-    customerName: payment.order.customerName,
-    customerPhone: payment.order.customerPhone,
-    address: addr,
-    weight: bookingWeight,
-  }).then(async (shipment) => {
-    if (shipment && 'waybill' in shipment) {
-      await db.shipment.create({ data: { orderId: payment.orderId, delhiveryWaybill: shipment.waybill, status: 'BOOKED' } });
-      void quoteBookingShippingCost(payment.orderId, bookingWeight, addr.pincode);
-      if (payment.order.customerEmail) {
-        void sendShipmentNotification(payment.order.customerEmail, payment.order.orderNumber, shipment.waybill);
-      }
-    } else {
-      // createShipment returns an error (or null in dev with no API key) on a
-      // Delhivery-side rejection (bad wallet balance, fraud check, bad address, etc)
-      // rather than throwing — without this log the order is just stuck with no waybill
-      // and nothing ever says why. Admin can retry via the manual "Book Shipment" action
-      // once the underlying issue is fixed.
-      logger.error(
-        { orderNumber: payment.order.orderNumber, reason: shipment?.error ?? 'no API key configured' },
-        'createShipment did not return a waybill — Delhivery rejected the shipment',
-      );
+  // Carrier choice (Delhivery vs Ekart), weight and COD cash amount are all resolved
+  // inside bookOrderShipment — same path as the manual admin retry.
+  void bookOrderShipment(payment.orderId).then((booked) => {
+    if (payment.order.customerEmail) {
+      void sendShipmentNotification(payment.order.customerEmail, payment.order.orderNumber, booked.waybill);
     }
   }).catch((err) => {
-    // A thrown error here (network failure, etc) would otherwise be an unhandled
-    // rejection — silently dropped, order stuck with no waybill and no trace of why.
-    logger.error({ err, orderNumber: payment.order.orderNumber }, 'createShipment threw while booking shipment');
+    // A rejection (bad wallet balance, fraud check, bad address, Ekart not configured…)
+    // or thrown error (network failure) would otherwise leave the order stuck with no
+    // waybill and no trace of why. Admin can retry via the manual "Book Shipment" action
+    // once the underlying issue is fixed.
+    logger.error({ err, orderNumber: payment.order.orderNumber }, 'Auto-booking shipment failed');
   });
 }
 

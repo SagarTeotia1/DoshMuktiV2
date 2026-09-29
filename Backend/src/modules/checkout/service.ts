@@ -19,6 +19,7 @@ import {
   reserveCouponUsageTx,
   CouponExhaustedError,
 } from "../coupons/service";
+import { computePaymentBreakdown } from "../../shared/shipping/carrier";
 import type { CheckoutInput } from "./schema";
 
 export class OutOfStockError extends Error {
@@ -247,6 +248,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
     paidWeight + freeWeight + PACKAGING_WEIGHT_GRAMS,
     input.shippingAddress.pincode
   );
+  const paymentMethod = input.paymentMethod;
   const reservedUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
   const { order, payment } = await withSerializableRetry(() =>
@@ -268,6 +270,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
 
         const orderNumber = await generateOrderNumber(tx);
         const orderTotal = subtotal + shippingFee - totalDiscount;
+        const breakdown = computePaymentBreakdown(paymentMethod, orderTotal);
 
         const order = await tx.order.create({
           data: {
@@ -283,6 +286,9 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
             actualShippingCost,
             discountAmount: totalDiscount,
             total: orderTotal,
+            paymentMethod,
+            codAdvanceAmount: breakdown.codAdvance,
+            codAmountDue: breakdown.codAmountDue,
             couponId: coupon?.id ?? null,
             reservedUntil,
             items: {
@@ -329,7 +335,9 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
           data: {
             orderId: order.id,
             razorpayOrderId: `pending_${order.id}`,
-            amount: order.total,
+            // What Razorpay actually charges: full total for prepaid, only the COD
+            // advance for COD (the rest is collected in cash on delivery).
+            amount: breakdown.payNow,
             status: "PENDING",
           },
         });
@@ -351,7 +359,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
     ),
   );
 
-  const finalTotal = Number(order.total);
+  const finalTotal = Number(payment.amount);
 
   // Razorpay call OUTSIDE the transaction — never hold a DB connection open across a network call
   const rzpOrder = await razorpay.orders.create({
@@ -371,5 +379,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
     rzpOrderId: rzpOrder.id,
     amount: Math.round(finalTotal * 100),
     currency: "INR",
+    paymentMethod,
+    codAmountDue: Number(order.codAmountDue),
   };
 }

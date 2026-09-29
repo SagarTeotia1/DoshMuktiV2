@@ -6,6 +6,7 @@ import { resolveAutoAppliedRewardsForCheckout, isActiveFreeGiftTarget } from "..
 import type { CheckoutLineItem } from "../offers/service";
 import { calculateShippingFee } from "../checkout/service";
 import { PACKAGING_WEIGHT_GRAMS } from "../../shared/constants/purposes";
+import { computePaymentBreakdown } from "../../shared/shipping/carrier";
 import type { Cart, CartItem } from "./schema";
 
 export class VariantNotFoundError extends Error {
@@ -232,6 +233,16 @@ export interface CartPricing {
   // set above its actual price — the "MRP savings" shown on cart/checkout, computed once
   // here so the number can never drift between the two pages.
   savings: number;
+  // Payment split if the customer picks COD: `codAdvance` is charged online now, the
+  // remaining `codAmountDue` is paid in cash on delivery. `total` stays the true order
+  // value either way. Same computePaymentBreakdown checkout uses, so preview == charge.
+  codAdvance: number;
+  codAmountDue: number;
+}
+
+function codSplit(total: number): { codAdvance: number; codAmountDue: number } {
+  const { codAdvance, codAmountDue } = computePaymentBreakdown('COD', total);
+  return { codAdvance, codAmountDue };
 }
 
 function computeCartSavings(cart: Cart): number {
@@ -293,6 +304,7 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
       taxableValue: 0,
       gstAmount: 0,
       savings: 0,
+      ...codSplit(subtotal + shippingFee),
     };
   }
 
@@ -373,5 +385,6 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
     taxableValue,
     gstAmount,
     savings: computeCartSavings(cart),
+    ...codSplit(Math.max(subtotal + shippingFee - totalDiscount, 0)),
   };
 }

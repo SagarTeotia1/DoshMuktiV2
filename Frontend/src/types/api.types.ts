@@ -187,6 +187,8 @@ export interface CartResponse {
   // Sum of (compareAtPrice - price) × quantity across every line with an MRP above its
   // actual price — server-computed so cart and checkout never show different numbers.
   savings: number;
+  codAdvance: number;
+  codAmountDue: number;
   updatedAt: string;
 }
 
@@ -220,7 +222,10 @@ export interface CheckoutInput {
   shippingAddress: { line1: string; line2?: string; city: string; state: string; pincode: string; country?: string };
   items: Array<{ variantId: string; quantity: number }>;
   couponCode?: string;
+  paymentMethod?: PaymentMethod;
 }
+
+export type PaymentMethod = 'PREPAID' | 'COD';
 
 export type CouponErrorCode =
   | 'COUPON_NOT_FOUND'
@@ -241,6 +246,8 @@ export interface CheckoutResponse {
   rzpOrderId: string;
   amount: number;
   currency: string;
+  paymentMethod: PaymentMethod;
+  codAmountDue: number;
 }
 
 export interface OrderTrackingResponse {

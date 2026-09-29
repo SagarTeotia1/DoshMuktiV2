@@ -15,9 +15,9 @@ import { api, ApiError } from '@/lib/api-client';
 import { getSessionId, getBuyNowSessionId } from '@/lib/session';
 import { getToken } from '@/lib/auth';
 import { formatCurrency } from '@/lib/formatters';
-import { SHIPPING_FEE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
+import { SHIPPING_FEE, FREE_SHIPPING_ABOVE, COD_ADVANCE_FEE } from '@/lib/constants';
 import { trackBeginCheckout, trackAddPaymentInfo } from '@/lib/analytics';
-import type { Address, CheckoutInput, CheckoutResponse, CouponPreviewResponse, SuggestedCoupon } from '@/types/api.types';
+import type { Address, CheckoutInput, PaymentMethod, CheckoutResponse, CouponPreviewResponse, SuggestedCoupon } from '@/types/api.types';
 import type { RazorpayResponse } from '@/hooks/use-razorpay';
 
 const inputClass =
@@ -332,6 +332,7 @@ function CheckoutPageContent() {
 
   const selectedAddress = savedAddresses?.find((a) => a.id === selectedAddressId) ?? null;
 
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('PREPAID');
   const [couponInput, setCouponInput] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
@@ -399,6 +400,11 @@ function CheckoutPageContent() {
   const preDiscountTotal = subtotal + shippingFee - autoAppliedDiscount;
   const couponDiscount = appliedCoupon?.discountAmount ?? 0;
   const total = Math.max(preDiscountTotal - couponDiscount, 0);
+  // Display-only split — the Backend recomputes the authoritative amounts at checkout
+  // (computePaymentBreakdown). COD: advance is charged online now, the rest in cash.
+  const isCod = paymentMethod === 'COD';
+  const codAdvance = Math.min(COD_ADVANCE_FEE, total);
+  const codAmountDue = total - codAdvance;
   // Inclusive breakup of subtotal (product price already includes GST — never an added
   // charge), same math the invoice PDF uses. 0 when nothing in the cart carries a GST rate.
   const gstAmount = cart?.gstAmount ?? 0;
@@ -494,6 +500,7 @@ function CheckoutPageContent() {
         },
         items: checkoutItems,
         ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
+        paymentMethod,
       };
 
       const result = await api.post<CheckoutResponse>('/api/checkout', input, {
@@ -506,6 +513,9 @@ function CheckoutPageContent() {
         amount: result.amount,
         currency: result.currency,
         name: 'Doshhmukti',
+        description: isCod
+          ? `COD shipping advance — pay ${formatCurrency(result.codAmountDue)} on delivery`
+          : undefined,
         order_id: result.rzpOrderId,
         prefill: { name: form.customerName, email: form.customerEmail, contact: form.customerPhone },
         theme: { color: '#9C5A26' },
@@ -752,6 +762,47 @@ function CheckoutPageContent() {
             : formatCurrency(Math.max(subtotal - autoAppliedDiscount - couponDiscount, 0))}
         </span>
       </div>
+      <div className="flex flex-col gap-2 pt-1" role="radiogroup" aria-label="Payment method">
+        {([
+          { id: 'PREPAID', title: 'Pay online (UPI / Card / Netbanking)', sub: 'Pay the full amount now' },
+          { id: 'COD', title: 'Cash on Delivery', sub: `Pay only ${formatCurrency(COD_ADVANCE_FEE)} now, rest on delivery` },
+        ] as const).map((opt) => (
+          <label
+            key={opt.id}
+            className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
+              paymentMethod === opt.id ? 'border-[#9C5A26] bg-[#9C5A26]/5' : 'border-[#2B1B0C]/15'
+            }`}
+          >
+            <input
+              type="radio"
+              name="paymentMethod"
+              value={opt.id}
+              checked={paymentMethod === opt.id}
+              onChange={() => setPaymentMethod(opt.id)}
+              className="mt-1 accent-[#9C5A26]"
+            />
+            <span className="flex flex-col">
+              <span className="font-body text-sm font-semibold text-[#2B1B0C]">{opt.title}</span>
+              <span className="font-body text-[11px] text-[#8A7A63]">{opt.sub}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      {isCod && hasResolvedPincodeRate && (
+        <div className="rounded-xl bg-[#9C5A26]/5 border border-[#9C5A26]/20 px-3 py-2.5 flex flex-col gap-1">
+          <div className="flex justify-between font-body text-sm text-[#2B1B0C]">
+            <span>Pay now (shipping charges)</span>
+            <span className="font-semibold">{formatCurrency(codAdvance)}</span>
+          </div>
+          <div className="flex justify-between font-body text-sm text-[#2B1B0C]">
+            <span>Pay on delivery (net COD amount)</span>
+            <span className="font-semibold">{formatCurrency(codAmountDue)}</span>
+          </div>
+          <p className="font-body text-[11px] text-[#8A7A63] mt-1">
+            Note: the {formatCurrency(codAdvance)} paid now is only the shipping charge for COD. It is adjusted against your order total — the remaining {formatCurrency(codAmountDue)} is paid in cash when your order arrives.
+          </p>
+        </div>
+      )}
       {!hasResolvedPincodeRate && (
         <p className="font-body text-[10px] text-[#8A7A63] text-right -mt-1">
           Add item worth {formatCurrency(Math.max(FREE_SHIPPING_ABOVE + 1 - subtotal, 0))} more and claim free delivery.
@@ -770,7 +821,7 @@ function CheckoutPageContent() {
             disabled={submitting || rzpLoading || items.length === 0}
             className="mt-4 bg-[#2B1B0C] text-white border border-[#2B1B0C] rounded-full px-8 py-4 font-body font-bold uppercase tracking-widest text-sm hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? 'Processing...' : 'Pay Now'}
+            {submitting ? 'Processing...' : isCod ? `Pay ${formatCurrency(codAdvance)} & Place COD Order` : 'Pay Now'}
           </button>
           <p className="flex items-center justify-center gap-1.5 font-body text-[10px] text-[#8A7A63] mt-1">
             <ShieldCheck className="w-3.5 h-3.5 text-[#9C5A26]" />
