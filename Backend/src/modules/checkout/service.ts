@@ -11,7 +11,6 @@ import {
   FREE_SHIPPING_ABOVE,
   RESERVATION_MINUTES,
   PACKAGING_WEIGHT_GRAMS,
-  EKART_FLAT_SHIPPING,
 } from "../../shared/constants/purposes";
 import { resolveAutoAppliedRewardsForCheckout } from "../offers/service";
 import {
@@ -20,7 +19,7 @@ import {
   reserveCouponUsageTx,
   CouponExhaustedError,
 } from "../coupons/service";
-import { chooseCarrier, computePaymentBreakdown, type PaymentMethodId } from "../../shared/shipping/carrier";
+import { computePaymentBreakdown, type PaymentMethodId } from "../../shared/shipping/carrier";
 import type { CheckoutInput } from "./schema";
 
 export class OutOfStockError extends Error {
