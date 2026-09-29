@@ -224,8 +224,11 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
         totalsRows.push({ label: 'GST', value: formatCurrency(totalGstAmount) });
       }
 
+      const isCod = order.paymentMethod === 'COD';
       const rowH = 20;
-      const panelHeight = totalsRows.length * rowH + 44;
+      // Total stays the true full order value; for COD the two extra lines below show
+      // how it splits between the online advance and cash on delivery.
+      const panelHeight = totalsRows.length * rowH + 44 + (isCod ? 2 * rowH + 8 : 0);
       doc.roundedRect(totalsX, y, totalsWidth, panelHeight, 4).fill(PANEL).fillColor(INK);
 
       let rowY = y + 12;
@@ -243,6 +246,16 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
       doc.text('Total', totalsX + 14, rowY);
       doc.fillColor(BRAND).text(formatCurrency(order.total), totalsX + 14, rowY, { width: totalsWidth - 28, align: 'right' });
 
+      if (isCod) {
+        rowY += 26;
+        doc.font('Helvetica').fontSize(9.5);
+        doc.fillColor(MUTED).text('Paid online (shipping advance)', totalsX + 14, rowY);
+        doc.fillColor(INK).text(`- ${formatCurrency(order.codAdvanceAmount)}`, totalsX + 14, rowY, { width: totalsWidth - 28, align: 'right' });
+        rowY += rowH;
+        doc.font('Helvetica-Bold').fillColor(INK).text('Cash due on delivery', totalsX + 14, rowY);
+        doc.fillColor(BRAND).text(formatCurrency(order.codAmountDue), totalsX + 14, rowY, { width: totalsWidth - 28, align: 'right' });
+      }
+
       y += panelHeight + 30;
 
       // ── Shipment / tracking details ──────────────────────────────────────
@@ -256,7 +269,7 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
         doc.roundedRect(PAGE_LEFT, y, PAGE_RIGHT - PAGE_LEFT, 44, 4).strokeColor(RULE).lineWidth(1).stroke();
         const shipMetaY = y + 10;
         const shipColWidth = (PAGE_RIGHT - PAGE_LEFT) / 3;
-        metaCell2(PAGE_LEFT + 14, shipMetaY, 'Courier Partner', 'Delhivery');
+        metaCell2(PAGE_LEFT + 14, shipMetaY, 'Courier Partner', order.shipment.carrier === 'EKART' ? 'Ekart' : 'Delhivery');
         metaCell2(PAGE_LEFT + 14 + shipColWidth, shipMetaY, 'AWB Number', order.shipment.delhiveryWaybill);
         metaCell2(PAGE_LEFT + 14 + shipColWidth * 2, shipMetaY, 'Status', order.shipment.status);
         y += 44 + 24;

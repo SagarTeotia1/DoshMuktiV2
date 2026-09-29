@@ -279,6 +279,13 @@ model Order {
   // padding) so Delhivery's declared weight doesn't drift from the real one and risk a
   // re-weigh charge.
   packageWeightOverride Int?
+  // PREPAID = whole `total` paid online. COD = customer pays only `codAdvanceAmount`
+  // online (a flat shipping/handling charge, see COD_ADVANCE_FEE) and the rest —
+  // `codAmountDue` — in cash on delivery. `total` is always the true full order value
+  // (invoice shows it), never reduced by the advance.
+  paymentMethod        PaymentMethod    @default(PREPAID)
+  codAdvanceAmount     Decimal          @default(0) @db.Decimal(10, 2)
+  codAmountDue         Decimal          @default(0) @db.Decimal(10, 2)
   items                OrderItem[]
   payment              Payment?
   shipment             Shipment?
@@ -292,6 +299,16 @@ model Order {
   @@index([reservedUntil])
   @@index([couponId])
   @@index([userId])
+}
+
+enum PaymentMethod {
+  PREPAID
+  COD
+}
+
+enum Carrier {
+  DELHIVERY
+  EKART
 }
 
 enum OrderStatus {
@@ -367,7 +384,10 @@ model Shipment {
   id                String         @id @default(cuid())
   orderId           String         @unique
   order             Order          @relation(fields: [orderId], references: [id])
+  // Carrier-agnostic waybill (column name is legacy from when Delhivery was the only
+  // carrier) — `carrier` says whose waybill it is.
   delhiveryWaybill  String?
+  carrier           Carrier        @default(DELHIVERY)
   status            ShipmentStatus @default(PENDING)
   trackingEvents    Json           @default("[]") // [{timestamp,status,location,description}]
   estimatedDelivery DateTime?

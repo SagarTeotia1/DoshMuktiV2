@@ -293,6 +293,9 @@ export interface Order {
   finalShippingCost: number | null;
   discountAmount: number;
   total: number;
+  paymentMethod: 'PREPAID' | 'COD';
+  codAdvanceAmount: number;
+  codAmountDue: number;
   couponId: string | null;
   coupon: { id: string; code: string; type: CouponType; value: number } | null;
   // Grams — admin override for this order's real packed parcel weight. Null means "use
@@ -308,6 +311,7 @@ export interface Order {
   } | null;
   shipment: {
     delhiveryWaybill: string | null;
+    carrier: 'DELHIVERY' | 'EKART';
     status: string;
     ewaybillNumber: string | null;
     pickupRequestId: string | null;

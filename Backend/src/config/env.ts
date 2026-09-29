@@ -47,6 +47,15 @@ const envSchema = z.object({
   DELHIVERY_WAREHOUSE_PHONE: z.string().default(''),
   DELHIVERY_CLIENT_NAME: z.string().default('Doshhmukti'),
 
+  // Ekart Logistics — handles every COD order and any parcel over EKART_MIN_WEIGHT_GRAMS
+  // (see shared/shipping/carrier.ts). Empty EKART_CLIENT_ID = integration off: booking
+  // returns a clear error instead of silently falling back to Delhivery (which would
+  // ship a COD parcel with no cash-collection instruction).
+  EKART_BASE_URL: z.string().default('https://app.elite.ekartlogistics.in'),
+  EKART_CLIENT_ID: z.string().default(''),
+  EKART_USERNAME: z.string().default(''),
+  EKART_PASSWORD: z.string().default(''),
+
   TWOFACTOR_API_KEY: z.string().default(''),
 
   // Flash-tier model: fast latency for a chat UX, cheap, solid Hinglish output.
