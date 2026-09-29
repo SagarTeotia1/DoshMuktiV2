@@ -251,7 +251,7 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ ord
               <span>{formatCurrency(order.subtotal)}</span>
             </div>
             <div className="flex justify-between font-body text-sm text-[#6B5539]">
-              <span>Shipping</span>
+              <span>Shipping & Packaging</span>
               <span>{order.shippingFee === 0 ? 'Free' : formatCurrency(order.shippingFee)}</span>
             </div>
             {order.discountAmount > 0 && (

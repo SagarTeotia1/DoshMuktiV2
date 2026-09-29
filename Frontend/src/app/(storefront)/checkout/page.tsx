@@ -642,7 +642,7 @@ function CheckoutPageContent() {
         </div>
       )}
       <div className="flex justify-between font-body text-sm text-[#6B5539]">
-        <span>Shipping</span>
+        <span>Shipping & Packaging</span>
         {!hasResolvedPincodeRate ? (
           <span className="text-[#8A7A63] text-xs">Enter pincode</span>
         ) : shippingFee === 0 ? (
