@@ -216,7 +216,7 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
 
       const totalsRows: Array<{ label: string; value: string; bold?: boolean; accent?: boolean }> = [
         { label: 'Subtotal', value: formatCurrency(order.subtotal) },
-        { label: 'Shipping Fee', value: formatCurrency(order.shippingFee) },
+        { label: 'Shipping & Packaging', value: formatCurrency(order.shippingFee) },
       ];
       if (discount > 0) totalsRows.push({ label: 'Discount', value: `- ${formatCurrency(order.discountAmount)}`, accent: true });
       if (showGst) {

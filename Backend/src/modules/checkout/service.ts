@@ -105,27 +105,6 @@ async function generateOrderNumber(
   return `DOSH-${today}-${String(row.seq).padStart(4, "0")}`;
 }
 
-// Live Delhivery rate (Surface mode), cached by route+weight since the same
-// origin/destination/weight always prices the same — this is hit on every cart/PDP
-// view, not just checkout, so an uncached call there would hammer Delhivery for no
-// reason. Returns null (never throws) on any failure so callers can fall back to the
-// flat SHIPPING_FEE — a customer must never be blocked from checking out because a
-// pricing API had a bad moment.
-async function getLiveShippingRate(destPincode: string, weightGrams: number): Promise<number | null> {
-  const originPincode = env.DELHIVERY_WAREHOUSE_PINCODE;
-  const key = cacheKeys.shippingRate(originPincode, destPincode, weightGrams);
-
-  const cached = await redis.get<number>(key);
-  if (typeof cached === "number") return cached;
-
-  const result = await calculateShippingCost({ originPincode, destPincode, weightGrams, paymentMode: "Pre-paid" });
-  if (!result) return null;
-
-  const rounded = Math.ceil(result.amount);
-  await redis.set(key, rounded, { ex: CACHE_TTL.SHIPPING_RATE });
-  return rounded;
-}
-
 // Exported for the cart module — the cart's pricing preview (shown pre-checkout on the
 // cart/checkout pages) must compute shipping the exact same way the real order will, or
 // the displayed total drifts from what actually gets charged.
@@ -136,19 +115,13 @@ async function getLiveShippingRate(destPincode: string, weightGrams: number): Pr
 // charged (0 once waived).
 export async function calculateShippingFee(
   subtotal: number,
-  weightGrams: number,
-  destPincode: string,
-  paymentMethod: PaymentMethodId = "PREPAID",
+  _weightGrams: number,
+  _destPincode: string,
+  _paymentMethod: PaymentMethodId = "PREPAID",
 ): Promise<{ fee: number; originalFee: number }> {
-  // Ekart-routed parcels (COD, or prepaid over the weight threshold) use Ekart's flat
-  // rate — no Delhivery lookup, since Delhivery isn't the carrier that will ship them.
-  if (chooseCarrier(paymentMethod, weightGrams) === "EKART") {
-    return { fee: subtotal > FREE_SHIPPING_ABOVE ? 0 : EKART_FLAT_SHIPPING, originalFee: EKART_FLAT_SHIPPING };
-  }
-  const liveRate = await getLiveShippingRate(destPincode, weightGrams);
-  const originalFee = liveRate ?? SHIPPING_FEE;
-  const fee = subtotal > FREE_SHIPPING_ABOVE ? 0 : originalFee;
-  return { fee, originalFee };
+  // Flat "shipping & packaging" fee for every order, whatever the carrier or weight —
+  // waived above FREE_SHIPPING_ABOVE (we bear it). Params kept so callers stay stable.
+  return { fee: subtotal > FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE, originalFee: SHIPPING_FEE };
 }
 
 export async function initiateCheckout(input: CheckoutInput, userId: string) {

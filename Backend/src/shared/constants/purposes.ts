@@ -6,7 +6,7 @@ export type PurposeId = (typeof PURPOSE_IDS)[number];
 export const PRODUCT_SORTS = ['newest', 'popular', 'price_asc', 'price_desc'] as const;
 export type SortId = (typeof PRODUCT_SORTS)[number];
 
-export const SHIPPING_FEE = 99; // flat fallback only — used when Delhivery's live rate is unavailable
+export const SHIPPING_FEE = 90; // flat shipping & packaging fee, every order (waived above FREE_SHIPPING_ABOVE)
 export const FREE_SHIPPING_ABOVE = 299;
 // Default 7-day return eligibility threshold — products priced below this are final sale
 // (too low-value to make a reverse-pickup return economical) unless an admin sets
@@ -32,7 +32,3 @@ export const COD_ADVANCE_FEE = 90;
 export const PAYMENT_METHODS = ['PREPAID', 'COD'] as const;
 // Parcels heavier than this ship via Ekart even when prepaid.
 export const EKART_MIN_WEIGHT_GRAMS = 500;
-// Ekart's flat rate — every Ekart-routed order (COD, or prepaid over the weight
-// threshold) is charged this as shipping instead of Delhivery's live per-route quote.
-// Same value as COD_ADVANCE_FEE on purpose: a non-free COD order's advance IS its shipping.
-export const EKART_FLAT_SHIPPING = 90;
