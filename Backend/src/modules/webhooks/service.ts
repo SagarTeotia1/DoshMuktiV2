@@ -258,3 +258,70 @@ export function mapDelhiveryStatus(status: string): 'PENDING' | 'BOOKED' | 'IN_T
   };
   return map[status] ?? 'IN_TRANSIT';
 }
+
+type ShipmentStatusId = ReturnType<typeof mapDelhiveryStatus>;
+
+// Ekart's tracking statuses (spec: swift_status enum) -> our shipment status. Anything
+// unlisted defaults to IN_TRANSIT, same convention as mapDelhiveryStatus.
+export function mapEkartStatus(status: string, ndrStatus?: string): ShipmentStatusId {
+  // An NDR status on an otherwise in-flight parcel means a failed delivery attempt that
+  // needs an admin decision (reattempt vs RTO) - same FAILED state Delhivery's NDRs use.
+  if (ndrStatus && !/^(Delivered|RTO)/.test(status)) return 'FAILED';
+  const map: Record<string, ShipmentStatusId> = {
+    'Order Placed': 'BOOKED',
+    'Pickup Pending': 'BOOKED',
+    'Pickup Scheduled': 'BOOKED',
+    'Out for Pickup': 'BOOKED',
+    'Not Picked': 'BOOKED',
+    'Picked Up': 'IN_TRANSIT',
+    'In Transit': 'IN_TRANSIT',
+    'Shipment Delayed': 'IN_TRANSIT',
+    'Out for Delivery': 'OUT_FOR_DELIVERY',
+    Delivered: 'DELIVERED',
+    Undelivered: 'FAILED',
+    Cancelled: 'FAILED',
+    'Seller Cancelled': 'FAILED',
+    'Pickup Cancelled': 'FAILED',
+    Lost: 'FAILED',
+    Damaged: 'FAILED',
+    'Not Serviceable': 'FAILED',
+    'RTO Requested': 'RETURNED',
+    'Seller RTO Requested': 'RETURNED',
+    'RTO In Transit': 'RETURNED',
+    'RTO Out for Delivery': 'RETURNED',
+    'RTO Delivered': 'RETURNED',
+    'RTO Failed': 'RETURNED',
+    'RTO Shipment Delayed': 'RETURNED',
+  };
+  return map[status] ?? 'IN_TRANSIT';
+}
+
+// Shared by Ekart's track_updated webhook and the polling fallback (jobs/tracking-sync).
+// Idempotent: an identical repeated event is skipped; order status only ever moves
+// forward (see syncOrderStatusFromShipment).
+export async function handleEkartStatusUpdate(
+  trackingId: string,
+  event: { status: string; location: string; description: string; timestamp: string; ndrStatus?: string },
+): Promise<void> {
+  const shipment = await db.shipment.findFirst({ where: { delhiveryWaybill: trackingId, carrier: 'EKART' } });
+  if (!shipment) return;
+
+  const events = (shipment.trackingEvents as unknown as Array<Record<string, string>>) ?? [];
+  const last = events[events.length - 1];
+  if (last && last.status === event.status && last.timestamp === event.timestamp) return;
+  events.push({ status: event.status, location: event.location, description: event.description, timestamp: event.timestamp });
+
+  const mapped = mapEkartStatus(event.status, event.ndrStatus);
+  const risk = detectRiskFlag(`${event.ndrStatus ?? ''} ${event.description}`);
+
+  await db.shipment.update({
+    where: { id: shipment.id },
+    data: {
+      trackingEvents: events as unknown as object,
+      status: mapped,
+      ...(risk ? { riskFlag: risk.flag, riskReason: risk.reason } : {}),
+    },
+  });
+
+  await syncOrderStatusFromShipment(shipment.orderId, mapped);
+}

@@ -69,14 +69,31 @@ const envObject = z.object({
   DELHIVERY_WAREHOUSE_PHONE: z.string().default(''),
   DELHIVERY_CLIENT_NAME: z.string().default('Doshhmukti'),
 
-  // Ekart Logistics — handles every COD order and any parcel over EKART_MIN_WEIGHT_GRAMS
-  // (see shared/shipping/carrier.ts). Empty EKART_CLIENT_ID = integration off: booking
-  // returns a clear error instead of silently falling back to Delhivery (which would
-  // ship a COD parcel with no cash-collection instruction).
-  EKART_BASE_URL: z.string().default('https://app.elite.ekartlogistics.in'),
+  // Ekart Logistics (Elite API, spec: https://app.elite.ekartlogistics.in/api/docs) —
+  // handles every COD order and any parcel over EKART_MIN_WEIGHT_GRAMS (see
+  // shared/shipping/carrier.ts). Empty credentials = integration off: booking fails with a
+  // clear error instead of silently falling back to Delhivery (which would ship a COD
+  // parcel with no cash-collection instruction).
+  EKART_BASE_URL: z.string().url().default('https://app.elite.ekartlogistics.in'),
   EKART_CLIENT_ID: z.string().default(''),
   EKART_USERNAME: z.string().default(''),
   EKART_PASSWORD: z.string().default(''),
+  // If the Ekart account has several registered pickup addresses, the alias to use
+  // (Ekart dashboard -> addresses). Empty = send the DELHIVERY_WAREHOUSE_* address in full.
+  EKART_PICKUP_ALIAS: z.string().default(''),
+  // Seller billing details Ekart requires on every shipment.
+  EKART_SELLER_NAME: z.string().default('Doshhmukti'),
+  EKART_SELLER_ADDRESS: z.string().default(''),
+  EKART_SELLER_GST_TIN: z.string().default('NA'),
+  EKART_CATEGORY_OF_GOODS: z.string().default('Others'),
+  // Default box (cm) for every parcel.
+  EKART_PACKAGE_LENGTH_CM: z.coerce.number().int().min(1).default(15),
+  EKART_PACKAGE_WIDTH_CM: z.coerce.number().int().min(1).default(12),
+  EKART_PACKAGE_HEIGHT_CM: z.coerce.number().int().min(1).default(8),
+  // Shared secret carried in the webhook URL we register with Ekart (?token=...). Ekart's
+  // spec documents an HMAC secret but not the signature header, so the URL token is what
+  // we can actually verify. Register via src/scripts/register-ekart-webhook.ts.
+  EKART_WEBHOOK_TOKEN: z.string().default(''),
 
   TWOFACTOR_API_KEY: z.string().default(''),
 

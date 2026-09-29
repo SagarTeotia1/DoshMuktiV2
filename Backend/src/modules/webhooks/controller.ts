@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { env } from '../../config/env';
 import { verifyWebhookBasicAuth } from '../../shared/integrations/hdfc-smartgateway/client';
-import { handlePaymentCaptured, handlePaymentFailed, handleDelhiveryStatusUpdate } from './service';
+import { handleEkartStatusUpdate, handlePaymentCaptured, handlePaymentFailed, handleDelhiveryStatusUpdate } from './service';
 
 interface RawBodyRequest extends FastifyRequest {
   rawBody?: string;
@@ -60,6 +60,30 @@ export async function hdfcWebhookHandler(req: FastifyRequest, reply: FastifyRepl
   } else if (event === 'ORDER_FAILED') {
     await handlePaymentFailed('HDFC', order.order_id, `SmartGateway order status: ${order.status}`);
   }
+}
+
+// Ekart track_updated push. Auth: the ?token=... we put in the webhook URL when
+// registering it (Ekart's spec documents an HMAC secret but not the signature header, so
+// a URL token is what we can verify) - constant-time compared, never ===.
+export async function ekartWebhookHandler(req: FastifyRequest, reply: FastifyReply) {
+  const token = (req.query as { token?: string }).token ?? '';
+  const tokenBuf = Buffer.from(token);
+  const expBuf = Buffer.from(env.EKART_WEBHOOK_TOKEN);
+  if (!env.EKART_WEBHOOK_TOKEN || tokenBuf.length !== expBuf.length || !crypto.timingSafeEqual(tokenBuf, expBuf)) {
+    return reply.code(401).send({ error: 'Invalid token' });
+  }
+
+  const body = req.body as { id?: string; status?: string; location?: string; desc?: string; ctime?: number } | undefined;
+  if (!body?.id || !body.status) return reply.code(400).send({ error: 'Invalid payload' });
+
+  // Ack first - Ekart retries on slow responses.
+  reply.code(200).send({ status: 'ok' });
+  await handleEkartStatusUpdate(body.id, {
+    status: body.status,
+    location: body.location ?? '',
+    description: body.desc ?? '',
+    timestamp: new Date(body.ctime ?? Date.now()).toISOString(),
+  });
 }
 
 export async function delhiveryWebhookHandler(req: FastifyRequest, reply: FastifyReply) {
