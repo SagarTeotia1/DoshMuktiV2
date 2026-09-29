@@ -807,9 +807,9 @@ function CheckoutPageContent() {
           The {formatCurrency(COD_ADVANCE_FEE)} is your shipping charge — it&apos;s already counted in your total.
         </p>
       )}
-      {!hasResolvedPincodeRate && (
-        <p className="font-body text-[10px] text-[#8A7A63] text-right -mt-1">
-          Add item worth {formatCurrency(Math.max(FREE_SHIPPING_ABOVE + 1 - subtotal, 0))} more and claim free delivery.
+      {subtotal > 0 && subtotal <= FREE_SHIPPING_ABOVE && (
+        <p className="rounded-lg bg-[#9C5A26]/10 px-3 py-2 font-body text-xs font-semibold text-[#2B1B0C] text-center">
+          Add items worth {formatCurrency(FREE_SHIPPING_ABOVE + 1 - subtotal)} more to get FREE delivery
         </p>
       )}
       {hasResolvedPincodeRate && gstAmount > 0 && (
