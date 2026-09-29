@@ -10,13 +10,13 @@ import { raisePickupRequest } from '../../shared/integrations/delhivery/client';
 // again anyway.
 async function getPendingShipments() {
   return db.shipment.findMany({
-    where: { status: 'BOOKED', pickupRequestId: null, riskFlag: null },
+    where: { status: 'BOOKED', carrier: 'DELHIVERY', pickupRequestId: null, riskFlag: null },
     select: { id: true },
   });
 }
 
 export async function getPendingPickupCount(): Promise<number> {
-  return db.shipment.count({ where: { status: 'BOOKED', pickupRequestId: null, riskFlag: null } });
+  return db.shipment.count({ where: { status: 'BOOKED', carrier: 'DELHIVERY', pickupRequestId: null, riskFlag: null } });
 }
 
 export class NoPendingShipmentsError extends Error {
