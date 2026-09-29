@@ -32,3 +32,7 @@ export const COD_ADVANCE_FEE = 90;
 export const PAYMENT_METHODS = ['PREPAID', 'COD'] as const;
 // Parcels heavier than this ship via Ekart even when prepaid.
 export const EKART_MIN_WEIGHT_GRAMS = 500;
+// Ekart's flat rate — every Ekart-routed order (COD, or prepaid over the weight
+// threshold) is charged this as shipping instead of Delhivery's live per-route quote.
+// Same value as COD_ADVANCE_FEE on purpose: a non-free COD order's advance IS its shipping.
+export const EKART_FLAT_SHIPPING = 90;
