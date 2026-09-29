@@ -765,12 +765,24 @@ function CheckoutPageContent() {
       </div>
       <div className="flex flex-col gap-2 pt-1" role="radiogroup" aria-label="Payment method">
         {([
-          { id: 'PREPAID', title: 'Pay online (UPI / Card / Netbanking)', sub: 'Pay the full amount now' },
-          { id: 'COD', title: 'Cash on Delivery', sub: `Pay only ${formatCurrency(COD_ADVANCE_FEE)} now, rest on delivery` },
+          {
+            id: 'PREPAID',
+            title: 'Pay online',
+            sub: 'UPI · Cards · Netbanking',
+            badge: hasResolvedPincodeRate ? formatCurrency(total) : null,
+          },
+          {
+            id: 'COD',
+            title: 'Cash on Delivery',
+            sub: hasResolvedPincodeRate
+              ? `Pay ${formatCurrency(codAdvance)} now · ${formatCurrency(codAmountDue)} on delivery`
+              : `Pay ${formatCurrency(COD_ADVANCE_FEE)} now, rest on delivery`,
+            badge: null,
+          },
         ] as const).map((opt) => (
           <label
             key={opt.id}
-            className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
+            className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
               paymentMethod === opt.id ? 'border-[#9C5A26] bg-[#9C5A26]/5' : 'border-[#2B1B0C]/15'
             }`}
           >
@@ -780,29 +792,20 @@ function CheckoutPageContent() {
               value={opt.id}
               checked={paymentMethod === opt.id}
               onChange={() => setPaymentMethod(opt.id)}
-              className="mt-1 accent-[#9C5A26]"
+              className="accent-[#9C5A26]"
             />
-            <span className="flex flex-col">
+            <span className="flex flex-col flex-1 min-w-0">
               <span className="font-body text-sm font-semibold text-[#2B1B0C]">{opt.title}</span>
               <span className="font-body text-[11px] text-[#8A7A63]">{opt.sub}</span>
             </span>
+            {opt.badge && <span className="font-body text-sm font-semibold text-[#2B1B0C]">{opt.badge}</span>}
           </label>
         ))}
       </div>
-      {isCod && hasResolvedPincodeRate && (
-        <div className="rounded-xl bg-[#9C5A26]/5 border border-[#9C5A26]/20 px-3 py-2.5 flex flex-col gap-1">
-          <div className="flex justify-between font-body text-sm text-[#2B1B0C]">
-            <span>Pay now (shipping charges)</span>
-            <span className="font-semibold">{formatCurrency(codAdvance)}</span>
-          </div>
-          <div className="flex justify-between font-body text-sm text-[#2B1B0C]">
-            <span>Pay on delivery (net COD amount)</span>
-            <span className="font-semibold">{formatCurrency(codAmountDue)}</span>
-          </div>
-          <p className="font-body text-[11px] text-[#8A7A63] mt-1">
-            Note: the {formatCurrency(codAdvance)} paid now is only the shipping charge for COD. It is adjusted against your order total — the remaining {formatCurrency(codAmountDue)} is paid in cash when your order arrives.
-          </p>
-        </div>
+      {isCod && (
+        <p className="font-body text-[11px] text-[#8A7A63] -mt-1">
+          The {formatCurrency(COD_ADVANCE_FEE)} is your shipping charge — it&apos;s already counted in your total.
+        </p>
       )}
       {!hasResolvedPincodeRate && (
         <p className="font-body text-[10px] text-[#8A7A63] text-right -mt-1">
@@ -822,7 +825,13 @@ function CheckoutPageContent() {
             disabled={submitting || rzpLoading || items.length === 0}
             className="mt-4 bg-[#2B1B0C] text-white border border-[#2B1B0C] rounded-full px-8 py-4 font-body font-bold uppercase tracking-widest text-sm hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? 'Processing...' : isCod ? `Pay ${formatCurrency(codAdvance)} & Place COD Order` : 'Pay Now'}
+            {submitting
+              ? 'Processing...'
+              : isCod
+                ? `Pay ${formatCurrency(codAdvance)} & Place Order`
+                : hasResolvedPincodeRate
+                  ? `Pay ${formatCurrency(total)}`
+                  : 'Pay Now'}
           </button>
           <p className="flex items-center justify-center gap-1.5 font-body text-[10px] text-[#8A7A63] mt-1">
             <ShieldCheck className="w-3.5 h-3.5 text-[#9C5A26]" />
