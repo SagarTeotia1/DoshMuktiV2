@@ -66,6 +66,11 @@ export default async function CheckoutSuccessPage({
           Order <span className="font-bold text-[#2B1B0C]">{orderNumber}</span>
         </p>
       )}
+      {order?.paymentMethod === 'COD' && (
+        <p className="inline-block rounded-full bg-[#9C5A26]/10 px-4 py-1.5 font-body text-sm font-semibold text-[#2B1B0C] mb-3">
+          Paid ₹{Number(order.codAdvanceAmount)} · Pay ₹{Number(order.codAmountDue)} on delivery
+        </p>
+      )}
       <p className="font-body text-sm text-[#8A7A63] mb-8">
         Thank you for your order. We&apos;ve sent a confirmation to your email/WhatsApp.
       </p>

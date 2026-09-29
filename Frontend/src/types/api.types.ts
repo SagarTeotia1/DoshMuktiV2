@@ -259,6 +259,11 @@ export interface OrderTrackingResponse {
   shippingFee: number;
   discountAmount: number;
   total: number;
+  // COD: `codAdvanceAmount` was paid online, `codAmountDue` is collected in cash on
+  // delivery. Both 0 for PREPAID. (Prisma Decimals serialize as strings — wrap in Number().)
+  paymentMethod: PaymentMethod;
+  codAdvanceAmount: number | string;
+  codAmountDue: number | string;
   // Inclusive GST breakup of the items' line totals — same formula as the invoice PDF.
   // gstAmount is 0 when no item on the order carries a gstRate.
   taxableValue: number;
