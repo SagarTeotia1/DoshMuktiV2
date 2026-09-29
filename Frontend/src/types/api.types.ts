@@ -240,15 +240,19 @@ export type CouponPreviewResponse =
   | { valid: true; discountAmount: number }
   | { valid: false; error: string; code: CouponErrorCode };
 
-export interface CheckoutResponse {
+interface CheckoutResponseBase {
   orderId: string;
   orderNumber: string;
-  rzpOrderId: string;
-  amount: number;
   currency: string;
   paymentMethod: PaymentMethod;
   codAmountDue: number;
 }
+
+// Backend picks the gateway (PAYMENT_GATEWAY env): Razorpay opens its modal with
+// rzpOrderId (amount in paise); HDFC SmartGateway redirects the browser to paymentLink.
+export type CheckoutResponse =
+  | (CheckoutResponseBase & { gateway: 'RAZORPAY'; rzpOrderId: string; amount: number })
+  | (CheckoutResponseBase & { gateway: 'HDFC'; paymentLink: string; amount: number });
 
 export interface OrderTrackingResponse {
   orderNumber: string;

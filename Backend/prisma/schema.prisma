@@ -355,9 +355,20 @@ model Payment {
   id                String        @id @default(cuid())
   orderId           String        @unique
   order             Order         @relation(fields: [orderId], references: [id])
-  razorpayOrderId   String        @unique
+  // Which gateway took this payment. Defaults to HDFC (not RAZORPAY) on purpose: the
+  // HDFC SmartGateway build in UAT inserts Payment rows without knowing this column,
+  // and those rows must read back as HDFC. Razorpay rows set it explicitly.
+  gateway           PaymentGateway @default(HDFC)
+  // Razorpay identifiers (null on HDFC rows).
+  razorpayOrderId   String?       @unique
   razorpayPaymentId String?
   razorpaySignature String?
+  razorpayRefundId  String?
+  // HDFC SmartGateway identifiers (null on Razorpay rows). hdfcOrderId is our own
+  // Order.orderNumber mirrored here — SmartGateway identifies the order by it.
+  hdfcOrderId       String?       @unique
+  hdfcTxnId         String?
+  hdfcRefundId      String?
   status            PaymentStatus @default(PENDING)
   amount            Decimal       @db.Decimal(10, 2)
   currency          String        @default("INR")
@@ -365,10 +376,14 @@ model Payment {
   failureReason     String?
   // Set when an admin cancels a prepaid order before delivery — see
   // orders/service.ts's updateOrderStatus. Null means never refunded.
-  razorpayRefundId  String?
   refundedAt        DateTime?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
+}
+
+enum PaymentGateway {
+  RAZORPAY
+  HDFC
 }
 
 enum PaymentStatus {

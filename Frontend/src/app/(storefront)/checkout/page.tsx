@@ -510,6 +510,15 @@ function CheckoutPageContent() {
       });
 
       trackAddPaymentInfo(total);
+
+      if (result.gateway === 'HDFC') {
+        // Hosted payment page — full-page redirect. The bank sends the customer back via
+        // the Backend's /api/checkout/return, which verifies status server-side and then
+        // redirects to /checkout/success. Leave `submitting` true; the page is unloading.
+        window.location.href = result.paymentLink;
+        return;
+      }
+
       await openCheckout({
         amount: result.amount,
         currency: result.currency,
@@ -826,7 +835,7 @@ function CheckoutPageContent() {
           </button>
           <p className="flex items-center justify-center gap-1.5 font-body text-[10px] text-[#8A7A63] mt-1">
             <ShieldCheck className="w-3.5 h-3.5 text-[#9C5A26]" />
-            Secured by Razorpay
+            Secure online payment
           </p>
         </>
       ) : (

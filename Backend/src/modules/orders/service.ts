@@ -9,7 +9,8 @@ import {
   type NdrAction,
 } from '../../shared/integrations/delhivery/client';
 import { fixLabelPdf, type LabelSize } from '../../shared/integrations/delhivery/labelPdf';
-import { refundPayment } from '../../shared/integrations/razorpay/client';
+import { refundPayment as refundRazorpayPayment } from '../../shared/integrations/razorpay/client';
+import { refundPayment as refundHdfcPayment, APIError as HdfcAPIError } from '../../shared/integrations/hdfc-smartgateway/client';
 import { logger } from '../../shared/logger/pino';
 import { addItemToCart } from '../cart/service';
 import { releaseCouponUsageTx } from '../coupons/service';
@@ -459,52 +460,62 @@ export async function updateOrderStatus(
   if (newStatus !== 'CANCELLED') return { order };
 
   const payment = await db.payment.findUnique({ where: { orderId } });
-  if (!payment || payment.status !== 'CAPTURED' || !payment.razorpayPaymentId || payment.refundedAt) {
+  const isHdfc = payment?.gateway === 'HDFC';
+  const gatewayName = isHdfc ? 'SmartGateway' : 'Razorpay';
+  const paidRef = isHdfc ? payment?.hdfcOrderId : payment?.razorpayPaymentId;
+  if (!payment || payment.status !== 'CAPTURED' || !paidRef || payment.refundedAt) {
     return { order }; // never paid, already refunded, or payment failed — nothing to refund
   }
 
   // Marks the order REFUNDED once Payment already carries a refund id — shared by both
-  // the request that actually called Razorpay and a concurrent duplicate that lost the
-  // race (see the "already refunded" branch below). Re-running this is harmless: it's
-  // the same transition either way, just logged twice if it genuinely races.
-  async function markOrderRefunded(refundId: string) {
+  // the request that actually called the gateway and a concurrent duplicate that lost the
+  // race. Re-running this is harmless: it's the same transition either way.
+  async function markOrderRefunded(refundId: string, status?: string) {
     return db.$transaction(async (tx) => {
       const updated = await tx.order.update({ where: { id: orderId }, data: { status: 'REFUNDED' } });
       await tx.orderStatusLog.create({
-        data: { orderId, from: 'CANCELLED', to: 'REFUNDED', note: `Razorpay refund ${refundId}`, createdBy: admin },
+        data: { orderId, from: 'CANCELLED', to: 'REFUNDED', note: `${gatewayName} refund ${refundId}${status ? ` (${status})` : ''}`, createdBy: admin },
       });
       return updated;
     });
   }
 
+  // Refund amount is payment.amount — for COD that's only the advance actually paid online.
   try {
-    const { refundId } = await refundPayment(payment.razorpayPaymentId, Number(payment.amount));
+    let refundId: string;
+    let refundStatus: string | undefined;
+    if (isHdfc) {
+      // Deterministic: SmartGateway rejects a reused unique_request_id, so a retry of this
+      // exact refund must send the SAME id to stay idempotent. Must be <21 chars.
+      const result = await refundHdfcPayment(paidRef, Number(payment.amount), `r_${order.orderNumber}`);
+      refundId = result.refundId;
+      refundStatus = result.status;
+    } else {
+      refundId = (await refundRazorpayPayment(paidRef, Number(payment.amount))).refundId;
+    }
     await db.payment.update({
       where: { orderId },
-      data: { status: 'REFUNDED', razorpayRefundId: refundId, refundedAt: new Date() },
+      data: { status: 'REFUNDED', refundedAt: new Date(), ...(isHdfc ? { hdfcRefundId: refundId } : { razorpayRefundId: refundId }) },
     });
-    return { order: await markOrderRefunded(refundId) };
+    return { order: await markOrderRefunded(refundId, refundStatus) };
   } catch (err) {
-    // Razorpay's SDK throws a plain object here (`{statusCode, error: {code, description}}`),
-    // never an Error — reading err.message on it silently produced nothing and always fell
-    // through to the generic fallback, hiding the real reason from the admin.
+    // Razorpay's SDK throws a plain object (`{statusCode, error: {code, description}}`),
+    // never an Error; SmartGateway's SDK throws an APIError with error_message.
     const razorpayError = (err as { error?: { description?: string; code?: string } } | null)?.error;
-    const reason = razorpayError?.description ?? (err instanceof Error ? err.message : 'Refund failed — retry from the Razorpay dashboard');
+    const reason = isHdfc
+      ? (err instanceof HdfcAPIError ? err.error_message : undefined) ?? (err instanceof Error ? err.message : 'Refund failed — retry from the SmartGateway dashboard')
+      : razorpayError?.description ?? (err instanceof Error ? err.message : 'Refund failed — retry from the Razorpay dashboard');
 
-    // A near-simultaneous duplicate request (double-click, double-submit) can lose this
-    // exact race: the sibling request's refund already landed at Razorpay by the time
-    // this one's call goes out, so Razorpay correctly rejects it — that's not a real
-    // failure, just this request losing to its sibling. Reconcile from the DB instead
-    // of reporting it as broken.
-    if (razorpayError?.code === 'BAD_REQUEST_ERROR' && /already.*refunded/i.test(reason)) {
-      const fresh = await db.payment.findUnique({ where: { orderId } });
-      if (fresh?.razorpayRefundId) return { order: await markOrderRefunded(fresh.razorpayRefundId) };
-    }
+    // A near-simultaneous duplicate request (double-click) can lose the race: the
+    // sibling's refund already landed at the gateway, so it correctly rejects this one.
+    // Reconcile from our own DB — always safe, regardless of the exact error wording.
+    const fresh = await db.payment.findUnique({ where: { orderId } });
+    const freshRefundId = isHdfc ? fresh?.hdfcRefundId : fresh?.razorpayRefundId;
+    if (freshRefundId) return { order: await markOrderRefunded(freshRefundId) };
 
     logger.error({ err, orderId, orderNumber: order.orderNumber }, 'Refund failed after order cancellation');
-    // Order status stays CANCELLED (never faked as REFUNDED), but the failure needs to
-    // survive a page reload, not just the one toast the admin who clicked Cancel saw —
-    // a same-status log entry is how "refund pending/failed" shows up in Status History.
+    // Order status stays CANCELLED (never faked as REFUNDED), but the failure must survive
+    // a page reload — a same-status log entry is how "refund pending/failed" shows up.
     await db.orderStatusLog.create({
       data: { orderId, from: 'CANCELLED', to: 'CANCELLED', note: `Refund failed: ${reason}`, createdBy: admin },
     });

@@ -3,6 +3,7 @@ import { invalidateProductCaches } from '../modules/products/service';
 import { cancelPendingOrderTx } from '../modules/orders/service';
 import { handlePaymentCaptured } from '../modules/webhooks/service';
 import { findCapturedPayment } from '../shared/integrations/razorpay/client';
+import { getOrderStatus } from '../shared/integrations/hdfc-smartgateway/client';
 import { logger } from '../shared/logger/pino';
 
 // Sweeps orders stuck in PENDING_PAYMENT past their reservation window and releases the
@@ -21,7 +22,7 @@ async function reconcileWithRazorpay(orderId: string, razorpayOrderId: string): 
   try {
     const captured = await findCapturedPayment(razorpayOrderId);
     if (!captured) return false;
-    await handlePaymentCaptured(razorpayOrderId, captured.razorpayPaymentId);
+    await handlePaymentCaptured('RAZORPAY', razorpayOrderId, captured.razorpayPaymentId);
     logger.warn({ orderId, razorpayOrderId }, 'release-holds: found a captured payment Razorpay had that we missed — reconciled instead of cancelling');
     return true;
   } catch (err) {
@@ -29,6 +30,22 @@ async function reconcileWithRazorpay(orderId: string, razorpayOrderId: string): 
     // it pending past its window for the next run to retry than to risk cancelling a
     // paid order because Razorpay's API itself was unreachable this one time.
     logger.error({ err, orderId, razorpayOrderId }, 'release-holds: Razorpay reconciliation check failed, leaving order pending');
+    return true;
+  }
+}
+
+// Same never-cancel-a-paid-order guard as above, for HDFC SmartGateway payments: ask the
+// gateway's Order Status API (the source of truth) before releasing. Returns true when
+// the order was reconciled or the check couldn't complete (caller skips cancelling).
+async function reconcileWithHdfc(orderId: string, hdfcOrderId: string): Promise<boolean> {
+  try {
+    const status = await getOrderStatus(hdfcOrderId);
+    if (status.status !== 'CHARGED') return false;
+    await handlePaymentCaptured('HDFC', hdfcOrderId, status.txnId ?? hdfcOrderId);
+    logger.warn({ orderId, hdfcOrderId }, 'release-holds: found a charged payment SmartGateway had that we missed — reconciled instead of cancelling');
+    return true;
+  } catch (err) {
+    logger.error({ err, orderId, hdfcOrderId }, 'release-holds: SmartGateway status check failed, leaving order pending');
     return true;
   }
 }
@@ -41,7 +58,9 @@ export async function releaseExpiredHolds(): Promise<{ released: number }> {
 
   let released = 0;
   for (const order of expired) {
-    if (order.payment?.razorpayOrderId) {
+    if (order.payment?.gateway === 'HDFC' && order.payment.hdfcOrderId) {
+      if (await reconcileWithHdfc(order.id, order.payment.hdfcOrderId)) continue;
+    } else if (order.payment?.razorpayOrderId) {
       const reconciledOrUnconfirmed = await reconcileWithRazorpay(order.id, order.payment.razorpayOrderId);
       if (reconciledOrUnconfirmed) continue;
     }

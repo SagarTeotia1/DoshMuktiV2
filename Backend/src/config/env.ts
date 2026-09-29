@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const envSchema = z.object({
+const envObject = z.object({
   PORT: z.coerce.number().int().default(4000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   // Comma-separated so local dev can allow both localhost and a LAN IP at once
@@ -10,6 +10,14 @@ const envSchema = z.object({
     .transform((s) => s.split(',').map((origin) => origin.trim()))
     .pipe(z.array(z.string().url()).min(1)),
   ADMIN_ORIGIN: z.string().url(),
+  // This service's own publicly reachable base URL — used to build the return_url HDFC
+  // SmartGateway redirects the customer's browser to after payment. Trailing slash
+  // stripped so `${BACKEND_PUBLIC_URL}/api/checkout/return` never gets a double slash.
+  BACKEND_PUBLIC_URL: z.string().default('').transform((s) => s.replace(/\/+$/, '')),
+  // Which gateway NEW checkouts use. Both stay wired up: webhooks, refunds and
+  // reconciliation route by each Payment row's own `gateway`, so flipping this never
+  // strands in-flight payments. The one selected here must have its credentials set.
+  PAYMENT_GATEWAY: z.enum(['razorpay', 'hdfc']).default('razorpay'),
 
   DATABASE_URL: z.string().min(1),
   DIRECT_URL: z.string().min(1),
@@ -23,9 +31,23 @@ const envSchema = z.object({
   UPSTASH_REDIS_REST_URL: z.string().default(''),
   UPSTASH_REDIS_REST_TOKEN: z.string().default(''),
 
-  RAZORPAY_KEY_ID: z.string().min(1),
-  RAZORPAY_KEY_SECRET: z.string().min(1),
-  RAZORPAY_WEBHOOK_SECRET: z.string().min(1),
+  RAZORPAY_KEY_ID: z.string().default(''),
+  RAZORPAY_KEY_SECRET: z.string().default(''),
+  RAZORPAY_WEBHOOK_SECRET: z.string().default(''),
+
+  // HDFC SmartGateway (expresscheckout). Private/public keys are PEM contents (not file
+  // paths) so deployment works via plain env vars like every other secret here.
+  HDFC_MERCHANT_ID: z.string().default(''),
+  HDFC_PAYMENT_PAGE_CLIENT_ID: z.string().default(''),
+  HDFC_KEY_UUID: z.string().default(''),
+  HDFC_PRIVATE_KEY: z.string().default(''),
+  HDFC_PUBLIC_KEY: z.string().default(''),
+  // Dashboard → Settings → General → "Use signed response" — verifies the return_url.
+  HDFC_RESPONSE_KEY: z.string().default(''),
+  HDFC_BASE_URL: z.string().url().default('https://smartgateway.hdfcuat.bank.in'),
+  // Dashboard → Payments → Settings → Webhook basic-auth credentials.
+  HDFC_WEBHOOK_USERNAME: z.string().default(''),
+  HDFC_WEBHOOK_PASSWORD: z.string().default(''),
 
   R2_ACCOUNT_ID: z.string().default(''),
   R2_ACCESS_KEY_ID: z.string().default(''),
@@ -80,6 +102,27 @@ const unquoted = Object.fromEntries(
     typeof value === 'string' ? value.replace(/^(['"])(.*)\1$/, '$2') : value,
   ])
 );
+
+// The active gateway's credentials must be present — crash at boot, not at first checkout.
+const envSchema = envObject.superRefine((e, ctx) => {
+  const required =
+    e.PAYMENT_GATEWAY === 'razorpay'
+      ? (['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'] as const)
+      : ([
+          'BACKEND_PUBLIC_URL',
+          'HDFC_MERCHANT_ID',
+          'HDFC_PAYMENT_PAGE_CLIENT_ID',
+          'HDFC_KEY_UUID',
+          'HDFC_PRIVATE_KEY',
+          'HDFC_PUBLIC_KEY',
+          'HDFC_RESPONSE_KEY',
+          'HDFC_WEBHOOK_USERNAME',
+          'HDFC_WEBHOOK_PASSWORD',
+        ] as const);
+  for (const key of required) {
+    if (!e[key]) ctx.addIssue({ code: 'custom', path: [key], message: `Required when PAYMENT_GATEWAY=${e.PAYMENT_GATEWAY}` });
+  }
+});
 
 const parsed = envSchema.safeParse(unquoted);
 

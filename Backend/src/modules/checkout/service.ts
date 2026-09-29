@@ -1,7 +1,9 @@
 import { format } from "date-fns";
 import type { Prisma } from "@prisma/client";
 import { db } from "../../shared/db/client";
-import { razorpay } from "../../shared/integrations/razorpay/client";
+import { getRazorpay } from "../../shared/integrations/razorpay/client";
+import { createOrderSession } from "../../shared/integrations/hdfc-smartgateway/client";
+import { handlePaymentFailed } from "../webhooks/service";
 import { redis } from "../../shared/cache/client";
 import { cacheKeys, CACHE_TTL } from "../../shared/cache/keys";
 import { env } from "../../config/env";
@@ -26,6 +28,15 @@ export class OutOfStockError extends Error {
   constructor(public variantId: string) {
     super(`Out of stock: ${variantId}`);
     this.name = "OutOfStockError";
+  }
+}
+
+// The order + reservation already committed before this can be thrown; the caller has
+// already released the stock/coupon hold and cancelled the order via handlePaymentFailed.
+export class PaymentGatewayError extends Error {
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : "Payment gateway request failed");
+    this.name = "PaymentGatewayError";
   }
 }
 
@@ -229,6 +240,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
     input.paymentMethod,
   );
   const paymentMethod = input.paymentMethod;
+  const gateway = env.PAYMENT_GATEWAY === "hdfc" ? ("HDFC" as const) : ("RAZORPAY" as const);
   const reservedUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
   const { order, payment } = await withSerializableRetry(() =>
@@ -314,7 +326,12 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
         const payment = await tx.payment.create({
           data: {
             orderId: order.id,
-            razorpayOrderId: `pending_${order.id}`,
+            gateway,
+            // Razorpay's id is filled in after its API call; HDFC uses our own
+            // orderNumber as the gateway order id, known up front.
+            ...(gateway === "HDFC"
+              ? { hdfcOrderId: orderNumber }
+              : { razorpayOrderId: `pending_${order.id}` }),
             // What Razorpay actually charges: full total for prepaid, only the COD
             // advance for COD (the rest is collected in cash on delivery).
             amount: breakdown.payNow,
@@ -341,8 +358,39 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
 
   const finalTotal = Number(payment.amount);
 
+  const common = {
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    currency: "INR",
+    paymentMethod,
+    codAmountDue: Number(order.codAmountDue),
+  };
+
+  if (gateway === "HDFC") {
+    // SmartGateway call OUTSIDE the transaction — never hold a DB connection across a network call
+    const [firstName, ...lastNameParts] = input.customerName.trim().split(/\s+/);
+    try {
+      const session = await createOrderSession({
+        orderId: order.orderNumber,
+        amount: finalTotal,
+        returnUrl: `${env.BACKEND_PUBLIC_URL}/api/checkout/return`,
+        customerId: userId,
+        customerEmail: input.customerEmail,
+        customerPhone: input.customerPhone,
+        firstName,
+        lastName: lastNameParts.join(" ") || undefined,
+      });
+      return { ...common, gateway: "HDFC" as const, paymentLink: session.paymentLink, amount: finalTotal };
+    } catch (err) {
+      // Order + Payment(PENDING) already committed — release the hold now instead of
+      // stranding the order until the release-holds cron notices.
+      await handlePaymentFailed("HDFC", order.orderNumber, "SmartGateway order session creation failed");
+      throw new PaymentGatewayError(err);
+    }
+  }
+
   // Razorpay call OUTSIDE the transaction — never hold a DB connection open across a network call
-  const rzpOrder = await razorpay.orders.create({
+  const rzpOrder = await getRazorpay().orders.create({
     amount: Math.round(finalTotal * 100),
     currency: "INR",
     receipt: order.orderNumber,
@@ -353,13 +401,5 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
     data: { razorpayOrderId: rzpOrder.id },
   });
 
-  return {
-    orderId: order.id,
-    orderNumber: order.orderNumber,
-    rzpOrderId: rzpOrder.id,
-    amount: Math.round(finalTotal * 100),
-    currency: "INR",
-    paymentMethod,
-    codAmountDue: Number(order.codAmountDue),
-  };
+  return { ...common, gateway: "RAZORPAY" as const, rzpOrderId: rzpOrder.id, amount: Math.round(finalTotal * 100) };
 }

@@ -31,3 +31,9 @@ export const verifyPaymentSchema = z.object({
   razorpaySignature: z.string().min(1),
 });
 export type VerifyPaymentInput = z.infer<typeof verifyPaymentSchema>;
+
+// Query params HDFC SmartGateway appends when redirecting the customer back.
+export const returnUrlSchema = z.object({
+  order_id: z.string().min(1),
+  status: z.string().min(1),
+});

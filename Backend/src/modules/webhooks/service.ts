@@ -5,7 +5,37 @@ import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
 import { syncOrderStatusFromShipment, applyWeightDiscrepancyCost, bookOrderShipment } from '../orders/service';
 
-export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPaymentId: string): Promise<void> {
+export type PaymentGatewayId = 'RAZORPAY' | 'HDFC';
+
+// Gateway-specific column names differ (razorpayOrderId vs hdfcOrderId) but the state
+// machine is identical, so both gateways share these handlers; only the row lookup and
+// the raw-SQL column differ. Every lookup is keyed by the gateway's own order id, which
+// is globally unique per gateway (Razorpay: order_xxx, HDFC: our DOSH-… order number).
+async function markPaymentCaptured(gateway: PaymentGatewayId, orderId: string, txnId: string): Promise<number> {
+  return gateway === 'RAZORPAY'
+    ? db.$executeRaw`
+        UPDATE "Payment" SET status = 'CAPTURED', "razorpayPaymentId" = ${txnId}, "verifiedAt" = NOW()
+        WHERE "razorpayOrderId" = ${orderId} AND status IN ('PENDING', 'FAILED')
+      `
+    : db.$executeRaw`
+        UPDATE "Payment" SET status = 'CAPTURED', "hdfcTxnId" = ${txnId}, "verifiedAt" = NOW()
+        WHERE "hdfcOrderId" = ${orderId} AND status IN ('PENDING', 'FAILED')
+      `;
+}
+
+async function markPaymentFailed(gateway: PaymentGatewayId, orderId: string, reason: string): Promise<number> {
+  return gateway === 'RAZORPAY'
+    ? db.$executeRaw`
+        UPDATE "Payment" SET status = 'FAILED', "failureReason" = ${reason}
+        WHERE "razorpayOrderId" = ${orderId} AND status = 'PENDING'
+      `
+    : db.$executeRaw`
+        UPDATE "Payment" SET status = 'FAILED', "failureReason" = ${reason}
+        WHERE "hdfcOrderId" = ${orderId} AND status = 'PENDING'
+      `;
+}
+
+export async function handlePaymentCaptured(gateway: PaymentGatewayId, razorpayOrderId: string, razorpayPaymentId: string): Promise<void> {
   // Idempotent, and covers a customer retry on the same Razorpay order after an earlier
   // attempt failed: Razorpay lets multiple payment attempts hit one order_id, so a prior
   // handlePaymentFailed can have already flipped this row to FAILED (and cancelled the
@@ -14,14 +44,11 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
   // no-op'ing — money captured with no matching live order was exactly that bug.
   // Still replay-safe: once this flips the row to CAPTURED, a duplicate delivery of the
   // same event finds status outside ('PENDING','FAILED') and no-ops as before.
-  const updated: number = await db.$executeRaw`
-    UPDATE "Payment" SET status = 'CAPTURED', "razorpayPaymentId" = ${razorpayPaymentId}, "verifiedAt" = NOW()
-    WHERE "razorpayOrderId" = ${razorpayOrderId} AND status IN ('PENDING', 'FAILED')
-  `;
+  const updated = await markPaymentCaptured(gateway, razorpayOrderId, razorpayPaymentId);
   if (updated === 0) return;
 
   const payment = await db.payment.findUnique({
-    where: { razorpayOrderId },
+    where: gateway === 'RAZORPAY' ? { razorpayOrderId } : { hdfcOrderId: razorpayOrderId },
     include: { order: { include: { items: { include: { variant: true } } } } },
   });
   if (!payment) return;
@@ -103,15 +130,12 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
 // indistinguishable from a live in-progress order in Admin for up to
 // RESERVATION_MINUTES. Now it releases the reservation immediately, same
 // atomic/append-only rules as release-holds.ts.
-export async function handlePaymentFailed(razorpayOrderId: string, reason: string): Promise<void> {
-  const updated: number = await db.$executeRaw`
-    UPDATE "Payment" SET status = 'FAILED', "failureReason" = ${reason}
-    WHERE "razorpayOrderId" = ${razorpayOrderId} AND status = 'PENDING'
-  `;
+export async function handlePaymentFailed(gateway: PaymentGatewayId, razorpayOrderId: string, reason: string): Promise<void> {
+  const updated = await markPaymentFailed(gateway, razorpayOrderId, reason);
   if (updated === 0) return; // already processed
 
   const payment = await db.payment.findUnique({
-    where: { razorpayOrderId },
+    where: gateway === 'RAZORPAY' ? { razorpayOrderId } : { hdfcOrderId: razorpayOrderId },
     include: { order: { include: { items: true } } },
   });
   if (!payment) return;

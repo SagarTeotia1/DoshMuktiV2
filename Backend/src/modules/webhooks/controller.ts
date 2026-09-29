@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { env } from '../../config/env';
+import { verifyWebhookBasicAuth } from '../../shared/integrations/hdfc-smartgateway/client';
 import { handlePaymentCaptured, handlePaymentFailed, handleDelhiveryStatusUpdate } from './service';
 
 interface RawBodyRequest extends FastifyRequest {
@@ -26,10 +27,38 @@ export async function razorpayWebhookHandler(req: RawBodyRequest, reply: Fastify
 
   if (event.event === 'payment.captured') {
     const { order_id, id } = event.payload.payment.entity;
-    await handlePaymentCaptured(order_id, id);
+    await handlePaymentCaptured('RAZORPAY', order_id, id);
   } else if (event.event === 'payment.failed') {
     const { order_id, error_description } = event.payload.payment.entity;
-    await handlePaymentFailed(order_id, error_description ?? 'Payment failed');
+    await handlePaymentFailed('RAZORPAY', order_id, error_description ?? 'Payment failed');
+  }
+}
+
+interface SmartGatewayWebhookBody {
+  id: string;
+  event_name: string;
+  content: { order: { order_id: string; status: string; txn_id?: string; id?: string } };
+}
+
+// Auth is HTTP Basic (dashboard-configured username/password), not HMAC. Durability
+// backstop for /checkout/return, which never fires if the customer closes the tab before
+// the bank redirects them back — handlers are idempotent, so whichever arrives first wins.
+export async function hdfcWebhookHandler(req: FastifyRequest, reply: FastifyReply) {
+  if (!verifyWebhookBasicAuth(req.headers.authorization)) {
+    return reply.code(401).send({ error: 'Invalid credentials' });
+  }
+
+  // Ack before processing — SmartGateway retries if no 200 within a few seconds
+  reply.code(200).send({ status: 'ok' });
+
+  const order = (req.body as SmartGatewayWebhookBody).content?.order;
+  if (!order) return;
+  const event = (req.body as SmartGatewayWebhookBody).event_name;
+
+  if (event === 'ORDER_SUCCEEDED') {
+    await handlePaymentCaptured('HDFC', order.order_id, order.txn_id ?? order.id ?? order.order_id);
+  } else if (event === 'ORDER_FAILED') {
+    await handlePaymentFailed('HDFC', order.order_id, `SmartGateway order status: ${order.status}`);
   }
 }
 
