@@ -100,6 +100,11 @@ export class NoWaybillError extends Error {
 async function getWaybillOrThrow(orderId: string): Promise<string> {
   const shipment = await db.shipment.findUnique({ where: { orderId } });
   if (!shipment?.delhiveryWaybill) throw new NoWaybillError();
+  // Label / NDR / e-way bill below are Delhivery API calls — sending them an Ekart
+  // tracking id would fail or hit the wrong parcel. Ekart equivalents aren't built yet.
+  if (shipment.carrier === 'EKART') {
+    throw new Error('This is an Ekart shipment — print the label / handle NDR from the Ekart dashboard (not supported here yet).');
+  }
   return shipment.delhiveryWaybill;
 }
 

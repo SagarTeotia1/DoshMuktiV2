@@ -10,7 +10,7 @@ export async function syncOpenShipments(): Promise<{ synced: number }> {
   if (!env.DELHIVERY_API_KEY) return { synced: 0 };
 
   const open = await db.shipment.findMany({
-    where: { status: { in: ['BOOKED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] }, delhiveryWaybill: { not: null } },
+    where: { status: { in: ['BOOKED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] }, delhiveryWaybill: { not: null }, carrier: 'DELHIVERY' },
   });
 
   let synced = 0;
