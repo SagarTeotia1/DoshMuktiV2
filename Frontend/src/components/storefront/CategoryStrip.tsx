@@ -7,6 +7,10 @@ export interface CategoryThumb {
   image: string | null;
 }
 
+// Strip is tight on space — the admin can set a short strip name per category; without one
+// we fall back to the first word of the name ("Rudraksha / Kada" → "Rudraksha").
+export const firstWord = (label: string) => label.split(/[\s/]+/)[0] ?? label;
+
 export function CategoryStrip({ items }: { items: CategoryThumb[] }) {
   const visible = items.filter((i) => i.image);
   if (visible.length === 0) return null;

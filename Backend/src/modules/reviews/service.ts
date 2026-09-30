@@ -1,6 +1,13 @@
 import { db } from '../../shared/db/client';
 import type { CreateReviewInput, AdminListReviewsQuery, ModerateReviewInput, ProductReviewsQuery } from './schema';
 
+export class ReviewNotFoundError extends Error {
+  constructor() {
+    super('Review not found');
+    this.name = 'ReviewNotFoundError';
+  }
+}
+
 export class ProductNotFoundError extends Error {
   constructor() {
     super('Product not found');
@@ -113,5 +120,15 @@ export async function listForAdmin(query: AdminListReviewsQuery) {
 }
 
 export async function moderateReview(id: string, input: ModerateReviewInput) {
+  const existing = await db.review.findUnique({ where: { id }, select: { id: true } });
+  if (!existing) throw new ReviewNotFoundError();
   return db.review.update({ where: { id }, data: { status: input.status } });
+}
+
+// Permanent removal. To only hide a review from the storefront (but keep it for records),
+// use moderateReview -> REJECTED instead.
+export async function deleteReview(id: string) {
+  const existing = await db.review.findUnique({ where: { id }, select: { id: true } });
+  if (!existing) throw new ReviewNotFoundError();
+  await db.review.delete({ where: { id } });
 }

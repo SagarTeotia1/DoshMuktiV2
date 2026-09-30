@@ -24,6 +24,7 @@ import { couponsRoutes } from './modules/coupons/routes';
 import { reviewsRoutes } from './modules/reviews/routes';
 import { chatRoutes } from './modules/chat/routes';
 import { bannersRoutes } from './modules/banners/routes';
+import { categoriesRoutes } from './modules/categories/routes';
 import { homepageSectionsRoutes } from './modules/homepage-sections/routes';
 import { shippingRoutes } from './modules/shipping/routes';
 import { pickupRequestsRoutes } from './modules/pickup-requests/routes';
@@ -83,6 +84,7 @@ export async function buildApp() {
   await app.register(reviewsRoutes, { prefix: '/api' });
   await app.register(chatRoutes, { prefix: '/api' });
   await app.register(bannersRoutes, { prefix: '/api' });
+  await app.register(categoriesRoutes, { prefix: '/api' });
   await app.register(homepageSectionsRoutes, { prefix: '/api' });
   await app.register(shippingRoutes, { prefix: '/api' });
   await app.register(pickupRequestsRoutes, { prefix: '/api' });

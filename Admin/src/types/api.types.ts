@@ -167,6 +167,20 @@ export interface Banner {
   updatedAt: string;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  stripLabel: string | null;
+  image: ProductImage | null;
+  order: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  productCount: number;
+  // Latest ACTIVE product's image — what the storefront shows while `image` is null.
+  fallbackImage: ProductImage | null;
+}
+
 export interface PaginatedOffers {
   offers: Offer[];
   total: number;

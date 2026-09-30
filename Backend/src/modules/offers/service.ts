@@ -1,6 +1,7 @@
 import type { Offer, OfferBehavior, OfferReward, OfferScope, Prisma } from '@prisma/client';
 import { db } from '../../shared/db/client';
 import { invalidateProductCaches } from '../products/service';
+import { categoryExists } from '../categories/service';
 import { getConfigSchema, processReward } from './rewards/registry';
 import type { CreateOfferInput, ListOffersQuery, UpdateOfferInput } from './schema';
 
@@ -52,12 +53,10 @@ async function assertCouponExists(couponId: string) {
   if (!coupon) throw new CouponNotFoundError(couponId);
 }
 
-// Same "is this a real category" check the admin offers list needs — reuses the plain
-// distinct-category existence semantics of getDistinctCategoriesForAdmin (no status
-// filter, so a CATEGORY offer can be attached to a DRAFT-only category too).
+// A CATEGORY offer must point at a category in the admin-managed Category table — including
+// ones with no products yet or only DRAFT ones.
 async function assertCategoryExists(category: string) {
-  const product = await db.product.findFirst({ where: { categories: { has: category } }, select: { id: true } });
-  if (!product) throw new CategoryNotFoundError(category);
+  if (!(await categoryExists(category))) throw new CategoryNotFoundError(category);
 }
 
 // `productIds` is the *actual* linked-product list (SPECIFIC_PRODUCTS only, [] otherwise) —

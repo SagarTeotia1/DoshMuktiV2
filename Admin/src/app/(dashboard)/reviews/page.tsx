@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Star, Check, X } from 'lucide-react';
+import { Star, Check, X, Trash2, EyeOff } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
-import { useReviews, useModerateReview } from '@/hooks/use-reviews';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useReviews, useModerateReview, useDeleteReview } from '@/hooks/use-reviews';
+import type { Review } from '@/types/api.types';
 import { formatDate } from '@/lib/utils';
 import { ApiError } from '@/lib/api-client';
 
@@ -24,12 +26,23 @@ export default function ReviewsPage() {
   const [status, setStatus] = useState<string>('PENDING');
   const { data, isLoading } = useReviews(status || undefined);
   const moderate = useModerateReview();
+  const deleteReview = useDeleteReview();
+  const [deleteTarget, setDeleteTarget] = useState<Review | null>(null);
+
+  function confirmDelete() {
+    if (!deleteTarget) return;
+    deleteReview.mutate(deleteTarget.id, {
+      onSuccess: () => toast.success('Review deleted'),
+      onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to delete review'),
+      onSettled: () => setDeleteTarget(null),
+    });
+  }
 
   function handle(id: string, next: 'APPROVED' | 'REJECTED') {
     moderate.mutate(
       { id, status: next },
       {
-        onSuccess: () => toast.success(next === 'APPROVED' ? 'Review approved' : 'Review rejected'),
+        onSuccess: () => toast.success(next === 'APPROVED' ? 'Review approved' : 'Review removed from site'),
         onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to update review'),
       }
     );
@@ -81,8 +94,17 @@ export default function ReviewsPage() {
                     </div>
                   </div>
 
-                  {review.status === 'PENDING' ? (
-                    <div className="flex gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {review.status !== 'PENDING' && (
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+                          review.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                        }`}
+                      >
+                        {review.status}
+                      </span>
+                    )}
+                    {review.status !== 'APPROVED' && (
                       <button
                         onClick={() => handle(review.id, 'APPROVED')}
                         disabled={moderate.isPending}
@@ -90,6 +112,8 @@ export default function ReviewsPage() {
                       >
                         <Check className="w-3.5 h-3.5" /> Approve
                       </button>
+                    )}
+                    {review.status === 'PENDING' && (
                       <button
                         onClick={() => handle(review.id, 'REJECTED')}
                         disabled={moderate.isPending}
@@ -97,16 +121,25 @@ export default function ReviewsPage() {
                       >
                         <X className="w-3.5 h-3.5" /> Reject
                       </button>
-                    </div>
-                  ) : (
-                    <span
-                      className={`flex-shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${
-                        review.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
-                      }`}
+                    )}
+                    {review.status === 'APPROVED' && (
+                      <button
+                        onClick={() => handle(review.id, 'REJECTED')}
+                        disabled={moderate.isPending}
+                        title="Hide from the storefront but keep it here"
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                      >
+                        <EyeOff className="w-3.5 h-3.5" /> Remove from site
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setDeleteTarget(review)}
+                      title="Delete permanently"
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     >
-                      {review.status}
-                    </span>
-                  )}
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 {review.title && <p className="text-sm font-semibold text-slate-900">{review.title}</p>}
@@ -116,6 +149,15 @@ export default function ReviewsPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete review?"
+        message={`Permanently delete ${deleteTarget?.customerName ?? 'this'} review${deleteTarget ? ` of ${deleteTarget.product.name}` : ''}? This cannot be undone. To only hide it from the storefront, use "Remove from site" instead.`}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+        confirmDisabled={deleteReview.isPending}
+      />
     </>
   );
 }

@@ -19,3 +19,11 @@ export function useModerateReview() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-reviews'] }),
   });
 }
+
+export function useDeleteReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/api/admin/reviews/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-reviews'] }),
+  });
+}

@@ -6,6 +6,12 @@ import { cacheKeys, CACHE_TTL } from '../../shared/cache/keys';
 import { RETURN_ELIGIBLE_ABOVE } from '../../shared/constants/purposes';
 import { attachApplicableOffers, type OfferWithCoupon } from '../offers/service';
 import type { ListProductsQuery, DescriptionBlock } from './schema';
+import {
+  getStorefrontCategories,
+  getAdminCategoryNames,
+  ensureCategoriesExist,
+  type CategoryThumb as StorefrontCategoryThumb,
+} from '../categories/service';
 
 // Single source of truth for whether a product is returnable: an admin override always
 // wins, otherwise it falls back to the price threshold — see Product.returnEligibleOverride.
@@ -182,60 +188,37 @@ export async function getProductsForChatRecommendation(purpose: string, limit = 
   })) as Array<{ id: string; name: string; slug: string; thumb: string | null }>;
 }
 
-// `distinct` can't dedupe an array column the way it does a scalar one (each row's
-// array is its own distinct value) — so this pulls every product's categories and
-// flattens/dedupes in JS. Fine at this catalog's scale (tens to hundreds of products);
-// revisit with a raw `SELECT DISTINCT unnest(categories)` query if that ever changes.
+// Category list now lives in the Category table (admin-managed) — see
+// categories/service.ts. Storefront only sees active categories that have at least one
+// ACTIVE product, in admin-defined order.
 export async function getDistinctCategories(): Promise<string[]> {
   const key = cacheKeys.productCategories();
   const cached = await redis.get<string[]>(key);
   if (cached) return cached;
 
-  const rows = await db.product.findMany({
-    where: { status: 'ACTIVE' },
-    select: { categories: true },
-  });
-  const categories = [...new Set(rows.flatMap((r) => r.categories))].sort();
+  const categories = (await getStorefrontCategories()).map((c) => c.label);
 
   await redis.set(key, categories, { ex: CACHE_TTL.CATEGORIES });
   return categories;
 }
 
-export type CategoryThumb = { id: string; label: string; image: string | null };
+export type CategoryThumb = StorefrontCategoryThumb;
 
-// Collapses what used to be N Frontend→Backend calls (one per category, each a full
-// listProducts query) into a single cached call — shop page was doing 1 + N round trips
-// per load just to get category tile thumbnails.
+// One cached call for every category tile (image = admin-uploaded, else latest product's).
 export async function getCategoryThumbnails(): Promise<CategoryThumb[]> {
   const key = cacheKeys.categoryThumbnails();
   const cached = await redis.get<CategoryThumb[]>(key);
   if (cached) return cached;
 
-  const categories = await getDistinctCategories();
-  const thumbs = await Promise.all(
-    categories.map(async (category): Promise<CategoryThumb> => {
-      const product = await db.product.findFirst({
-        where: { status: 'ACTIVE', categories: { has: category } },
-        select: { images: true },
-        orderBy: { createdAt: 'desc' },
-      });
-      const image = (Array.isArray(product?.images) && (product.images[0] as { card?: unknown } | undefined)?.card) || null;
-      return { id: category, label: category, image: image as string | null };
-    })
-  );
+  const thumbs = await getStorefrontCategories();
 
   await redis.set(key, thumbs, { ex: CACHE_TTL.CATEGORY_THUMBS });
   return thumbs;
 }
 
-// Admin needs categories from DRAFT products too (to reuse when adding a new draft
-// in the same category), so no status filter — and no cache, admin traffic is low.
-// Same flatten-in-JS approach as getDistinctCategories — see its comment.
+// Admin sees every category (inactive/empty included) so products can be filed under any.
 export async function getDistinctCategoriesForAdmin(): Promise<string[]> {
-  const rows = await db.product.findMany({
-    select: { categories: true },
-  });
-  return [...new Set(rows.flatMap((r) => r.categories))].sort();
+  return getAdminCategoryNames();
 }
 
 export async function getFeaturedProducts(limit = 4) {
@@ -389,6 +372,7 @@ export async function createProduct(input: CreateProductInput) {
   await assertNoDuplicateName(input.name);
 
   const { offerIds, ...rest } = input;
+  await ensureCategoriesExist(rest.categories);
   const product = await db.product.create({
     data: {
       ...rest,
@@ -413,6 +397,7 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
   if (input.name) await assertNoDuplicateName(input.name, id);
 
   const { offerIds, ...rest } = input;
+  if (rest.categories) await ensureCategoriesExist(rest.categories);
   const product = await db.product.update({
     where: { id },
     data: {

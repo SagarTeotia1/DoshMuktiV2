@@ -6,6 +6,7 @@ import {
   getRecentReviewsHandler,
   adminListReviewsHandler,
   adminModerateReviewHandler,
+  adminDeleteReviewHandler,
 } from './controller';
 
 export async function reviewsRoutes(app: FastifyInstance) {
@@ -15,4 +16,5 @@ export async function reviewsRoutes(app: FastifyInstance) {
 
   app.get('/admin/reviews', { preHandler: verifyAdmin }, adminListReviewsHandler);
   app.patch('/admin/reviews/:id', { preHandler: verifyAdmin }, adminModerateReviewHandler);
+  app.delete('/admin/reviews/:id', { preHandler: verifyAdmin }, adminDeleteReviewHandler);
 }

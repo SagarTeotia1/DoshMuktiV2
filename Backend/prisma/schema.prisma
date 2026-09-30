@@ -562,6 +562,24 @@ model Banner {
   @@index([isActive, order])
 }
 
+// Admin-managed catalog categories. Product.categories / Offer.category still store the
+// category NAME as a plain string (no FK) — this table is the source of truth for which
+// names exist, their display order, visibility, and optional image. Renaming here cascades
+// to every product/offer in categories/service.ts. `image` null = storefront falls back to
+// the latest ACTIVE product's first image in that category.
+model Category {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  stripLabel String? // short name for the homepage category strip; null = first word of `name`
+  image      Json? // {thumb, card, full} — same shape as Product.images, from /admin/upload
+  order      Int      @default(0) // display order, ascending
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([isActive, order])
+}
+
 // ─── Homepage Sections ──────────────────────────────────────────────────────
 
 // Admin-controlled homepage product rails — lets an admin rename a rail's display

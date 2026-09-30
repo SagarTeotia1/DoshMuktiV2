@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, Boxes, ShoppingBag, Gem, Star, Tag, Ticket, Image as ImageIcon, Receipt, Truck, PackageCheck, Rows3, MessageCircle, Users, X } from 'lucide-react';
+import { LayoutDashboard, Package, Boxes, ShoppingBag, Gem, Star, Tag, Ticket, Image as ImageIcon, Receipt, Truck, PackageCheck, Rows3, LayoutGrid, MessageCircle, Users, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSidebar } from './SidebarContext';
 
 const NAV = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/products', label: 'Products', icon: Package },
+  { href: '/categories', label: 'Categories', icon: LayoutGrid },
   { href: '/homepage', label: 'Homepage', icon: Rows3 },
   { href: '/banners', label: 'Banners', icon: ImageIcon },
   { href: '/offers', label: 'Offers', icon: Tag },

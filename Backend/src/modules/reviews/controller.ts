@@ -14,7 +14,9 @@ import {
   listRecentApproved,
   listForAdmin,
   moderateReview,
+  deleteReview,
   ProductNotFoundError,
+  ReviewNotFoundError,
 } from './service';
 import { getProductBySlug } from '../products/service';
 
@@ -62,6 +64,23 @@ export async function adminModerateReviewHandler(req: FastifyRequest, reply: Fas
   const parsed = moderateReviewSchema.safeParse(req.body);
   if (!parsed.success) return reply.code(400).send({ error: 'Invalid input', details: parsed.error.flatten().fieldErrors });
 
-  const review = await moderateReview(params.data.id, parsed.data);
-  return reply.send(review);
+  try {
+    return reply.send(await moderateReview(params.data.id, parsed.data));
+  } catch (err) {
+    if (err instanceof ReviewNotFoundError) return reply.code(404).send({ error: err.message });
+    throw err;
+  }
+}
+
+export async function adminDeleteReviewHandler(req: FastifyRequest, reply: FastifyReply) {
+  const params = idParamSchema.safeParse(req.params);
+  if (!params.success) return reply.code(400).send({ error: 'Invalid id' });
+
+  try {
+    await deleteReview(params.data.id);
+    return reply.code(204).send();
+  } catch (err) {
+    if (err instanceof ReviewNotFoundError) return reply.code(404).send({ error: err.message });
+    throw err;
+  }
 }
