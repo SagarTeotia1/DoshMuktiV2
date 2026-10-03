@@ -72,6 +72,8 @@ const envSchema = z.object({
   // spec documents an HMAC secret but not the signature header, so the URL token is what
   // we can actually verify. Register via src/scripts/register-ekart-webhook.ts.
   EKART_WEBHOOK_TOKEN: z.string().default(''),
+  // Publicly reachable base URL of this backend (used by the Ekart webhook registration script).
+  BACKEND_PUBLIC_URL: z.string().default('').transform((s) => s.replace(/\/+$/, '')),
 
   TWOFACTOR_API_KEY: z.string().default(''),
 
