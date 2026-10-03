@@ -7,6 +7,9 @@ export const cacheKeys = {
   productCategories: () => `products:categories` as const,
   categoryThumbnails: () => `products:category-thumbs` as const,
   cronLock: (job: string) => `cron:lock:${job}` as const,
+  // Short-lived per-customer guard so a double-click / double-submit on "Pay Now" can't
+  // create two orders (and reserve stock twice) from two in-flight POST /checkout calls.
+  checkoutLock: (userId: string) => `checkout:lock:${userId}` as const,
   chatProfile: (sessionId: string) => `chat:profile:${sessionId}` as const,
   // Per-session daily cap — the per-IP burst limit in chat/routes.ts stops rapid-fire
   // spam but not a single determined user grinding away steadily over hours (or behind

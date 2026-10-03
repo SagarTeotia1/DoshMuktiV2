@@ -12,6 +12,9 @@ import {
   RESERVATION_MINUTES,
   PACKAGING_WEIGHT_GRAMS,
 } from "../../shared/constants/purposes";
+import { logger } from "../../shared/logger/pino";
+import { cancelPendingOrderTx } from "../orders/service";
+import { invalidateProductCaches } from "../products/service";
 import { resolveAutoAppliedRewardsForCheckout } from "../offers/service";
 import {
   findValidatedCoupon,
@@ -26,6 +29,27 @@ export class OutOfStockError extends Error {
   constructor(public variantId: string) {
     super(`Out of stock: ${variantId}`);
     this.name = "OutOfStockError";
+  }
+}
+
+// Razorpay won't take an order under ₹1 (100 paise). A 100%-off coupon or free-gift
+// combination can bring the total to ₹0 — reject before reserving any stock rather than
+// reserve it, fail at Razorpay, and leave the reservation hanging until the sweep.
+const MIN_ONLINE_ORDER_TOTAL = 1;
+
+export class InvalidOrderTotalError extends Error {
+  constructor(public total: number) {
+    super(`Order total ${total} is below the minimum payable online`);
+    this.name = "InvalidOrderTotalError";
+  }
+}
+
+// Razorpay order creation failed after the order + stock reservation were committed.
+// The reservation has already been released by the time this is thrown.
+export class PaymentGatewayError extends Error {
+  constructor() {
+    super("Payment gateway unavailable");
+    this.name = "PaymentGatewayError";
   }
 }
 
@@ -231,6 +255,9 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
   const paymentMethod = input.paymentMethod;
   const reservedUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
+  const orderTotal = subtotal + shippingFee - totalDiscount;
+  if (orderTotal < MIN_ONLINE_ORDER_TOTAL) throw new InvalidOrderTotalError(orderTotal);
+
   const { order, payment } = await withSerializableRetry(() =>
     db.$transaction(
       async (tx) => {
@@ -249,7 +276,6 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
         }
 
         const orderNumber = await generateOrderNumber(tx);
-        const orderTotal = subtotal + shippingFee - totalDiscount;
         const breakdown = computePaymentBreakdown(paymentMethod, orderTotal);
 
         const order = await tx.order.create({
@@ -342,11 +368,37 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
   const finalTotal = Number(payment.amount);
 
   // Razorpay call OUTSIDE the transaction — never hold a DB connection open across a network call
-  const rzpOrder = await razorpay.orders.create({
-    amount: Math.round(finalTotal * 100),
-    currency: "INR",
-    receipt: order.orderNumber,
-  });
+  let rzpOrder: { id: string };
+  try {
+    rzpOrder = await razorpay.orders.create({
+      amount: Math.round(finalTotal * 100),
+      currency: "INR",
+      receipt: order.orderNumber,
+      // Capture automatically whatever the dashboard's default is — with manual capture
+      // payments sit "authorized", payment.captured never fires, and Razorpay auto-refunds
+      // them after ~5 days while our DB (via /checkout/verify) already says paid.
+      payment_capture: true,
+    });
+  } catch (err) {
+    // The order + stock reservation (+ coupon slot) are already committed above. Release
+    // them now instead of leaving them held until the release-holds sweep.
+    logger.error({ err, orderNumber: order.orderNumber }, "Razorpay order creation failed — releasing reservation");
+    try {
+      await db.$transaction((tx) =>
+        cancelPendingOrderTx(
+          tx,
+          { id: order.id, status: "PENDING_PAYMENT", couponId: order.couponId, items: allReservationItems },
+          "Payment gateway error at checkout",
+          "system",
+        ),
+      );
+      await invalidateProductCaches();
+    } catch (releaseErr) {
+      // The sweep (release-holds) still catches it once reservedUntil passes.
+      logger.error({ err: releaseErr, orderNumber: order.orderNumber }, "Could not release reservation after gateway error");
+    }
+    throw new PaymentGatewayError();
+  }
 
   await db.payment.update({
     where: { id: payment.id },
