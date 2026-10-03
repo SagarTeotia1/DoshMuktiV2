@@ -14,7 +14,7 @@ import { useShippingEstimate } from '@/hooks/use-shipping-estimate';
 import { api, ApiError } from '@/lib/api-client';
 import { getSessionId, getBuyNowSessionId } from '@/lib/session';
 import { getToken } from '@/lib/auth';
-import { formatCurrency } from '@/lib/formatters';
+import { formatCurrency, formatDeliveryEstimate } from '@/lib/formatters';
 import { SHIPPING_FEE, FREE_SHIPPING_ABOVE, COD_ADVANCE_FEE } from '@/lib/constants';
 import { trackBeginCheckout, trackAddPaymentInfo } from '@/lib/analytics';
 import type { Address, CheckoutInput, PaymentMethod, CheckoutResponse, CouponPreviewResponse, SuggestedCoupon } from '@/types/api.types';
@@ -397,6 +397,10 @@ function CheckoutPageContent() {
   // never show that guess as if it were the real charge. Free-shipping orders are exempt:
   // ₹0 is correct regardless of pincode, no guess involved.
   const hasResolvedPincodeRate = subtotal > FREE_SHIPPING_ABOVE || (/^\d{6}$/.test(form.pincode) && !!liveShipping.data);
+  const deliveryEstimate = formatDeliveryEstimate({
+    shipment: null,
+    estimatedDeliveryWindow: liveShipping.data?.estimatedDeliveryWindow ?? null,
+  });
   const autoAppliedDiscount = cart?.autoAppliedDiscount ?? 0;
   const preDiscountTotal = subtotal + shippingFee - autoAppliedDiscount;
   const couponDiscount = appliedCoupon?.discountAmount ?? 0;
@@ -763,6 +767,12 @@ function CheckoutPageContent() {
             : formatCurrency(Math.max(subtotal - autoAppliedDiscount - couponDiscount, 0))}
         </span>
       </div>
+      {deliveryEstimate && (
+        <div className="flex justify-between gap-3 font-body text-sm text-[#6B5539]">
+          <span>Estimated delivery</span>
+          <span className="font-semibold text-[#2B1B0C] text-right">{deliveryEstimate}</span>
+        </div>
+      )}
       <div className="flex flex-col gap-2 pt-1" role="radiogroup" aria-label="Payment method">
         {([
           {
@@ -963,7 +973,9 @@ function CheckoutPageContent() {
                           <p className="text-xs text-brand-alert mt-1.5 font-body font-semibold">Not serviceable at this pincode</p>
                         )}
                         {serviceable === true && (
-                          <p className="text-xs text-brand-success mt-1.5 font-body font-semibold">✓ Deliverable to this address</p>
+                          <p className="text-xs text-brand-success mt-1.5 font-body font-semibold">
+                            ✓ Deliverable to this address{deliveryEstimate ? ` · Estimated delivery ${deliveryEstimate}` : ''}
+                          </p>
                         )}
                         {/* Never show a shipping number before it's actually quoted for THIS
                             pincode — the cart-preview figure is an origin-to-origin guess and

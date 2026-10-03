@@ -6,6 +6,8 @@ import { api } from '@/lib/api-client';
 interface ShippingEstimate {
   fee: number;
   originalFee: number;
+  // If ordered now — same window the order tracking/confirmation pages show after purchase.
+  estimatedDeliveryWindow: { from: string; to: string } | null;
 }
 
 // Public, unauthenticated endpoint. Without destPincode: an origin-to-origin estimate

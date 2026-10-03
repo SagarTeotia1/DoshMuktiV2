@@ -268,6 +268,9 @@ export interface OrderTrackingResponse {
   // gstAmount is 0 when no item on the order carries a gstRate.
   taxableValue: number;
   gstAmount: number;
+  // Order-date-based delivery window (ISO dates) — null once an order is cancelled,
+  // refunded, delivered, etc. Used until the carrier supplies shipment.estimatedDelivery.
+  estimatedDeliveryWindow: { from: string; to: string } | null;
   items: Array<{
     variantSnapshot: { productName: string; sku: string; attributes?: Record<string, unknown> };
     quantity: number;

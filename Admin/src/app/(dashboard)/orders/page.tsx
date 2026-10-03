@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Topbar } from '@/components/layout/Topbar';
 import { DataTable } from '@/components/ui/DataTable';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import { StatusBadge, PaymentBadge } from '@/components/ui/StatusBadge';
 import { useOrders } from '@/hooks/use-orders';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ORDER_STATUSES } from '@/lib/constants';
@@ -50,6 +50,7 @@ const columns: ColumnDef<Order, unknown>[] = [
       return <span className="text-slate-400">—</span>;
     },
   },
+  { id: 'payment', header: 'Payment', cell: ({ row }) => <PaymentBadge order={row.original} /> },
   { id: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
   {
     id: 'risk',

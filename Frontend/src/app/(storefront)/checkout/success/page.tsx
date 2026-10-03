@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
 import { api, invoiceUrl } from '@/lib/api-client';
+import { formatDeliveryEstimate } from '@/lib/formatters';
 import { PurchaseTracker } from '@/components/storefront/PurchaseTracker';
 import type { OrderTrackingResponse } from '@/types/api.types';
 
@@ -46,6 +47,7 @@ export default async function CheckoutSuccessPage({
   // likely to 409 on the very first click.
   const order = orderNumber ? await getOrderWithRetry(orderNumber) : null;
   const invoiceEligible = order?.payment?.status === 'CAPTURED';
+  const deliveryEstimate = order ? formatDeliveryEstimate(order) : null;
 
   return (
     <div className="max-w-lg mx-auto px-4 py-20 text-center">
@@ -69,6 +71,11 @@ export default async function CheckoutSuccessPage({
       {order?.paymentMethod === 'COD' && (
         <p className="inline-block rounded-full bg-[#9C5A26]/10 px-4 py-1.5 font-body text-sm font-semibold text-[#2B1B0C] mb-3">
           Paid ₹{Number(order.codAdvanceAmount)} · Pay ₹{Number(order.codAmountDue)} on delivery
+        </p>
+      )}
+      {deliveryEstimate && (
+        <p className="font-body text-sm text-[#2B1B0C] mb-3">
+          Estimated delivery: <span className="font-bold">{deliveryEstimate}</span>
         </p>
       )}
       <p className="font-body text-sm text-[#8A7A63] mb-8">

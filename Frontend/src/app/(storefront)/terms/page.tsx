@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { Reveal } from '@/components/motion/Reveal';
-import { RETURN_ELIGIBLE_ABOVE } from '@/lib/constants';
+import { RETURN_ELIGIBLE_ABOVE, SHIPPING_FEE, FREE_SHIPPING_ABOVE, COD_ADVANCE_FEE } from '@/lib/constants';
 
 export const metadata = {
   title: 'Terms & Conditions — Doshhmukti',
@@ -9,11 +9,11 @@ export const metadata = {
   alternates: { canonical: '/terms' },
 };
 
-const LAST_UPDATED = 'September 6, 2026';
+const LAST_UPDATED = 'October 2, 2026';
 
 const SECTIONS = [
   { id: 'acceptance', title: '1. Acceptance of Terms' },
-  { id: 'eligibility', title: '2. Eligibility & Guest Checkout' },
+  { id: 'eligibility', title: '2. Eligibility & Accounts' },
   { id: 'products', title: '3. Products & Descriptions' },
   { id: 'pricing', title: '4. Pricing & Availability' },
   { id: 'orders', title: '5. Order Placement & Acceptance' },
@@ -98,12 +98,13 @@ export default function TermsPage() {
               </p>
             </Section>
 
-            <Section id="eligibility" title="2. Eligibility & Guest Checkout">
+            <Section id="eligibility" title="2. Eligibility & Accounts">
               <p>
                 You must be at least 18 years old, or using the Site under the supervision of a parent/legal
-                guardian, to place an order. The Site currently supports guest checkout only — no account or
-                login is required to purchase. A session identifier is stored in your browser to associate your
-                cart with your device; it does not identify you personally.
+                guardian, to place an order. You can check out as a guest, or sign in with your mobile number (one-time
+                password) to view your past orders and saved addresses. You are responsible for keeping access to
+                your mobile number secure. A session identifier is stored in your browser to associate your cart
+                with your device; it does not identify you personally.
               </p>
             </Section>
 
@@ -121,8 +122,8 @@ export default function TermsPage() {
             <Section id="pricing" title="4. Pricing & Availability">
               <p>
                 All prices are listed in Indian Rupees (INR) and are inclusive of applicable taxes unless stated
-                otherwise. Shipping charges (₹99, waived on orders above ₹999) are shown separately at checkout
-                before payment. We reserve the right to change prices, discontinue products, or correct pricing
+                otherwise. Shipping & packaging is a flat ₹{SHIPPING_FEE}, waived on orders above ₹{FREE_SHIPPING_ABOVE}, and is
+                shown separately at checkout before payment. We reserve the right to change prices, discontinue products, or correct pricing
                 errors at any time without prior notice. If a pricing error is discovered after you place an
                 order, we will contact you before shipping — you may cancel for a full refund or proceed at the
                 corrected price.
@@ -145,19 +146,30 @@ export default function TermsPage() {
 
             <Section id="payments" title="6. Payments">
               <p>
-                Payments are processed by Razorpay, a third-party PCI-DSS compliant payment gateway. We do not
-                store your card, UPI, or net-banking credentials on our servers. By paying on the Site you also
-                agree to Razorpay&rsquo;s applicable terms. All payments must clear before an order is processed;
-                orders left unpaid past the checkout hold window are automatically released.
+                Online payments are processed by third-party PCI-DSS compliant payment gateways (Razorpay or HDFC
+                SmartGateway). We do not store your card, UPI, or net-banking credentials on our servers. By paying
+                on the Site you also agree to the applicable gateway&rsquo;s terms. All online payments must clear
+                before an order is processed; orders left unpaid past the checkout hold window are automatically
+                released.
+              </p>
+              <p>
+                <strong className="text-[#2B1B0C]">Cash on Delivery (COD).</strong> Where offered at checkout, COD
+                orders require an advance of ₹{COD_ADVANCE_FEE}, paid online, to confirm
+                the order; this advance is counted towards your order total and covers shipping. The remaining
+                balance is payable in cash (or as accepted by the courier) at the time of delivery. A COD order is
+                confirmed once the advance is captured. If an order is cancelled before dispatch, the advance paid
+                is refunded to the original payment method.
               </p>
             </Section>
 
             <Section id="shipping" title="7. Shipping & Delivery">
               <p>
-                Orders are shipped via Delhivery or another courier partner to serviceable pincodes shown at
-                checkout. Estimated delivery timelines are indicative, not guaranteed, and may be affected by
+                Orders are shipped via Delhivery, Ekart or another courier partner to serviceable pincodes shown at
+                checkout. The estimated delivery window shown at checkout, on your order confirmation and on your
+                tracking page is calculated from your order date and is indicative, not guaranteed; once the
+                courier shares its own date, that date is shown instead. Timelines may be affected by
                 courier delays, weather, regional restrictions, or force majeure events (see Section 15). Risk of
-                loss and title to products pass to you on delivery. You can track your order at any time using
+                loss and title to products pass to you on delivery. You can track your order at any time by entering
                 your order number at{' '}
                 <Link href="/track" className="text-[#9C5A26] font-semibold hover:underline">
                   doshmukti.com/track
@@ -170,7 +182,9 @@ export default function TermsPage() {
               <p>
                 You may cancel an order free of charge any time before it is marked &ldquo;Packed&rdquo;. Once an
                 order has shipped, it cannot be cancelled — you may instead initiate a return once delivered,
-                subject to Section 9. To cancel, contact us via WhatsApp or email with your order number.
+                subject to Section 9. To cancel, contact us via WhatsApp or email with your order number. Amounts
+                paid online for a cancelled order are refunded to the original payment method (for a COD order,
+                this is the advance paid).
               </p>
             </Section>
 

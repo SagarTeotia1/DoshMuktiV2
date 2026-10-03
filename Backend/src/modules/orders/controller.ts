@@ -33,6 +33,7 @@ import {
   type GstReportOrderRow,
 } from './service';
 import { generateInvoicePdf } from './invoice';
+import { estimateDeliveryWindow } from '../../shared/shipping/deliveryEstimate';
 
 export async function trackOrderHandler(req: FastifyRequest, reply: FastifyReply) {
   const parsed = orderNumberParamSchema.safeParse(req.params);
@@ -41,7 +42,11 @@ export async function trackOrderHandler(req: FastifyRequest, reply: FastifyReply
   const order = await getOrderByNumber(parsed.data.orderNumber);
   if (!order) return reply.code(404).send({ error: 'Order not found' });
 
-  return reply.send({ ...order, ...computeOrderGst(order.items) });
+  return reply.send({
+    ...order,
+    ...computeOrderGst(order.items),
+    estimatedDeliveryWindow: estimateDeliveryWindow(order.createdAt, order.status),
+  });
 }
 
 export async function resumeOrderHandler(req: FastifyRequest, reply: FastifyReply) {

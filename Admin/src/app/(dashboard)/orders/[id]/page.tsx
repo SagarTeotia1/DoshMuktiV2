@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Topbar } from '@/components/layout/Topbar';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import { StatusBadge, PaymentBadge } from '@/components/ui/StatusBadge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ShippingActions } from '@/components/orders/ShippingActions';
 import { useOrder, useUpdateOrderStatus, useUpdatePackageWeight } from '@/hooks/use-orders';
@@ -106,6 +106,7 @@ export default function OrderDetailPage() {
           <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">
             <div className="flex items-center justify-between mb-4">
               <StatusBadge status={order.status} />
+              <PaymentBadge order={order} />
               <span className="text-xs text-slate-400">{formatDate(order.createdAt)}</span>
             </div>
 
