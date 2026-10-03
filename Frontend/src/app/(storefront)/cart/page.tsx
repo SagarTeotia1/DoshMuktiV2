@@ -174,7 +174,7 @@ export default function CartPage() {
           </div>
         )}
         <div className="flex justify-between font-body text-sm text-[#6B5539]">
-          <span>Shipping</span>
+          <span>Shipping & Packaging</span>
           {shippingFee === 0 ? (
             shippingFeeOriginal > 0 ? (
               <span className="flex items-center gap-1.5">

@@ -14,10 +14,10 @@ import { useShippingEstimate } from '@/hooks/use-shipping-estimate';
 import { api, ApiError } from '@/lib/api-client';
 import { getSessionId, getBuyNowSessionId } from '@/lib/session';
 import { getToken } from '@/lib/auth';
-import { formatCurrency } from '@/lib/formatters';
-import { SHIPPING_FEE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
+import { formatCurrency, formatDeliveryEstimate } from '@/lib/formatters';
+import { SHIPPING_FEE, FREE_SHIPPING_ABOVE, COD_ADVANCE_FEE } from '@/lib/constants';
 import { trackBeginCheckout, trackAddPaymentInfo } from '@/lib/analytics';
-import type { Address, CheckoutInput, CheckoutResponse, CouponPreviewResponse, SuggestedCoupon } from '@/types/api.types';
+import type { Address, CheckoutInput, PaymentMethod, CheckoutResponse, CouponPreviewResponse, SuggestedCoupon } from '@/types/api.types';
 import type { RazorpayResponse } from '@/hooks/use-razorpay';
 
 const inputClass =
@@ -332,6 +332,7 @@ function CheckoutPageContent() {
 
   const selectedAddress = savedAddresses?.find((a) => a.id === selectedAddressId) ?? null;
 
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('PREPAID');
   const [couponInput, setCouponInput] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
@@ -379,7 +380,8 @@ function CheckoutPageContent() {
   const liveShipping = useShippingEstimate(
     subtotal,
     cartWeightGrams,
-    /^\d{6}$/.test(form.pincode) ? form.pincode : undefined
+    /^\d{6}$/.test(form.pincode) ? form.pincode : undefined,
+    paymentMethod
   );
 
   // Backend-computed — same resolution path checkout itself uses (see cart/service.ts's
@@ -395,10 +397,19 @@ function CheckoutPageContent() {
   // never show that guess as if it were the real charge. Free-shipping orders are exempt:
   // ₹0 is correct regardless of pincode, no guess involved.
   const hasResolvedPincodeRate = subtotal > FREE_SHIPPING_ABOVE || (/^\d{6}$/.test(form.pincode) && !!liveShipping.data);
+  const deliveryEstimate = formatDeliveryEstimate({
+    shipment: null,
+    estimatedDeliveryWindow: liveShipping.data?.estimatedDeliveryWindow ?? null,
+  });
   const autoAppliedDiscount = cart?.autoAppliedDiscount ?? 0;
   const preDiscountTotal = subtotal + shippingFee - autoAppliedDiscount;
   const couponDiscount = appliedCoupon?.discountAmount ?? 0;
   const total = Math.max(preDiscountTotal - couponDiscount, 0);
+  // Display-only split — the Backend recomputes the authoritative amounts at checkout
+  // (computePaymentBreakdown). COD: advance is charged online now, the rest in cash.
+  const isCod = paymentMethod === 'COD';
+  const codAdvance = Math.min(COD_ADVANCE_FEE, total);
+  const codAmountDue = total - codAdvance;
   // Inclusive breakup of subtotal (product price already includes GST — never an added
   // charge), same math the invoice PDF uses. 0 when nothing in the cart carries a GST rate.
   const gstAmount = cart?.gstAmount ?? 0;
@@ -494,6 +505,7 @@ function CheckoutPageContent() {
         },
         items: checkoutItems,
         ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
+        paymentMethod,
       };
 
       const result = await api.post<CheckoutResponse>('/api/checkout', input, {
@@ -506,6 +518,9 @@ function CheckoutPageContent() {
         amount: result.amount,
         currency: result.currency,
         name: 'Doshhmukti',
+        description: isCod
+          ? `COD shipping advance — pay ${formatCurrency(result.codAmountDue)} on delivery`
+          : undefined,
         order_id: result.rzpOrderId,
         prefill: { name: form.customerName, email: form.customerEmail, contact: form.customerPhone },
         theme: { color: '#9C5A26' },
@@ -631,7 +646,7 @@ function CheckoutPageContent() {
         </div>
       )}
       <div className="flex justify-between font-body text-sm text-[#6B5539]">
-        <span>Shipping</span>
+        <span>Shipping & Packaging</span>
         {!hasResolvedPincodeRate ? (
           <span className="text-[#8A7A63] text-xs">Enter pincode</span>
         ) : shippingFee === 0 ? (
@@ -752,9 +767,59 @@ function CheckoutPageContent() {
             : formatCurrency(Math.max(subtotal - autoAppliedDiscount - couponDiscount, 0))}
         </span>
       </div>
-      {!hasResolvedPincodeRate && (
-        <p className="font-body text-[10px] text-[#8A7A63] text-right -mt-1">
-          Add item worth {formatCurrency(Math.max(FREE_SHIPPING_ABOVE + 1 - subtotal, 0))} more and claim free delivery.
+      {deliveryEstimate && (
+        <div className="flex justify-between gap-3 font-body text-sm text-[#6B5539]">
+          <span>Estimated delivery</span>
+          <span className="font-semibold text-[#2B1B0C] text-right">{deliveryEstimate}</span>
+        </div>
+      )}
+      <div className="flex flex-col gap-2 pt-1" role="radiogroup" aria-label="Payment method">
+        {([
+          {
+            id: 'PREPAID',
+            title: 'Pay online',
+            sub: 'UPI · Cards · Netbanking',
+            badge: hasResolvedPincodeRate ? formatCurrency(total) : null,
+          },
+          {
+            id: 'COD',
+            title: 'Cash on Delivery',
+            sub: hasResolvedPincodeRate
+              ? `Pay ${formatCurrency(codAdvance)} now · ${formatCurrency(codAmountDue)} on delivery`
+              : `Pay ${formatCurrency(COD_ADVANCE_FEE)} now, rest on delivery`,
+            badge: null,
+          },
+        ] as const).map((opt) => (
+          <label
+            key={opt.id}
+            className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
+              paymentMethod === opt.id ? 'border-[#9C5A26] bg-[#9C5A26]/5' : 'border-[#2B1B0C]/15'
+            }`}
+          >
+            <input
+              type="radio"
+              name="paymentMethod"
+              value={opt.id}
+              checked={paymentMethod === opt.id}
+              onChange={() => setPaymentMethod(opt.id)}
+              className="accent-[#9C5A26]"
+            />
+            <span className="flex flex-col flex-1 min-w-0">
+              <span className="font-body text-sm font-semibold text-[#2B1B0C]">{opt.title}</span>
+              <span className="font-body text-[11px] text-[#8A7A63]">{opt.sub}</span>
+            </span>
+            {opt.badge && <span className="font-body text-sm font-semibold text-[#2B1B0C]">{opt.badge}</span>}
+          </label>
+        ))}
+      </div>
+      {isCod && (
+        <p className="font-body text-[11px] text-[#8A7A63] -mt-1">
+          The {formatCurrency(COD_ADVANCE_FEE)} is your shipping charge — it&apos;s already counted in your total.
+        </p>
+      )}
+      {subtotal > 0 && subtotal <= FREE_SHIPPING_ABOVE && (
+        <p className="rounded-lg bg-[#9C5A26]/10 px-3 py-2 font-body text-xs font-semibold text-[#2B1B0C] text-center">
+          Add items worth {formatCurrency(FREE_SHIPPING_ABOVE + 1 - subtotal)} more to get FREE delivery
         </p>
       )}
       {hasResolvedPincodeRate && gstAmount > 0 && (
@@ -770,7 +835,13 @@ function CheckoutPageContent() {
             disabled={submitting || rzpLoading || items.length === 0}
             className="mt-4 bg-[#2B1B0C] text-white border border-[#2B1B0C] rounded-full px-8 py-4 font-body font-bold uppercase tracking-widest text-sm hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? 'Processing...' : 'Pay Now'}
+            {submitting
+              ? 'Processing...'
+              : isCod
+                ? `Pay ${formatCurrency(codAdvance)} & Place Order`
+                : hasResolvedPincodeRate
+                  ? `Pay ${formatCurrency(total)}`
+                  : 'Pay Now'}
           </button>
           <p className="flex items-center justify-center gap-1.5 font-body text-[10px] text-[#8A7A63] mt-1">
             <ShieldCheck className="w-3.5 h-3.5 text-[#9C5A26]" />
@@ -902,7 +973,9 @@ function CheckoutPageContent() {
                           <p className="text-xs text-brand-alert mt-1.5 font-body font-semibold">Not serviceable at this pincode</p>
                         )}
                         {serviceable === true && (
-                          <p className="text-xs text-brand-success mt-1.5 font-body font-semibold">✓ Deliverable to this address</p>
+                          <p className="text-xs text-brand-success mt-1.5 font-body font-semibold">
+                            ✓ Deliverable to this address{deliveryEstimate ? ` · Estimated delivery ${deliveryEstimate}` : ''}
+                          </p>
                         )}
                         {/* Never show a shipping number before it's actually quoted for THIS
                             pincode — the cart-preview figure is an origin-to-origin guess and

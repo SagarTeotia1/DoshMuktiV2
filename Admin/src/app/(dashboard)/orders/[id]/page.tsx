@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Topbar } from '@/components/layout/Topbar';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import { StatusBadge, PaymentBadge } from '@/components/ui/StatusBadge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ShippingActions } from '@/components/orders/ShippingActions';
 import { useOrder, useUpdateOrderStatus, useUpdatePackageWeight } from '@/hooks/use-orders';
@@ -106,6 +106,7 @@ export default function OrderDetailPage() {
           <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">
             <div className="flex items-center justify-between mb-4">
               <StatusBadge status={order.status} />
+              <PaymentBadge order={order} />
               <span className="text-xs text-slate-400">{formatDate(order.createdAt)}</span>
             </div>
 
@@ -184,6 +185,12 @@ export default function OrderDetailPage() {
                 <span>Total</span>
                 <span>{formatCurrency(order.total)}</span>
               </div>
+              {order.paymentMethod === 'COD' && (
+                <div className="mt-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-slate-800">
+                  <div className="flex justify-between"><span>COD advance paid online</span><span>{formatCurrency(order.codAdvanceAmount)}</span></div>
+                  <div className="flex justify-between font-semibold"><span>Cash to collect on delivery</span><span>{formatCurrency(order.codAmountDue)}</span></div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -249,7 +256,7 @@ export default function OrderDetailPage() {
             {order.shipment && (
               <div className="text-sm">
                 <p className="text-slate-500">Shipment status: {order.shipment.status}</p>
-                {order.shipment.delhiveryWaybill && <p className="text-xs text-slate-400 mt-1">Waybill: {order.shipment.delhiveryWaybill}</p>}
+                {order.shipment.delhiveryWaybill && <p className="text-xs text-slate-400 mt-1">{order.shipment.carrier === 'EKART' ? 'Ekart' : 'Delhivery'} waybill: {order.shipment.delhiveryWaybill}</p>}
                 {order.shipment.ewaybillNumber && <p className="text-xs text-slate-400 mt-1">E-way Bill: {order.shipment.ewaybillNumber}</p>}
               </div>
             )}

@@ -1,0 +1,10 @@
+-- CreateEnum
+CREATE TYPE "PaymentMethod" AS ENUM ('PREPAID', 'COD');
+CREATE TYPE "Carrier" AS ENUM ('DELHIVERY', 'EKART');
+
+-- AlterTable
+ALTER TABLE "Order" ADD COLUMN "paymentMethod" "PaymentMethod" NOT NULL DEFAULT 'PREPAID',
+ADD COLUMN "codAdvanceAmount" DECIMAL(10,2) NOT NULL DEFAULT 0,
+ADD COLUMN "codAmountDue" DECIMAL(10,2) NOT NULL DEFAULT 0;
+
+ALTER TABLE "Shipment" ADD COLUMN "carrier" "Carrier" NOT NULL DEFAULT 'DELHIVERY';

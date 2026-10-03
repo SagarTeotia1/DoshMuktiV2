@@ -187,6 +187,8 @@ export interface CartResponse {
   // Sum of (compareAtPrice - price) × quantity across every line with an MRP above its
   // actual price — server-computed so cart and checkout never show different numbers.
   savings: number;
+  codAdvance: number;
+  codAmountDue: number;
   updatedAt: string;
 }
 
@@ -220,7 +222,10 @@ export interface CheckoutInput {
   shippingAddress: { line1: string; line2?: string; city: string; state: string; pincode: string; country?: string };
   items: Array<{ variantId: string; quantity: number }>;
   couponCode?: string;
+  paymentMethod?: PaymentMethod;
 }
+
+export type PaymentMethod = 'PREPAID' | 'COD';
 
 export type CouponErrorCode =
   | 'COUPON_NOT_FOUND'
@@ -241,6 +246,8 @@ export interface CheckoutResponse {
   rzpOrderId: string;
   amount: number;
   currency: string;
+  paymentMethod: PaymentMethod;
+  codAmountDue: number;
 }
 
 export interface OrderTrackingResponse {
@@ -252,10 +259,18 @@ export interface OrderTrackingResponse {
   shippingFee: number;
   discountAmount: number;
   total: number;
+  // COD: `codAdvanceAmount` was paid online, `codAmountDue` is collected in cash on
+  // delivery. Both 0 for PREPAID. (Prisma Decimals serialize as strings — wrap in Number().)
+  paymentMethod: PaymentMethod;
+  codAdvanceAmount: number | string;
+  codAmountDue: number | string;
   // Inclusive GST breakup of the items' line totals — same formula as the invoice PDF.
   // gstAmount is 0 when no item on the order carries a gstRate.
   taxableValue: number;
   gstAmount: number;
+  // Order-date-based delivery window (ISO dates) — null once an order is cancelled,
+  // refunded, delivered, etc. Used until the carrier supplies shipment.estimatedDelivery.
+  estimatedDeliveryWindow: { from: string; to: string } | null;
   items: Array<{
     variantSnapshot: { productName: string; sku: string; attributes?: Record<string, unknown> };
     quantity: number;

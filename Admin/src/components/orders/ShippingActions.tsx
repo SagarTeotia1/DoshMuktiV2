@@ -17,7 +17,7 @@ function errMsg(err: unknown, fallback: string) {
   return err instanceof ApiError ? err.body.error : fallback;
 }
 
-// Everything here calls Delhivery's live production API — every action has a real,
+// Everything here calls the carrier's live production API (Delhivery or Ekart) — every action has a real,
 // physical-world effect (a shipment gets flagged RTO, etc). NDR is gated behind a
 // confirm dialog for exactly that reason; label download and saving an e-way bill
 // number are low-risk enough not to need one. Pickup is batched, not per-order — see
@@ -57,7 +57,7 @@ export function ShippingActions({ order }: { order: Order }) {
 
   function handleBookShipment() {
     bookShipment.mutate(undefined, {
-      onSuccess: () => toast.success('Shipment booked with Delhivery'),
+      onSuccess: () => toast.success('Shipment booked'),
       onError: (err) => toast.error(errMsg(err, 'Could not book shipment')),
     });
   }
@@ -66,7 +66,7 @@ export function ShippingActions({ order }: { order: Order }) {
     return (
       <div className="flex flex-col gap-2">
         <p className="text-xs text-slate-400">
-          No Delhivery waybill yet — the automatic booking on payment either hasn&apos;t run yet or failed.
+          No waybill yet — the automatic booking (Delhivery or Ekart) on payment either hasn&apos;t run yet or failed.
         </p>
         <button
           onClick={handleBookShipment}

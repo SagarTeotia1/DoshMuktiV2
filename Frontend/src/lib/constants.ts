@@ -1,5 +1,5 @@
 // Mirrors Backend/src/shared/constants/purposes.ts — update both when this changes.
-export const SHIPPING_FEE = 99; // flat fallback only — Backend shows the real live Delhivery rate whenever available
+export const SHIPPING_FEE = 90; // flat shipping & packaging fee — mirrors Backend
 export const FREE_SHIPPING_ABOVE = 299;
 // Items priced below this are final sale — too low-value to make a reverse-pickup
 // return economical. Mirrors the same threshold in Terms & Conditions § 9.
@@ -74,3 +74,7 @@ export const PRODUCT_SORTS = [
 ] as const;
 
 export type SortId = (typeof PRODUCT_SORTS)[number]['id'];
+
+// Mirrors Backend/src/shared/constants/purposes.ts — COD customers pay this online up
+// front (shipping/handling advance); the rest of the order is paid in cash on delivery.
+export const COD_ADVANCE_FEE = 90;

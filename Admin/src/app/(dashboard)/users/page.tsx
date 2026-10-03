@@ -22,7 +22,8 @@ export default function UsersPage() {
   const router = useRouter();
   const [phoneInput, setPhoneInput] = useState('');
   const [phone, setPhone] = useState('');
-  const { data, isLoading } = useUsers(phone || undefined);
+  const [page, setPage] = useState(1);
+  const { data, isLoading } = useUsers(phone || undefined, page);
 
   return (
     <>
@@ -36,6 +37,7 @@ export default function UsersPage() {
           onSubmit={(e) => {
             e.preventDefault();
             setPhone(phoneInput.trim());
+            setPage(1);
           }}
           className="flex flex-col sm:flex-row gap-2 sm:items-center bg-white border border-slate-200 rounded-lg shadow-card p-3"
         >
@@ -60,6 +62,7 @@ export default function UsersPage() {
               onClick={() => {
                 setPhoneInput('');
                 setPhone('');
+                setPage(1);
               }}
               className="px-4 py-2 rounded-lg border border-slate-300 text-sm font-semibold text-slate-600 hover:border-slate-400 transition-colors"
             >
@@ -71,7 +74,34 @@ export default function UsersPage() {
         {isLoading ? (
           <p className="text-sm text-slate-400 py-8 text-center">Loading...</p>
         ) : (
-          <DataTable data={data?.users ?? []} columns={columns} onRowClick={(u) => router.push(`/users/${u.id}`)} />
+          <>
+            <DataTable data={data?.users ?? []} columns={columns} onRowClick={(u) => router.push(`/users/${u.id}`)} />
+            {data && (
+              <div className="flex items-center justify-between text-sm text-slate-600">
+                <span>
+                  Page {data.page} of {Math.max(data.pages, 1)} &middot; {data.total} users
+                </span>
+                {data.pages > 1 && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={data.page <= 1}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => setPage((p) => Math.min(data.pages, p + 1))}
+                      disabled={data.page >= data.pages}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
     </>

@@ -112,7 +112,16 @@ export default function OrdersPage() {
                     </div>
 
                     <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-[#2B1B0C]/8">
-                      <p className="font-heading font-bold text-base text-[#2B1B0C]">{formatCurrency(order.total)}</p>
+                      <div>
+                        <p className="font-heading font-bold text-base text-[#2B1B0C]">{formatCurrency(order.total)}</p>
+                        {order.paymentMethod === 'COD' && (
+                          <p className="font-body text-[11px] text-[#8A7A63]">
+                            {order.status === 'DELIVERED'
+                              ? `Paid ₹${Number(order.codAdvanceAmount)} online + ₹${Number(order.codAmountDue)} on delivery`
+                              : `Paid ₹${Number(order.codAdvanceAmount)} · ₹${Number(order.codAmountDue)} due on delivery`}
+                          </p>
+                        )}
+                      </div>
                       <div className="flex items-center gap-3">
                         {invoiceEligible && (
                           <a

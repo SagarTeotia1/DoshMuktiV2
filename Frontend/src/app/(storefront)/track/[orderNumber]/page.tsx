@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import { CheckCircle2, Package, Truck, Home, MapPin, Phone, Download, ExternalLink, XCircle, RotateCcw, CreditCard } from 'lucide-react';
 import { api, invoiceUrl } from '@/lib/api-client';
-import { formatCurrency, formatDate } from '@/lib/formatters';
+import { formatCurrency, formatDate, formatDeliveryEstimate } from '@/lib/formatters';
 import { ORDER_STATUS_LABELS } from '@/lib/constants';
 import { CompletePaymentButton } from './complete-payment-button';
 import type { OrderTrackingResponse } from '@/types/api.types';
@@ -102,6 +102,7 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ ord
   if (!order) notFound();
 
   const exception = EXCEPTION_STATUS[order.status];
+  const deliveryEstimate = formatDeliveryEstimate(order);
   const address = order.shippingAddress;
   const events = [...(order.shipment?.trackingEvents ?? [])].sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
@@ -143,10 +144,15 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ ord
             <p className="font-body text-xs text-[#6B5539] mt-5 text-center sm:text-left">
               Current status:{' '}
               <span className="font-bold text-[#2B1B0C]">{ORDER_STATUS_LABELS[order.status] ?? order.status}</span>
-              {order.shipment?.estimatedDelivery && (
-                <> &middot; Estimated delivery {formatDate(order.shipment.estimatedDelivery)}</>
-              )}
             </p>
+            {deliveryEstimate && (
+              <p className="mt-3 flex items-center justify-center sm:justify-start gap-2 rounded-xl bg-[#9C5A26]/10 px-4 py-2.5 font-body text-sm text-[#2B1B0C]">
+                <Truck className="w-4 h-4 text-[#9C5A26] flex-shrink-0" />
+                <span>
+                  Estimated delivery: <span className="font-bold">{deliveryEstimate}</span>
+                </span>
+              </p>
+            )}
           </>
         )}
 
@@ -251,7 +257,7 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ ord
               <span>{formatCurrency(order.subtotal)}</span>
             </div>
             <div className="flex justify-between font-body text-sm text-[#6B5539]">
-              <span>Shipping</span>
+              <span>Shipping & Packaging</span>
               <span>{order.shippingFee === 0 ? 'Free' : formatCurrency(order.shippingFee)}</span>
             </div>
             {order.discountAmount > 0 && (
@@ -264,6 +270,18 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ ord
               <span>Total</span>
               <span>{formatCurrency(order.total)}</span>
             </div>
+            {order.paymentMethod === 'COD' && (
+              <div className="rounded-xl bg-[#9C5A26]/5 border border-[#9C5A26]/20 px-3 py-2.5 flex flex-col gap-1">
+                <div className="flex justify-between font-body text-sm text-[#6B5539]">
+                  <span>Paid online (shipping)</span>
+                  <span>{formatCurrency(Number(order.codAdvanceAmount))}</span>
+                </div>
+                <div className="flex justify-between font-body text-sm font-bold text-[#2B1B0C]">
+                  <span>{order.status === 'DELIVERED' ? 'Paid on delivery' : 'Pay on delivery'}</span>
+                  <span>{formatCurrency(Number(order.codAmountDue))}</span>
+                </div>
+              </div>
+            )}
             {order.gstAmount > 0 && (
               <p className="font-body text-[11px] text-[#8A7A63] text-right">
                 Inclusive of GST: {formatCurrency(order.gstAmount)} (Taxable {formatCurrency(order.taxableValue)} + GST {formatCurrency(order.gstAmount)})

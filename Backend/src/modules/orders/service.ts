@@ -15,6 +15,14 @@ import { addItemToCart } from '../cart/service';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
 import { PACKAGING_WEIGHT_GRAMS } from '../../shared/constants/purposes';
+import { chooseCarrier, type CarrierId } from '../../shared/shipping/carrier';
+import {
+  createEkartShipment,
+  fetchEkartLabelPdf,
+  takeEkartNdrAction,
+  updateEkartEwaybill,
+  cancelEkartShipment,
+} from '../../shared/integrations/ekart/client';
 import { env } from '../../config/env';
 
 export class OrderNotResumableError extends Error {
@@ -95,10 +103,12 @@ export class NoWaybillError extends Error {
   }
 }
 
-async function getWaybillOrThrow(orderId: string): Promise<string> {
+// Label / NDR / e-way bill go to whichever carrier owns the waybill — sending one
+// carrier's id to the other's API would fail or hit the wrong parcel.
+async function getShipmentOrThrow(orderId: string): Promise<{ waybill: string; carrier: CarrierId }> {
   const shipment = await db.shipment.findUnique({ where: { orderId } });
   if (!shipment?.delhiveryWaybill) throw new NoWaybillError();
-  return shipment.delhiveryWaybill;
+  return { waybill: shipment.delhiveryWaybill, carrier: shipment.carrier };
 }
 
 type BookableAddress = { line1: string; line2?: string; city: string; state: string; pincode: string };
@@ -107,42 +117,61 @@ type BookableAddress = { line1: string; line2?: string; city: string; state: str
 // that one is fire-and-forget and can fail silently (Delhivery rejection, network blip).
 // This lets Admin re-trigger it once whatever caused the rejection is fixed, without
 // needing a DB console. Refuses if a shipment already exists — never books twice.
-export async function bookOrderShipment(orderId: string): Promise<{ waybill: string }> {
+export async function bookOrderShipment(orderId: string): Promise<{ waybill: string; carrier: CarrierId }> {
   const existing = await db.shipment.findUnique({ where: { orderId } });
-  if (existing?.delhiveryWaybill) throw new Error('This order already has a Delhivery shipment booked.');
+  if (existing?.delhiveryWaybill) throw new Error('This order already has a shipment booked.');
 
   const order = await db.order.findUnique({ where: { id: orderId }, include: { items: { include: { variant: true } } } });
   if (!order) throw new Error('Order not found');
 
-  const shipment = await createShipment({
-    orderNumber: order.orderNumber,
-    customerName: order.customerName,
-    customerPhone: order.customerPhone,
-    address: order.shippingAddress as unknown as BookableAddress,
-    // Declared weight must match the real packed parcel (all items + packaging go into
-    // ONE box on ONE waybill) — under-declaring risks Delhivery re-weighing and billing
-    // the difference. See PACKAGING_WEIGHT_GRAMS's comment. An admin-set
-    // packageWeightOverride (see updateOrderPackageWeight) always wins — it means someone
-    // actually weighed this specific box and knows better than the item-sum estimate.
-    weight: order.packageWeightOverride ?? order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS,
-  });
-  if (!shipment) throw new Error('Delhivery did not return a waybill — check wallet balance and address details');
-  if ('error' in shipment) throw new Error(shipment.error);
+  // Declared weight must match the real packed parcel (all items + packaging go into
+  // ONE box on ONE waybill) — under-declaring risks the carrier re-weighing and billing
+  // the difference. See PACKAGING_WEIGHT_GRAMS's comment. An admin-set
+  // packageWeightOverride (see updateOrderPackageWeight) always wins — it means someone
+  // actually weighed this specific box and knows better than the item-sum estimate.
+  const weight =
+    order.packageWeightOverride ??
+    order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS;
+  const address = order.shippingAddress as unknown as BookableAddress;
+  const carrier = chooseCarrier(order.paymentMethod, weight);
+
+  const result =
+    carrier === 'EKART'
+      ? await createEkartShipment({
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          customerPhone: order.customerPhone,
+          address,
+          weight,
+          codAmount: Number(order.codAmountDue),
+          orderTotal: Number(order.total),
+          taxValue: Math.round(computeOrderGst(order.items).gstAmount * 100) / 100,
+          productsDesc: order.items
+            .map((i) => (i.variantSnapshot as { productName?: string } | null)?.productName ?? i.variant.sku)
+            .join(', '),
+          quantity: order.items.reduce((sum, i) => sum + i.quantity, 0),
+          invoiceDate: order.createdAt.toISOString().slice(0, 10),
+        })
+      : await createShipment({
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          customerPhone: order.customerPhone,
+          address,
+          weight,
+        });
+  if (!result) throw new Error(`${carrier} did not return a waybill — check API key/wallet balance and address details`);
+  if ('error' in result) throw new Error(result.error);
 
   if (existing) {
-    await db.shipment.update({ where: { orderId }, data: { delhiveryWaybill: shipment.waybill, status: 'BOOKED' } });
+    await db.shipment.update({ where: { orderId }, data: { delhiveryWaybill: result.waybill, carrier, status: 'BOOKED' } });
   } else {
-    await db.shipment.create({ data: { orderId, delhiveryWaybill: shipment.waybill, status: 'BOOKED' } });
+    await db.shipment.create({ data: { orderId, delhiveryWaybill: result.waybill, carrier, status: 'BOOKED' } });
   }
 
-  const bookedAddress = order.shippingAddress as unknown as BookableAddress;
-  void quoteBookingShippingCost(
-    orderId,
-    order.packageWeightOverride ?? order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS,
-    bookedAddress.pincode
-  );
+  // The re-quote calls Delhivery's rate calculator — meaningless for an Ekart parcel.
+  if (carrier === 'DELHIVERY') void quoteBookingShippingCost(orderId, weight, address.pincode);
 
-  return { waybill: shipment.waybill };
+  return { waybill: result.waybill, carrier };
 }
 
 // Best-effort: re-quotes Delhivery's rate calculator the moment a shipment is booked,
@@ -176,7 +205,13 @@ export async function updateOrderPackageWeight(orderId: string, weight: number |
 }
 
 export async function getShipmentLabel(orderId: string, size: LabelSize): Promise<{ pdfBase64: string }> {
-  const waybill = await getWaybillOrThrow(orderId);
+  const { waybill, carrier } = await getShipmentOrThrow(orderId);
+  if (carrier === 'EKART') {
+    // Ekart's PDF is already print-ready; the size picker only applies to Delhivery's.
+    const pdf = await fetchEkartLabelPdf(waybill);
+    if ('error' in pdf) throw new Error(pdf.error);
+    return { pdfBase64: pdf.toString('base64') };
+  }
   const label = await fetchShippingLabel(waybill);
   if (!label) throw new Error('Delhivery did not return a label for this waybill');
 
@@ -192,8 +227,16 @@ export async function takeOrderNdrAction(
   orderId: string,
   params: { action: NdrAction; reattemptDate?: string; comment?: string }
 ): Promise<void> {
-  const waybill = await getWaybillOrThrow(orderId);
-  const result = await takeNdrAction({ waybill, ...params });
+  const { waybill, carrier } = await getShipmentOrThrow(orderId);
+  const result =
+    carrier === 'EKART'
+      ? await takeEkartNdrAction({
+          trackingId: waybill,
+          action: params.action === 'RTO' ? 'RTO' : 'Re-Attempt',
+          reattemptDate: params.reattemptDate,
+          instructions: params.comment,
+        })
+      : await takeNdrAction({ waybill, ...params });
   if (!result.success) throw new Error(result.error ?? 'NDR action failed');
 
   // Reflect the NDR outcome locally too — previously this only told Delhivery, so
@@ -221,8 +264,9 @@ export async function setShipmentRiskFlag(
 }
 
 export async function updateOrderEwaybill(orderId: string, ewaybillNumber: string): Promise<void> {
-  const waybill = await getWaybillOrThrow(orderId);
-  const result = await updateEwaybill({ waybill, ewaybillNumber });
+  const { waybill, carrier } = await getShipmentOrThrow(orderId);
+  const result =
+    carrier === 'EKART' ? await updateEkartEwaybill(waybill, ewaybillNumber) : await updateEwaybill({ waybill, ewaybillNumber });
   if (!result.success) throw new Error(result.error ?? 'E-way bill update failed');
 
   await db.shipment.update({ where: { orderId }, data: { ewaybillNumber } });
@@ -442,6 +486,25 @@ export async function updateOrderStatus(
   // never leave stock/order state in limbo. Razorpay's refund call happens outside the
   // transaction on purpose (never hold a DB connection open across a network call).
   if (newStatus !== 'CANCELLED') return { order };
+
+  // Free the Ekart parcel so a cancelled COD order isn't picked up and shipped anyway.
+  // Best-effort: a failed cancel is logged for the admin but never blocks the refund below.
+  // (Delhivery parcels are cancelled from Delhivery's own dashboard, as before.)
+  const shipment = await db.shipment.findUnique({ where: { orderId } });
+  if (shipment?.carrier === 'EKART' && shipment.delhiveryWaybill && shipment.status === 'BOOKED') {
+    const cancelled = await cancelEkartShipment(shipment.delhiveryWaybill).catch((err: unknown) => ({
+      success: false,
+      error: err instanceof Error ? err.message : 'Ekart cancel failed',
+    }));
+    if (!cancelled.success) {
+      logger.error({ orderId, waybill: shipment.delhiveryWaybill, reason: cancelled.error }, 'Could not cancel Ekart shipment on order cancel');
+      await db.orderStatusLog.create({
+        data: { orderId, from: 'CANCELLED', to: 'CANCELLED', note: `Ekart shipment not cancelled: ${cancelled.error ?? 'unknown'} — cancel ${shipment.delhiveryWaybill} on the Ekart dashboard`, createdBy: admin },
+      });
+    } else {
+      await db.shipment.update({ where: { orderId }, data: { status: 'FAILED' } });
+    }
+  }
 
   const payment = await db.payment.findUnique({ where: { orderId } });
   if (!payment || payment.status !== 'CAPTURED' || !payment.razorpayPaymentId || payment.refundedAt) {

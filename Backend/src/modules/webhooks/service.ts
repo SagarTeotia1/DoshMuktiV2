@@ -1,19 +1,9 @@
 import { db } from '../../shared/db/client';
 import { logger } from '../../shared/logger/pino';
 import { sendOrderConfirmation, sendShipmentNotification } from '../../shared/integrations/resend/client';
-import { createShipment } from '../../shared/integrations/delhivery/client';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
-import { syncOrderStatusFromShipment, quoteBookingShippingCost, applyWeightDiscrepancyCost } from '../orders/service';
-import { PACKAGING_WEIGHT_GRAMS } from '../../shared/constants/purposes';
-
-interface RazorpayShippingAddress {
-  line1: string;
-  line2?: string;
-  city: string;
-  state: string;
-  pincode: string;
-}
+import { syncOrderStatusFromShipment, applyWeightDiscrepancyCost, bookOrderShipment } from '../orders/service';
 
 export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPaymentId: string): Promise<void> {
   // Idempotent, and covers a customer retry on the same Razorpay order after an earlier
@@ -90,41 +80,18 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
   if (payment.order.customerEmail) {
     void sendOrderConfirmation(payment.order.customerEmail, payment.order.orderNumber, Number(payment.order.total));
   }
-  const addr = payment.order.shippingAddress as unknown as RazorpayShippingAddress;
-  // See PACKAGING_WEIGHT_GRAMS's comment — declared weight must match the real packed
-  // parcel (all items + packaging in ONE box on ONE waybill), same as bookOrderShipment.
-  // An admin-set packageWeightOverride wins if present, same rule as the manual retry path.
-  const bookingWeight =
-    payment.order.packageWeightOverride ??
-    payment.order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS;
-  void createShipment({
-    orderNumber: payment.order.orderNumber,
-    customerName: payment.order.customerName,
-    customerPhone: payment.order.customerPhone,
-    address: addr,
-    weight: bookingWeight,
-  }).then(async (shipment) => {
-    if (shipment && 'waybill' in shipment) {
-      await db.shipment.create({ data: { orderId: payment.orderId, delhiveryWaybill: shipment.waybill, status: 'BOOKED' } });
-      void quoteBookingShippingCost(payment.orderId, bookingWeight, addr.pincode);
-      if (payment.order.customerEmail) {
-        void sendShipmentNotification(payment.order.customerEmail, payment.order.orderNumber, shipment.waybill);
-      }
-    } else {
-      // createShipment returns an error (or null in dev with no API key) on a
-      // Delhivery-side rejection (bad wallet balance, fraud check, bad address, etc)
-      // rather than throwing — without this log the order is just stuck with no waybill
-      // and nothing ever says why. Admin can retry via the manual "Book Shipment" action
-      // once the underlying issue is fixed.
-      logger.error(
-        { orderNumber: payment.order.orderNumber, reason: shipment?.error ?? 'no API key configured' },
-        'createShipment did not return a waybill — Delhivery rejected the shipment',
-      );
+  // Carrier choice (Delhivery vs Ekart), weight and COD cash amount are all resolved
+  // inside bookOrderShipment — same path as the manual admin retry.
+  void bookOrderShipment(payment.orderId).then((booked) => {
+    if (payment.order.customerEmail) {
+      void sendShipmentNotification(payment.order.customerEmail, payment.order.orderNumber, booked.waybill);
     }
   }).catch((err) => {
-    // A thrown error here (network failure, etc) would otherwise be an unhandled
-    // rejection — silently dropped, order stuck with no waybill and no trace of why.
-    logger.error({ err, orderNumber: payment.order.orderNumber }, 'createShipment threw while booking shipment');
+    // A rejection (bad wallet balance, fraud check, bad address, Ekart not configured…)
+    // or thrown error (network failure) would otherwise leave the order stuck with no
+    // waybill and no trace of why. Admin can retry via the manual "Book Shipment" action
+    // once the underlying issue is fixed.
+    logger.error({ err, orderNumber: payment.order.orderNumber }, 'Auto-booking shipment failed');
   });
 }
 
@@ -266,4 +233,71 @@ export function mapDelhiveryStatus(status: string): 'PENDING' | 'BOOKED' | 'IN_T
     RTO: 'RETURNED',
   };
   return map[status] ?? 'IN_TRANSIT';
+}
+
+type ShipmentStatusId = ReturnType<typeof mapDelhiveryStatus>;
+
+// Ekart's tracking statuses (spec: swift_status enum) -> our shipment status. Anything
+// unlisted defaults to IN_TRANSIT, same convention as mapDelhiveryStatus.
+export function mapEkartStatus(status: string, ndrStatus?: string): ShipmentStatusId {
+  // An NDR status on an otherwise in-flight parcel means a failed delivery attempt that
+  // needs an admin decision (reattempt vs RTO) - same FAILED state Delhivery's NDRs use.
+  if (ndrStatus && !/^(Delivered|RTO)/.test(status)) return 'FAILED';
+  const map: Record<string, ShipmentStatusId> = {
+    'Order Placed': 'BOOKED',
+    'Pickup Pending': 'BOOKED',
+    'Pickup Scheduled': 'BOOKED',
+    'Out for Pickup': 'BOOKED',
+    'Not Picked': 'BOOKED',
+    'Picked Up': 'IN_TRANSIT',
+    'In Transit': 'IN_TRANSIT',
+    'Shipment Delayed': 'IN_TRANSIT',
+    'Out for Delivery': 'OUT_FOR_DELIVERY',
+    Delivered: 'DELIVERED',
+    Undelivered: 'FAILED',
+    Cancelled: 'FAILED',
+    'Seller Cancelled': 'FAILED',
+    'Pickup Cancelled': 'FAILED',
+    Lost: 'FAILED',
+    Damaged: 'FAILED',
+    'Not Serviceable': 'FAILED',
+    'RTO Requested': 'RETURNED',
+    'Seller RTO Requested': 'RETURNED',
+    'RTO In Transit': 'RETURNED',
+    'RTO Out for Delivery': 'RETURNED',
+    'RTO Delivered': 'RETURNED',
+    'RTO Failed': 'RETURNED',
+    'RTO Shipment Delayed': 'RETURNED',
+  };
+  return map[status] ?? 'IN_TRANSIT';
+}
+
+// Shared by Ekart's track_updated webhook and the polling fallback (jobs/tracking-sync).
+// Idempotent: an identical repeated event is skipped; order status only ever moves
+// forward (see syncOrderStatusFromShipment).
+export async function handleEkartStatusUpdate(
+  trackingId: string,
+  event: { status: string; location: string; description: string; timestamp: string; ndrStatus?: string },
+): Promise<void> {
+  const shipment = await db.shipment.findFirst({ where: { delhiveryWaybill: trackingId, carrier: 'EKART' } });
+  if (!shipment) return;
+
+  const events = (shipment.trackingEvents as unknown as Array<Record<string, string>>) ?? [];
+  const last = events[events.length - 1];
+  if (last && last.status === event.status && last.timestamp === event.timestamp) return;
+  events.push({ status: event.status, location: event.location, description: event.description, timestamp: event.timestamp });
+
+  const mapped = mapEkartStatus(event.status, event.ndrStatus);
+  const risk = detectRiskFlag(`${event.ndrStatus ?? ''} ${event.description}`);
+
+  await db.shipment.update({
+    where: { id: shipment.id },
+    data: {
+      trackingEvents: events as unknown as object,
+      status: mapped,
+      ...(risk ? { riskFlag: risk.flag, riskReason: risk.reason } : {}),
+    },
+  });
+
+  await syncOrderStatusFromShipment(shipment.orderId, mapped);
 }

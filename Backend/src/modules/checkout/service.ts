@@ -19,6 +19,7 @@ import {
   reserveCouponUsageTx,
   CouponExhaustedError,
 } from "../coupons/service";
+import { computePaymentBreakdown, type PaymentMethodId } from "../../shared/shipping/carrier";
 import type { CheckoutInput } from "./schema";
 
 export class OutOfStockError extends Error {
@@ -103,27 +104,6 @@ async function generateOrderNumber(
   return `DOSH-${today}-${String(row.seq).padStart(4, "0")}`;
 }
 
-// Live Delhivery rate (Surface mode), cached by route+weight since the same
-// origin/destination/weight always prices the same — this is hit on every cart/PDP
-// view, not just checkout, so an uncached call there would hammer Delhivery for no
-// reason. Returns null (never throws) on any failure so callers can fall back to the
-// flat SHIPPING_FEE — a customer must never be blocked from checking out because a
-// pricing API had a bad moment.
-async function getLiveShippingRate(destPincode: string, weightGrams: number): Promise<number | null> {
-  const originPincode = env.DELHIVERY_WAREHOUSE_PINCODE;
-  const key = cacheKeys.shippingRate(originPincode, destPincode, weightGrams);
-
-  const cached = await redis.get<number>(key);
-  if (typeof cached === "number") return cached;
-
-  const result = await calculateShippingCost({ originPincode, destPincode, weightGrams, paymentMode: "Pre-paid" });
-  if (!result) return null;
-
-  const rounded = Math.ceil(result.amount);
-  await redis.set(key, rounded, { ex: CACHE_TTL.SHIPPING_RATE });
-  return rounded;
-}
-
 // Exported for the cart module — the cart's pricing preview (shown pre-checkout on the
 // cart/checkout pages) must compute shipping the exact same way the real order will, or
 // the displayed total drifts from what actually gets charged.
@@ -134,13 +114,13 @@ async function getLiveShippingRate(destPincode: string, weightGrams: number): Pr
 // charged (0 once waived).
 export async function calculateShippingFee(
   subtotal: number,
-  weightGrams: number,
-  destPincode: string
+  _weightGrams: number,
+  _destPincode: string,
+  _paymentMethod: PaymentMethodId = "PREPAID",
 ): Promise<{ fee: number; originalFee: number }> {
-  const liveRate = await getLiveShippingRate(destPincode, weightGrams);
-  const originalFee = liveRate ?? SHIPPING_FEE;
-  const fee = subtotal > FREE_SHIPPING_ABOVE ? 0 : originalFee;
-  return { fee, originalFee };
+  // Flat "shipping & packaging" fee for every order, whatever the carrier or weight —
+  // waived above FREE_SHIPPING_ABOVE (we bear it). Params kept so callers stay stable.
+  return { fee: subtotal > FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE, originalFee: SHIPPING_FEE };
 }
 
 export async function initiateCheckout(input: CheckoutInput, userId: string) {
@@ -245,8 +225,10 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
   const { fee: shippingFee, originalFee: actualShippingCost } = await calculateShippingFee(
     subtotal,
     paidWeight + freeWeight + PACKAGING_WEIGHT_GRAMS,
-    input.shippingAddress.pincode
+    input.shippingAddress.pincode,
+    input.paymentMethod,
   );
+  const paymentMethod = input.paymentMethod;
   const reservedUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
   const { order, payment } = await withSerializableRetry(() =>
@@ -268,6 +250,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
 
         const orderNumber = await generateOrderNumber(tx);
         const orderTotal = subtotal + shippingFee - totalDiscount;
+        const breakdown = computePaymentBreakdown(paymentMethod, orderTotal);
 
         const order = await tx.order.create({
           data: {
@@ -283,6 +266,9 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
             actualShippingCost,
             discountAmount: totalDiscount,
             total: orderTotal,
+            paymentMethod,
+            codAdvanceAmount: breakdown.codAdvance,
+            codAmountDue: breakdown.codAmountDue,
             couponId: coupon?.id ?? null,
             reservedUntil,
             items: {
@@ -329,7 +315,9 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
           data: {
             orderId: order.id,
             razorpayOrderId: `pending_${order.id}`,
-            amount: order.total,
+            // What Razorpay actually charges: full total for prepaid, only the COD
+            // advance for COD (the rest is collected in cash on delivery).
+            amount: breakdown.payNow,
             status: "PENDING",
           },
         });
@@ -351,7 +339,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
     ),
   );
 
-  const finalTotal = Number(order.total);
+  const finalTotal = Number(payment.amount);
 
   // Razorpay call OUTSIDE the transaction — never hold a DB connection open across a network call
   const rzpOrder = await razorpay.orders.create({
@@ -371,5 +359,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
     rzpOrderId: rzpOrder.id,
     amount: Math.round(finalTotal * 100),
     currency: "INR",
+    paymentMethod,
+    codAmountDue: Number(order.codAmountDue),
   };
 }

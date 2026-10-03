@@ -4,6 +4,7 @@ import { calculateShippingCost } from '../../shared/integrations/delhivery/clien
 import { calculateShippingFee } from '../checkout/service';
 import { env } from '../../config/env';
 import { PACKAGING_WEIGHT_GRAMS } from '../../shared/constants/purposes';
+import { estimateDeliveryWindow } from '../../shared/shipping/deliveryEstimate';
 
 // Read-only — the warehouse is created/edited directly on Delhivery's own dashboard
 // (already done once, manually), never through this app. This just echoes the config
@@ -47,7 +48,8 @@ export async function shippingEstimateHandler(req: FastifyRequest, reply: Fastif
   const { fee, originalFee } = await calculateShippingFee(
     parsed.data.subtotal,
     parsed.data.weightGrams + PACKAGING_WEIGHT_GRAMS,
-    parsed.data.destPincode ?? env.DELHIVERY_WAREHOUSE_PINCODE
+    parsed.data.destPincode ?? env.DELHIVERY_WAREHOUSE_PINCODE,
+    parsed.data.paymentMethod
   );
-  return reply.send({ fee, originalFee });
+  return reply.send({ fee, originalFee, estimatedDeliveryWindow: estimateDeliveryWindow(new Date(), 'PAID') });
 }

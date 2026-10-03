@@ -6,6 +6,8 @@ import { api } from '@/lib/api-client';
 interface ShippingEstimate {
   fee: number;
   originalFee: number;
+  // If ordered now — same window the order tracking/confirmation pages show after purchase.
+  estimatedDeliveryWindow: { from: string; to: string } | null;
 }
 
 // Public, unauthenticated endpoint. Without destPincode: an origin-to-origin estimate
@@ -13,12 +15,12 @@ interface ShippingEstimate {
 // real live-quoted rate for that destination — used once checkout has a validated
 // pincode, so the displayed shipping fee updates to the actual charge instead of
 // staying on the earlier estimate.
-export function useShippingEstimate(subtotal: number, weightGrams: number, destPincode?: string) {
+export function useShippingEstimate(subtotal: number, weightGrams: number, destPincode?: string, paymentMethod: 'PREPAID' | 'COD' = 'PREPAID') {
   return useQuery({
-    queryKey: ['shipping-estimate', subtotal, weightGrams, destPincode],
+    queryKey: ['shipping-estimate', subtotal, weightGrams, destPincode, paymentMethod],
     queryFn: () =>
       api.get<ShippingEstimate>(
-        `/api/shipping/estimate?subtotal=${subtotal}&weightGrams=${weightGrams}${destPincode ? `&destPincode=${destPincode}` : ''}`
+        `/api/shipping/estimate?subtotal=${subtotal}&weightGrams=${weightGrams}${destPincode ? `&destPincode=${destPincode}` : ''}&paymentMethod=${paymentMethod}`
       ),
     enabled: subtotal > 0 && weightGrams > 0,
     staleTime: 5 * 60 * 1000,

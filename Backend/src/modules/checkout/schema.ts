@@ -17,6 +17,7 @@ export const checkoutSchema = z.object({
     quantity: z.number().int().min(1).max(99),
   })).min(1),
   couponCode: z.string().optional(),
+  paymentMethod: z.enum(['PREPAID', 'COD']).default('PREPAID'),
   // Purely to make BIRTHDAY-type coupons functional — no Frontend UI collects this yet,
   // so in practice BIRTHDAY coupons fail findValidatedCoupon's eligibility check unless
   // a future feature adds that input. Deliberate, fail-closed scope boundary.
