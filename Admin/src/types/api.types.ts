@@ -372,6 +372,7 @@ export interface DashboardSummary {
   lowStockCount: number;
   allTimeRevenue: number;
   allTimeOrderCount: number;
+  totalUsers: number;
 }
 
 export interface SalesTrendPoint {

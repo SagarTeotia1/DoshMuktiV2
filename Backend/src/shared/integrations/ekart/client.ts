@@ -108,7 +108,6 @@ export async function createEkartShipment(params: {
     invoice_number: params.orderNumber,
     invoice_date: params.invoiceDate,
     consignee_name: params.customerName,
-    consignee_alternate_phone: params.customerPhone.replace(/\D/g, '').slice(-10),
     products_desc: params.productsDesc.slice(0, 200),
     payment_mode: params.codAmount > 0 ? 'COD' : 'Prepaid',
     category_of_goods: env.EKART_CATEGORY_OF_GOODS,

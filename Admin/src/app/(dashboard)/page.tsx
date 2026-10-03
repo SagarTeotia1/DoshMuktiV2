@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { IndianRupee, ShoppingBag, AlertTriangle, PackageX, Wallet } from 'lucide-react';
+import { IndianRupee, ShoppingBag, AlertTriangle, PackageX, Wallet, Users } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { StatCard } from '@/components/ui/StatCard';
 import { SalesChart } from '@/components/charts/SalesChart';
@@ -24,6 +24,7 @@ export default function DashboardPage() {
             subValue={summary.data ? `${summary.data.allTimeOrderCount} orders` : undefined}
             icon={Wallet}
           />
+          <StatCard label="Total Users" value={summary.data?.totalUsers ?? '—'} icon={Users} />
           <StatCard label="Needs Packing" value={summary.data?.ordersNeedingAction ?? '—'} icon={AlertTriangle} tone="warning" />
           <StatCard label="Low Stock Items" value={summary.data?.lowStockCount ?? '—'} icon={PackageX} tone="danger" />
         </div>
