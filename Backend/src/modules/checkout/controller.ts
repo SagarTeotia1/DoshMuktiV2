@@ -1,7 +1,9 @@
 import crypto from 'node:crypto';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { checkoutSchema, verifyPaymentSchema } from './schema';
-import { initiateCheckout, OutOfStockError, NotServiceableError } from './service';
+import { initiateCheckout, OutOfStockError, NotServiceableError, InvalidOrderTotalError, PaymentGatewayError } from './service';
+import { redis } from '../../shared/cache/client';
+import { cacheKeys } from '../../shared/cache/keys';
 import { mapCouponValidationError } from '../coupons/controller';
 import { clearCart } from '../cart/service';
 import { handlePaymentCaptured } from '../webhooks/service';
@@ -19,8 +21,25 @@ export async function checkoutHandler(req: FastifyRequest, reply: FastifyReply) 
     return reply.code(400).send({ error: 'Invalid input', details: parsed.error.flatten().fieldErrors });
   }
 
+  const userId = (req.user as { sub: string }).sub;
+
+  // Double-click / double-submit guard: only one POST /checkout per customer in flight at
+  // a time. TTL is a safety net — the lock is released in `finally` as soon as the request
+  // finishes, so a deliberate retry right after a failure or a dismissed modal is not blocked.
+  // Fails open: if Redis is unreachable, checkout must still work.
+  const lockKey = cacheKeys.checkoutLock(userId);
+  let lockHeld = false;
   try {
-    const userId = (req.user as { sub: string }).sub;
+    lockHeld = (await redis.incr(lockKey, 20)) === 1;
+  } catch (err) {
+    logger.warn({ err }, 'Checkout lock unavailable — proceeding without it');
+    lockHeld = true;
+  }
+  if (!lockHeld) {
+    return reply.code(409).send({ error: 'Your order is already being placed. Please wait a moment.', code: 'CHECKOUT_IN_PROGRESS' });
+  }
+
+  try {
     const result = await initiateCheckout(parsed.data, userId);
 
     // Buy Now pseudo-cart is intentionally left untouched here — the order created by
@@ -39,11 +58,19 @@ export async function checkoutHandler(req: FastifyRequest, reply: FastifyReply) 
     if (err instanceof NotServiceableError) {
       return reply.code(409).send({ error: 'Pincode not serviceable', code: 'NOT_SERVICEABLE', pincode: err.pincode });
     }
+    if (err instanceof InvalidOrderTotalError) {
+      return reply.code(409).send({ error: 'Order total is too low to pay online. Please add an item or remove the coupon.', code: 'ORDER_TOTAL_TOO_LOW' });
+    }
+    if (err instanceof PaymentGatewayError) {
+      return reply.code(502).send({ error: 'Payment gateway is unavailable right now. Please try again in a minute.', code: 'PAYMENT_GATEWAY_ERROR' });
+    }
     const couponError = mapCouponValidationError(err);
     if (couponError) {
       return reply.code(couponError.status).send({ error: couponError.message, code: couponError.code });
     }
     throw err;
+  } finally {
+    redis.del(lockKey).catch((err) => logger.warn({ err }, 'Failed to release checkout lock'));
   }
 }
 

@@ -3,43 +3,67 @@ import { logger } from '../../shared/logger/pino';
 import { sendOrderConfirmation, sendShipmentNotification } from '../../shared/integrations/resend/client';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
+import { refundPayment } from '../../shared/integrations/razorpay/client';
 import { syncOrderStatusFromShipment, applyWeightDiscrepancyCost, bookOrderShipment } from '../orders/service';
 
+// Payment flip + order status flip (+ stock re-reserve on a late capture) all commit
+// together. Previously the Payment row was marked CAPTURED first and the Order updated in a
+// separate statement: a crash or DB blip between them left the payment CAPTURED but the order
+// stuck PENDING_PAYMENT, and since the idempotency guard below keys on Payment.status, no
+// retry (webhook redelivery, /checkout/verify, release-holds reconcile) would ever fix it.
+//
+// Idempotent, and covers a customer retry on the same Razorpay order after an earlier
+// attempt failed: Razorpay lets multiple payment attempts hit one order_id, so a prior
+// handlePaymentFailed can have already flipped this row to FAILED (and cancelled the
+// order, releasing stock) before the retry's captured webhook arrives. The guard accepts
+// PENDING|FAILED so that late capture still wins instead of silently no-op'ing. Replay-safe:
+// once the row is CAPTURED a duplicate delivery of the same event finds status outside
+// ('PENDING','FAILED') and no-ops.
 export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPaymentId: string): Promise<void> {
-  // Idempotent, and covers a customer retry on the same Razorpay order after an earlier
-  // attempt failed: Razorpay lets multiple payment attempts hit one order_id, so a prior
-  // handlePaymentFailed can have already flipped this row to FAILED (and cancelled the
-  // order, releasing stock) before the retry's captured webhook arrives. Widening the
-  // guard to PENDING|FAILED lets that late capture still win instead of silently
-  // no-op'ing — money captured with no matching live order was exactly that bug.
-  // Still replay-safe: once this flips the row to CAPTURED, a duplicate delivery of the
-  // same event finds status outside ('PENDING','FAILED') and no-ops as before.
-  const updated: number = await db.$executeRaw`
-    UPDATE "Payment" SET status = 'CAPTURED', "razorpayPaymentId" = ${razorpayPaymentId}, "verifiedAt" = NOW()
-    WHERE "razorpayOrderId" = ${razorpayOrderId} AND status IN ('PENDING', 'FAILED')
-  `;
-  if (updated === 0) return;
+  const outcome = await db.$transaction(
+    async (tx) => {
+      const updated: number = await tx.$executeRaw`
+        UPDATE "Payment" SET status = 'CAPTURED', "razorpayPaymentId" = ${razorpayPaymentId}, "verifiedAt" = NOW()
+        WHERE "razorpayOrderId" = ${razorpayOrderId} AND status IN ('PENDING', 'FAILED')
+      `;
+      if (updated === 0) return null;
 
-  const payment = await db.payment.findUnique({
-    where: { razorpayOrderId },
-    include: { order: { include: { items: { include: { variant: true } } } } },
-  });
-  if (!payment) return;
+      const payment = await tx.payment.findUnique({
+        where: { razorpayOrderId },
+        include: { order: { include: { items: true } } },
+      });
+      if (!payment) return null;
 
-  if (payment.order.status === 'CANCELLED') {
-    // The failed-attempt path already released this order's reserved stock back to the
-    // pool — before honoring the late capture, re-reserve it for real, the same atomic
-    // guard as checkout's reserveStock. Stock may genuinely be gone by now (sold out via
-    // another order in the meantime); if so, do NOT silently mark this PAID over
-    // unavailable stock — leave it CANCELLED with payment now correctly CAPTURED, log
-    // loudly, and let an admin resolve (refund or manual restock) via Admin's order page.
-    const outOfStock = await db.$transaction(async (tx) => {
+      if (payment.order.status !== 'CANCELLED') {
+        await tx.order.update({
+          where: { id: payment.orderId },
+          data: {
+            status: 'PAID',
+            statusLog: { create: { from: 'PENDING_PAYMENT', to: 'PAID', createdBy: 'system' } },
+          },
+        });
+        return { kind: 'paid' as const, payment, restocked: false };
+      }
+
+      // The failed-attempt path already released this order's reserved stock back to the
+      // pool — before honoring the late capture, re-reserve it for real, the same atomic
+      // guard as checkout's reserveStock. Stock may genuinely be gone by now (sold out via
+      // another order in the meantime); if so, do NOT mark this PAID over unavailable stock.
+      const deducted: Array<{ variantId: string; quantity: number }> = [];
       for (const item of payment.order.items) {
         const rows: number = await tx.$executeRaw`
           UPDATE "ProductVariant" SET "stockQuantity" = "stockQuantity" - ${item.quantity}
           WHERE id = ${item.variantId} AND "stockQuantity" >= ${item.quantity}
         `;
-        if (rows === 0) return true; // Serializable tx: rolls back any deductions already made this call
+        if (rows === 0) {
+          // Undo what this call already took; the Payment row stays CAPTURED (committed with
+          // this transaction) so the money is accounted for and can be refunded.
+          for (const d of deducted) {
+            await tx.$executeRaw`UPDATE "ProductVariant" SET "stockQuantity" = "stockQuantity" + ${d.quantity} WHERE id = ${d.variantId}`;
+          }
+          return { kind: 'unfulfillable' as const, payment };
+        }
+        deducted.push({ variantId: item.variantId, quantity: item.quantity });
       }
 
       for (const item of payment.order.items) {
@@ -47,7 +71,6 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
           data: { variantId: item.variantId, change: -item.quantity, reason: 'SALE', orderId: payment.orderId, createdBy: 'system' },
         });
       }
-
       await tx.order.update({
         where: { id: payment.orderId },
         data: {
@@ -55,26 +78,26 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
           statusLog: { create: { from: 'CANCELLED', to: 'PAID', createdBy: 'system', note: `Late capture on retried payment: ${razorpayPaymentId}` } },
         },
       });
-      return false;
-    }, { isolationLevel: 'Serializable' });
+      return { kind: 'paid' as const, payment, restocked: true };
+    },
+    // Neon cold starts can eat seconds on the first query — Prisma's 5s default would close
+    // the transaction mid-flight (see the same note on checkout's transaction).
+    { maxWait: 5000, timeout: 15000 },
+  );
 
-    if (outOfStock) {
-      logger.error(
-        { orderNumber: payment.order.orderNumber, razorpayPaymentId },
-        'Payment captured on a retry after this order was cancelled, but stock is no longer available — payment marked CAPTURED, order left CANCELLED for manual admin resolution',
-      );
-      return;
-    }
-    await invalidateProductCaches();
-  } else {
-    await db.order.update({
-      where: { id: payment.orderId },
-      data: {
-        status: 'PAID',
-        statusLog: { create: { from: 'PENDING_PAYMENT', to: 'PAID', createdBy: 'system' } },
-      },
-    });
+  if (!outcome) return;
+
+  if (outcome.kind === 'unfulfillable') {
+    logger.error(
+      { orderNumber: outcome.payment.order.orderNumber, razorpayPaymentId },
+      'Payment captured on a retry after this order was cancelled, but stock is no longer available — refunding automatically',
+    );
+    await refundUnfulfillableCapture(outcome.payment, razorpayPaymentId);
+    return;
   }
+
+  const { payment } = outcome;
+  if (outcome.restocked) await invalidateProductCaches();
 
   // Fire-and-forget — never block webhook response on email/shipment calls
   if (payment.order.customerEmail) {
@@ -93,6 +116,41 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
     // once the underlying issue is fixed.
     logger.error({ err, orderNumber: payment.order.orderNumber }, 'Auto-booking shipment failed');
   });
+}
+
+// Money was captured for an order we can't fulfil (cancelled, and its stock was sold in the
+// meantime). Refund it instead of leaving the customer charged for nothing until an admin
+// notices. A failed refund is logged on the order's status history so it survives a reload.
+async function refundUnfulfillableCapture(
+  payment: { id: string; orderId: string; amount: unknown },
+  razorpayPaymentId: string,
+): Promise<void> {
+  try {
+    const { refundId } = await refundPayment(razorpayPaymentId, Number(payment.amount));
+    await db.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: { status: 'REFUNDED', razorpayRefundId: refundId, refundedAt: new Date() },
+      });
+      await tx.order.update({
+        where: { id: payment.orderId },
+        data: {
+          status: 'REFUNDED',
+          statusLog: {
+            create: { from: 'CANCELLED', to: 'REFUNDED', createdBy: 'system', note: `Payment captured after cancellation and stock was unavailable — auto-refunded (Razorpay refund ${refundId})` },
+          },
+        },
+      });
+    });
+  } catch (err) {
+    const reason = (err as { error?: { description?: string } } | null)?.error?.description ?? (err instanceof Error ? err.message : 'unknown error');
+    logger.error({ err, orderId: payment.orderId, razorpayPaymentId }, 'Auto-refund of unfulfillable capture failed');
+    await db.orderStatusLog
+      .create({
+        data: { orderId: payment.orderId, from: 'CANCELLED', to: 'CANCELLED', createdBy: 'system', note: `Payment captured but stock unavailable, auto-refund FAILED (${reason}) — refund ${razorpayPaymentId} manually on Razorpay` },
+      })
+      .catch(() => undefined);
+  }
 }
 
 // A payment.failed webhook means this order is definitively dead — not just
