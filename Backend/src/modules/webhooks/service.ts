@@ -3,7 +3,6 @@ import { logger } from '../../shared/logger/pino';
 import { sendOrderConfirmation, sendShipmentNotification } from '../../shared/integrations/resend/client';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
-import { refundPayment } from '../../shared/integrations/razorpay/client';
 import { syncOrderStatusFromShipment, applyWeightDiscrepancyCost, bookOrderShipment } from '../orders/service';
 
 // Payment flip + order status flip (+ stock re-reserve on a late capture) all commit
@@ -88,11 +87,13 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
   if (!outcome) return;
 
   if (outcome.kind === 'unfulfillable') {
+    // Do NOT silently mark this PAID over unavailable stock — leave it CANCELLED with the
+    // payment now correctly CAPTURED, log loudly, and let an admin resolve (refund or manual
+    // restock) via Admin's order page.
     logger.error(
       { orderNumber: outcome.payment.order.orderNumber, razorpayPaymentId },
-      'Payment captured on a retry after this order was cancelled, but stock is no longer available — refunding automatically',
+      'Payment captured on a retry after this order was cancelled, but stock is no longer available — payment marked CAPTURED, order left CANCELLED for manual admin resolution',
     );
-    await refundUnfulfillableCapture(outcome.payment, razorpayPaymentId);
     return;
   }
 
@@ -116,41 +117,6 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
     // once the underlying issue is fixed.
     logger.error({ err, orderNumber: payment.order.orderNumber }, 'Auto-booking shipment failed');
   });
-}
-
-// Money was captured for an order we can't fulfil (cancelled, and its stock was sold in the
-// meantime). Refund it instead of leaving the customer charged for nothing until an admin
-// notices. A failed refund is logged on the order's status history so it survives a reload.
-async function refundUnfulfillableCapture(
-  payment: { id: string; orderId: string; amount: unknown },
-  razorpayPaymentId: string,
-): Promise<void> {
-  try {
-    const { refundId } = await refundPayment(razorpayPaymentId, Number(payment.amount));
-    await db.$transaction(async (tx) => {
-      await tx.payment.update({
-        where: { id: payment.id },
-        data: { status: 'REFUNDED', razorpayRefundId: refundId, refundedAt: new Date() },
-      });
-      await tx.order.update({
-        where: { id: payment.orderId },
-        data: {
-          status: 'REFUNDED',
-          statusLog: {
-            create: { from: 'CANCELLED', to: 'REFUNDED', createdBy: 'system', note: `Payment captured after cancellation and stock was unavailable — auto-refunded (Razorpay refund ${refundId})` },
-          },
-        },
-      });
-    });
-  } catch (err) {
-    const reason = (err as { error?: { description?: string } } | null)?.error?.description ?? (err instanceof Error ? err.message : 'unknown error');
-    logger.error({ err, orderId: payment.orderId, razorpayPaymentId }, 'Auto-refund of unfulfillable capture failed');
-    await db.orderStatusLog
-      .create({
-        data: { orderId: payment.orderId, from: 'CANCELLED', to: 'CANCELLED', createdBy: 'system', note: `Payment captured but stock unavailable, auto-refund FAILED (${reason}) — refund ${razorpayPaymentId} manually on Razorpay` },
-      })
-      .catch(() => undefined);
-  }
 }
 
 // A payment.failed webhook means this order is definitively dead — not just
