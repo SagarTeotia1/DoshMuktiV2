@@ -374,10 +374,6 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
       amount: Math.round(finalTotal * 100),
       currency: "INR",
       receipt: order.orderNumber,
-      // Capture automatically whatever the dashboard's default is — with manual capture
-      // payments sit "authorized", payment.captured never fires, and Razorpay auto-refunds
-      // them after ~5 days while our DB (via /checkout/verify) already says paid.
-      payment_capture: true,
     });
   } catch (err) {
     // The order + stock reservation (+ coupon slot) are already committed above. Release
