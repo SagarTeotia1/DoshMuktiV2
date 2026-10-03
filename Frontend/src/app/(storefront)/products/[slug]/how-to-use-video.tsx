@@ -32,6 +32,30 @@ function DirectVideoPlayer({ url }: { url: string }) {
   const [seeking, setSeeking] = useState(false);
   const [buffering, setBuffering] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  // The player sits far down the product page — buffering the whole file at page load
+  // (these clips are tens of MB) competes with the images/checkout bundle on mobile data.
+  // Hold the download until the box is close to the viewport, then switch to preload="auto".
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [nearView, setNearView] = useState(false);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setNearView(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setNearView(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: '400px 0px' }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   // Belt-and-suspenders for `duration`: onLoadedMetadata is the normal path, but if the
   // browser already had metadata ready before this listener attached (fast cache, or a
@@ -103,6 +127,7 @@ function DirectVideoPlayer({ url }: { url: string }) {
 
   return (
     <div
+      ref={containerRef}
       className="group relative aspect-[9/16] max-w-[300px] mx-auto rounded-2xl overflow-hidden border border-[#2B1B0C] shadow-neo-md bg-[#2B1B0C] cursor-pointer"
       onClick={togglePlay}
     >
@@ -118,8 +143,9 @@ function DirectVideoPlayer({ url }: { url: string }) {
         // (desktop Safari + all iOS browsers) only decodes far enough to read duration/
         // dimensions at that preload level and leaves the canvas blank until playback
         // starts. preload="auto" makes WebKit buffer and decode enough to paint frame 0,
-        // which is what reads as "the poster" here.
-        preload="auto"
+        // which is what reads as "the poster" here. Deferred until the box is near the
+        // viewport (see nearView above) so the page load doesn't pull the whole file.
+        preload={nearView ? 'auto' : 'none'}
         className="absolute inset-0 w-full h-full object-cover"
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
