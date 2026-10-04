@@ -22,7 +22,7 @@ import {
   reserveCouponUsageTx,
   CouponExhaustedError,
 } from "../coupons/service";
-import { computePaymentBreakdown, type PaymentMethodId } from "../../shared/shipping/carrier";
+import { chooseCarrier, computePaymentBreakdown, type PaymentMethodId } from "../../shared/shipping/carrier";
 import type { CheckoutInput } from "./schema";
 
 export class OutOfStockError extends Error {
@@ -128,6 +128,32 @@ async function generateOrderNumber(
   return `DOSH-${today}-${String(row.seq).padStart(4, "0")}`;
 }
 
+// Live Delhivery rate (Surface mode), cached by route+weight since the same
+// origin/destination/weight always prices the same — this is hit on every cart/PDP
+// view, not just checkout, so an uncached call there would hammer Delhivery for no
+// reason. Returns null (never throws) on any failure so callers can fall back to the
+// flat SHIPPING_FEE — a customer must never be blocked from checking out because a
+// pricing API had a bad moment.
+async function getLiveShippingRate(destPincode: string, weightGrams: number): Promise<number | null> {
+  try {
+    const originPincode = env.DELHIVERY_WAREHOUSE_PINCODE;
+    const key = cacheKeys.shippingRate(originPincode, destPincode, weightGrams);
+
+    const cached = await redis.get<number>(key);
+    if (typeof cached === "number") return cached;
+
+    const result = await calculateShippingCost({ originPincode, destPincode, weightGrams, paymentMode: "Pre-paid" });
+    if (!result) return null;
+
+    const rounded = Math.ceil(result.amount);
+    await redis.set(key, rounded, { ex: CACHE_TTL.SHIPPING_RATE });
+    return rounded;
+  } catch (err) {
+    logger.warn({ err, destPincode }, "live shipping rate lookup failed, using flat fee");
+    return null;
+  }
+}
+
 // Exported for the cart module — the cart's pricing preview (shown pre-checkout on the
 // cart/checkout pages) must compute shipping the exact same way the real order will, or
 // the displayed total drifts from what actually gets charged.
@@ -138,13 +164,22 @@ async function generateOrderNumber(
 // charged (0 once waived).
 export async function calculateShippingFee(
   subtotal: number,
-  _weightGrams: number,
-  _destPincode: string,
-  _paymentMethod: PaymentMethodId = "PREPAID",
+  weightGrams: number,
+  destPincode: string,
+  paymentMethod: PaymentMethodId = "PREPAID",
 ): Promise<{ fee: number; originalFee: number }> {
-  // Flat "shipping & packaging" fee for every order, whatever the carrier or weight —
-  // waived above FREE_SHIPPING_ABOVE (we bear it). Params kept so callers stay stable.
-  return { fee: subtotal > FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE, originalFee: SHIPPING_FEE };
+  // Quote the carrier that will actually ship the parcel (same rule as booking):
+  //   Ekart (COD, or prepaid over the weight threshold) — flat SHIPPING_FEE (Rs90, Ekart's
+  //   flat rate up to 2kg), no lookup.
+  //   Delhivery (prepaid at/under the threshold) — real rate for this route + weight,
+  //   falling back to the flat fee only if Delhivery can't quote.
+  // Either way it's waived above FREE_SHIPPING_ABOVE (we bear it) — originalFee stays the
+  // true cost so the UI can show it struck through.
+  const originalFee =
+    chooseCarrier(paymentMethod, weightGrams) === "EKART"
+      ? SHIPPING_FEE
+      : ((await getLiveShippingRate(destPincode, weightGrams)) ?? SHIPPING_FEE);
+  return { fee: subtotal > FREE_SHIPPING_ABOVE ? 0 : originalFee, originalFee };
 }
 
 export async function initiateCheckout(input: CheckoutInput, userId: string) {
