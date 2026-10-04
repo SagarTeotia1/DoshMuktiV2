@@ -1,4 +1,5 @@
 import { env } from '../../../config/env';
+import { joinAddressLines, sanitizeCarrierText } from '../../shipping/addressText';
 
 // Ekart Logistics (Elite API). Request/response shapes follow Ekart's published OpenAPI
 // spec (https://app.elite.ekartlogistics.in/api/docs). Contract mirrors
@@ -125,10 +126,10 @@ export async function createEkartShipment(params: {
     service: 'SURFACE',
     drop_location: {
       location_type: 'Home',
-      name: params.customerName,
-      address: [params.address.line1, params.address.line2].filter(Boolean).join(', '),
-      city: params.address.city,
-      state: params.address.state,
+      name: sanitizeCarrierText(params.customerName) || params.customerName,
+      address: joinAddressLines([params.address.line1, params.address.line2]),
+      city: sanitizeCarrierText(params.address.city) || params.address.city,
+      state: sanitizeCarrierText(params.address.state) || params.address.state,
       country: 'India',
       phone: phone10(params.customerPhone),
       pin: Number(params.address.pincode),
