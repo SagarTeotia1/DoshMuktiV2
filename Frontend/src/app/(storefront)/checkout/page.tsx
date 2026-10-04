@@ -377,12 +377,13 @@ function CheckoutPageContent() {
   const cartWeightGrams =
     items.reduce((sum, item) => sum + (item.weight ?? 500) * item.quantity, 0) +
     (cart?.freeItems ?? []).reduce((sum, item) => sum + item.weight * item.quantity, 0);
-  const liveShipping = useShippingEstimate(
-    subtotal,
-    cartWeightGrams,
-    /^\d{6}$/.test(form.pincode) ? form.pincode : undefined,
-    paymentMethod
-  );
+  // Both carriers' quotes are fetched up front so each payment option can show its OWN
+  // total before the customer picks one — otherwise "Pay online" would display the total
+  // of whichever method is currently selected and only correct itself on click.
+  const destPincode = /^\d{6}$/.test(form.pincode) ? form.pincode : undefined;
+  const prepaidShipping = useShippingEstimate(subtotal, cartWeightGrams, destPincode, 'PREPAID');
+  const codShipping = useShippingEstimate(subtotal, cartWeightGrams, destPincode, 'COD');
+  const liveShipping = paymentMethod === 'COD' ? codShipping : prepaidShipping;
 
   // Backend-computed — same resolution path checkout itself uses (see cart/service.ts's
   // computeCartPricing), so this can never drift from what actually gets charged. Previously
@@ -397,6 +398,7 @@ function CheckoutPageContent() {
   // never show that guess as if it were the real charge. Free-shipping orders are exempt:
   // ₹0 is correct regardless of pincode, no guess involved.
   const hasResolvedPincodeRate = subtotal > FREE_SHIPPING_ABOVE || (/^\d{6}$/.test(form.pincode) && !!liveShipping.data);
+  const optionResolved = (est: typeof prepaidShipping) => subtotal > FREE_SHIPPING_ABOVE || (!!destPincode && !!est.data);
   const deliveryEstimate = formatDeliveryEstimate({
     shipment: null,
     estimatedDeliveryWindow: liveShipping.data?.estimatedDeliveryWindow ?? null,
@@ -410,6 +412,11 @@ function CheckoutPageContent() {
   const isCod = paymentMethod === 'COD';
   const codAdvance = Math.min(COD_ADVANCE_FEE, total);
   const codAmountDue = total - codAdvance;
+  // Per-option totals for the payment radio labels (independent of the selected method).
+  const totalWithFee = (fee: number) => Math.max(subtotal + fee - autoAppliedDiscount - couponDiscount, 0);
+  const prepaidOptionTotal = totalWithFee(prepaidShipping.data?.fee ?? shippingFee);
+  const codOptionTotal = totalWithFee(codShipping.data?.fee ?? shippingFee);
+  const codOptionAdvance = Math.min(COD_ADVANCE_FEE, codOptionTotal);
   // Inclusive breakup of subtotal (product price already includes GST — never an added
   // charge), same math the invoice PDF uses. 0 when nothing in the cart carries a GST rate.
   const gstAmount = cart?.gstAmount ?? 0;
@@ -779,13 +786,13 @@ function CheckoutPageContent() {
             id: 'PREPAID',
             title: 'Pay online',
             sub: 'UPI · Cards · Netbanking',
-            badge: hasResolvedPincodeRate ? formatCurrency(total) : null,
+            badge: optionResolved(prepaidShipping) ? formatCurrency(prepaidOptionTotal) : null,
           },
           {
             id: 'COD',
             title: 'Cash on Delivery',
-            sub: hasResolvedPincodeRate
-              ? `Pay ${formatCurrency(codAdvance)} now · ${formatCurrency(codAmountDue)} on delivery`
+            sub: optionResolved(codShipping)
+              ? `Pay ${formatCurrency(codOptionAdvance)} now · ${formatCurrency(codOptionTotal - codOptionAdvance)} on delivery`
               : `Pay ${formatCurrency(COD_ADVANCE_FEE)} now, rest on delivery`,
             badge: null,
           },
