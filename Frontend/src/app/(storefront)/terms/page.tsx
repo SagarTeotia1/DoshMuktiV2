@@ -122,7 +122,7 @@ export default function TermsPage() {
             <Section id="pricing" title="4. Pricing & Availability">
               <p>
                 All prices are listed in Indian Rupees (INR) and are inclusive of applicable taxes unless stated
-                otherwise. Shipping & packaging is a flat ₹{SHIPPING_FEE} for Cash on Delivery and larger parcels, and the actual courier rate for lighter prepaid parcels. It is waived on orders above ₹{FREE_SHIPPING_ABOVE}, and is
+                otherwise. Shipping & packaging is a flat ₹{SHIPPING_FEE}, waived on orders above ₹{FREE_SHIPPING_ABOVE}, and is
                 shown separately at checkout before payment. We reserve the right to change prices, discontinue products, or correct pricing
                 errors at any time without prior notice. If a pricing error is discovered after you place an
                 order, we will contact you before shipping — you may cancel for a full refund or proceed at the

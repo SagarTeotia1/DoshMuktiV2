@@ -165,7 +165,7 @@ async function getLiveShippingRate(destPincode: string, weightGrams: number): Pr
 export async function calculateShippingFee(
   subtotal: number,
   weightGrams: number,
-  destPincode: string | null,
+  destPincode: string,
   paymentMethod: PaymentMethodId = "PREPAID",
 ): Promise<{ fee: number; originalFee: number }> {
   // Quote the carrier that will actually ship the parcel (same rule as booking):
@@ -175,10 +175,8 @@ export async function calculateShippingFee(
   //   falling back to the flat fee only if Delhivery can't quote.
   // Either way it's waived above FREE_SHIPPING_ABOVE (we bear it) — originalFee stays the
   // true cost so the UI can show it struck through.
-  // destPincode null = destination not known yet (cart / product page): a warehouse-to-
-  // warehouse quote would be a meaningless low number, so show the flat fee as the estimate.
   const originalFee =
-    chooseCarrier(paymentMethod, weightGrams) === "EKART" || !destPincode
+    chooseCarrier(paymentMethod, weightGrams) === "EKART"
       ? SHIPPING_FEE
       : ((await getLiveShippingRate(destPincode, weightGrams)) ?? SHIPPING_FEE);
   return { fee: subtotal > FREE_SHIPPING_ABOVE ? 0 : originalFee, originalFee };
