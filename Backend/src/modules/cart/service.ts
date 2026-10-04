@@ -292,7 +292,7 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
     const { fee: shippingFee, originalFee: shippingFeeOriginal } = await calculateShippingFee(
       subtotal,
       paidWeightGrams + PACKAGING_WEIGHT_GRAMS,
-      env.DELHIVERY_WAREHOUSE_PINCODE
+      null
     );
     return {
       subtotal,
@@ -368,7 +368,7 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
   const { fee: shippingFee, originalFee: shippingFeeOriginal } = await calculateShippingFee(
     subtotal,
     paidWeightGrams + freeWeightGrams + PACKAGING_WEIGHT_GRAMS,
-    env.DELHIVERY_WAREHOUSE_PINCODE
+    null
   );
 
   const { taxableValue, gstAmount } = computeCartGst(cart);

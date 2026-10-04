@@ -48,7 +48,7 @@ export async function shippingEstimateHandler(req: FastifyRequest, reply: Fastif
   const { fee, originalFee } = await calculateShippingFee(
     parsed.data.subtotal,
     parsed.data.weightGrams + PACKAGING_WEIGHT_GRAMS,
-    parsed.data.destPincode ?? env.DELHIVERY_WAREHOUSE_PINCODE,
+    parsed.data.destPincode ?? null,
     parsed.data.paymentMethod
   );
   return reply.send({ fee, originalFee, estimatedDeliveryWindow: estimateDeliveryWindow(new Date(), 'PAID') });
