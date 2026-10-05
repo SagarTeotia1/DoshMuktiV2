@@ -181,6 +181,7 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
 
       let totalTaxableValue = 0;
       let totalGstAmount = 0;
+      const gstByRate = new Map<number, number>(); // rate % -> GST amount, so mixed-rate carts show each slab
 
       order.items.forEach((item, idx) => {
         const snapshot = item.variantSnapshot as unknown as VariantSnapshot;
@@ -192,6 +193,7 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
           const { taxableValue, gstAmount } = computeItemGst(lineTotal, gstRate);
           totalTaxableValue += taxableValue;
           totalGstAmount += gstAmount;
+          gstByRate.set(gstRate, (gstByRate.get(gstRate) ?? 0) + gstAmount);
         }
 
         const isFreeAttar =
@@ -245,11 +247,14 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
       if (discount > 0) totalsRows.push({ label: 'Discount', value: `- ${formatCurrency(order.discountAmount)}`, accent: true });
       if (showGst) {
         totalsRows.push({ label: 'Taxable Value', value: formatCurrency(totalTaxableValue) });
-        if (isSellerState(addrForSupply.state)) {
-          totalsRows.push({ label: 'CGST', value: formatCurrency(totalGstAmount / 2) });
-          totalsRows.push({ label: 'SGST', value: formatCurrency(totalGstAmount / 2) });
-        } else {
-          totalsRows.push({ label: 'IGST', value: formatCurrency(totalGstAmount) });
+        const intraState = isSellerState(addrForSupply.state);
+        for (const [rate, amount] of [...gstByRate.entries()].sort((a, b) => a[0] - b[0])) {
+          if (intraState) {
+            totalsRows.push({ label: `CGST @${rate / 2}%`, value: formatCurrency(amount / 2) });
+            totalsRows.push({ label: `SGST @${rate / 2}%`, value: formatCurrency(amount / 2) });
+          } else {
+            totalsRows.push({ label: `IGST @${rate}%`, value: formatCurrency(amount) });
+          }
         }
       }
 
