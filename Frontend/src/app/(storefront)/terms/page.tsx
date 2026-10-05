@@ -110,7 +110,7 @@ export default function TermsPage() {
               </p>
               <p>
                 <strong className="text-[#2B1B0C]">Seller information.</strong> The Site is operated by Digital
-                Kalakaar Videos Private Limited, trading as Doshhmukti. Contact: support@doshmukti.com. Product
+                Kalakaar Videos Private Limited, trading as Doshhmukti. CIN: U22300DL2020PTC367758; GSTIN: 07AAHCD8992N1ZQ. Contact: support@doshmukti.com, +91 88823 86868. Product
                 price is the maximum retail price (MRP) inclusive of all taxes; country of origin, net quantity
                 and other mandatory declarations are shown on the product page or on the product packaging.
               </p>
@@ -362,6 +362,8 @@ export default function TermsPage() {
                 <br />
                 <strong className="text-[#2B1B0C]">Email:</strong> support@doshmukti.com
                 <br />
+                <strong className="text-[#2B1B0C]">Phone / WhatsApp:</strong> +91 88823 86868 (customer care)
+                <br />
                 <strong className="text-[#2B1B0C]">Response time:</strong> Acknowledgement within 48 hours,
                 resolution within 30 days.
               </p>
@@ -385,7 +387,11 @@ export default function TermsPage() {
                   support@doshmukti.com
                 </a>
                 <br />
-                WhatsApp / Contact form:{' '}
+                Phone / WhatsApp: +91 88823 86868
+                <br />
+                CIN: U22300DL2020PTC367758 · GSTIN: 07AAHCD8992N1ZQ
+                <br />
+                Contact form:{' '}
                 <Link href="/contact" className="text-[#9C5A26] font-semibold hover:underline">
                   doshmukti.com/contact
                 </Link>

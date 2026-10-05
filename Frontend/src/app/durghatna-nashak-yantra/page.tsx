@@ -47,14 +47,14 @@ export const revalidate = 3600;
 const fraunces = Fraunces({ subsets: ['latin'], weight: ['400', '600'], style: ['normal', 'italic'], variable: '--font-fraunces' });
 
 const HERO_SERVICES = [
-  { icon: Sparkles, label: '100% Ritually Energized' },
+  { icon: Sparkles, label: 'Ritually Energized' },
   { icon: Truck, label: `Free Delivery ₹${FREE_SHIPPING_ABOVE}+` },
   { icon: RotateCcw, label: `7-Day Returns ₹${RETURN_ELIGIBLE_ABOVE}+` },
   { icon: Lock, label: 'Secure Payment' },
 ];
 
 const STATS = [
-  { value: '100%', label: 'Ritually Energized' },
+  { value: 'Vedic', label: 'Ritual Prepared' },
   { value: '24-48h', label: 'Dispatch Time' },
   { value: '5-7', label: 'Days to Deliver' },
   { value: '7-Day', label: `Returns ₹${RETURN_ELIGIBLE_ABOVE}+` },
@@ -124,9 +124,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const product = await getProduct();
   if (!product) return {};
 
-  const title = 'Durghatna Nashak Yantra — Protection From Accidents & Misfortune';
+  const title = 'Durghatna Nashak Yantra — Traditional Vedic Protection Yantra';
   const description =
-    product.excerpt || 'A ritually energized Durghatna Nashak Yantra — invoked to remove accident dosh and shield you from sudden misfortune.';
+    product.excerpt || 'A ritually energized Durghatna Nashak Yantra, kept in traditional belief as a symbol of protection and safety.';
   const canonical = `/${PRODUCT_SLUG}`;
   const image = product.images[0]?.card;
 
@@ -200,8 +200,8 @@ export default async function DurghatnaNashakYantraPage() {
       ? product.benefits
       : [
           { title: 'Ritually Energized', description: product.excerpt || 'Invoked with traditional Vedic ritual before it ever leaves our workshop.' },
-          { title: 'Travels With You', description: 'Keep it in your wallet, workspace or vehicle — it protects the person, not a place.' },
-          { title: 'Made to Ward Off Misfortune', description: 'Invoked to remove accident dosh and shield against sudden, unforeseen mishaps.' },
+          { title: 'Travels With You', description: 'Keep it in your wallet, workspace or vehicle — it goes with you, not a specific place.' },
+          { title: 'Traditional Protection Symbol', description: 'Kept in faith as a symbol of protection and safety. A matter of belief, not a substitute for safe driving or precautions.' },
         ];
 
   const productJsonLd = generateProductJsonLd({
@@ -287,7 +287,7 @@ export default async function DurghatnaNashakYantraPage() {
 
             {/* Sticker tag — small rotated pill, kept inside the top-right corner */}
             <span className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 rotate-[8deg] inline-flex items-center rounded-full bg-[#E6B873] text-[#2B1B0C] font-body font-bold text-[10px] sm:text-[11px] px-3 py-1.5 shadow-neo-gold-md">
-              100% Energized
+              Ritually Energized
             </span>
           </div>
         </div>
@@ -303,10 +303,10 @@ export default async function DurghatnaNashakYantraPage() {
               className="leading-[1.05] sm:leading-[0.98] tracking-tight text-[#FFFDF8] text-[2.1rem] sm:text-6xl lg:text-7xl"
               style={{ fontFamily: 'var(--font-fraunces), Georgia, serif' }}
             >
-              Because misfortune <span className="italic font-light text-[#E6B873]">shouldn&apos;t</span> have the final word.
+              Carry your <span className="italic font-light text-[#E6B873]">faith</span> wherever you go.
             </h1>
             <p className="font-body text-sm sm:text-base text-[#E6D3AE]/80 max-w-md mx-auto sm:mx-0 mt-5">
-              Invoked to remove accident dosh and shield you from sudden, unforeseen misfortune.
+              Kept in traditional belief as a symbol of protection and safety, as a matter of faith.
             </p>
           </div>
         </div>
@@ -432,7 +432,7 @@ export default async function DurghatnaNashakYantraPage() {
               <h2 className="font-heading font-black text-3xl sm:text-5xl tracking-tight leading-[1.1]">
                 Carried with you.
                 <br />
-                Wherever misfortune might strike.
+                Wherever you go.
               </h2>
             </Reveal>
             <Reveal delay={0.1} className="w-full max-w-lg">
@@ -539,6 +539,9 @@ export default async function DurghatnaNashakYantraPage() {
       {/* Real site footer — this campaign page skipped the (storefront) layout entirely,
           so it never got the shared Footer; a one-line copyright bar wasn't enough once
           the page grew this much real content, visitors need the actual site links. */}
+      <p className="px-5 pb-10 text-center font-body text-[11px] leading-relaxed text-[#8A7A63] max-w-2xl mx-auto">
+        Spiritual and devotional product, sold on the basis of traditional faith and belief. No medical or scientific claim is made and no outcome is guaranteed; experiences and reviews vary. See our <Link href="/terms#disclaimer" className="underline">Terms</Link>.
+      </p>
       <Footer />
 
       {/* This page sits outside the (storefront) route group, so it doesn't inherit the

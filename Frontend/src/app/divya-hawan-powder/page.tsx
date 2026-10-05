@@ -47,17 +47,17 @@ export const revalidate = 3600;
 const fraunces = Fraunces({ subsets: ['latin'], weight: ['400', '600'], style: ['normal', 'italic'], variable: '--font-fraunces' });
 
 const HERO_SERVICES = [
-  { icon: Sparkles, label: '100% Pure Havan Samagri' },
+  { icon: Sparkles, label: 'Traditional Havan Samagri' },
   { icon: Flame, label: 'Traditional Vedic Herbs' },
-  { icon: ShieldCheck, label: 'Authentic & Energized' },
+  { icon: ShieldCheck, label: 'Prepared Traditionally' },
   { icon: Lock, label: 'Secure Payment' },
 ];
 
 const STATS = [
-  { value: '100%', label: 'Pure & Natural' },
+  { value: 'Herbal', label: 'Traditional Blend' },
   { value: '24-48h', label: 'Dispatch Time' },
   { value: '5-7', label: 'Days to Deliver' },
-  { value: '100%', label: 'Vedic Samagri' },
+  { value: 'Vedic', label: 'Tradition' },
 ];
 
 const FAQ_ITEMS = [
@@ -124,10 +124,10 @@ export async function generateMetadata(): Promise<Metadata> {
   const product = await getProduct();
   if (!product) return {};
 
-  const title = 'Divya Hawan Powder — Fire Ritual for Purifying Your Home';
+  const title = 'Divya Hawan Powder — Traditional Havan Samagri for Home Rituals';
   const description =
     product.excerpt ||
-    'A traditional Vedic havan powder blend — burned to cleanse your home of negative energy and invite clarity, protection and prosperity.';
+    'A traditional Vedic havan powder blend — used in traditional havan rituals for a calm, devotional atmosphere at home.';
   const canonical = `/${PRODUCT_SLUG}`;
   const image = product.images[0]?.card;
 
@@ -201,7 +201,7 @@ export default async function DivyaHawanPowderPage() {
       ? product.benefits
       : [
           { title: 'Traditional Havan Samagri', description: product.excerpt || 'A pure blend of herbs and ritual ingredients, prepared following Vedic tradition.' },
-          { title: 'Clears Heavy Energy', description: 'Burned in a havan to cleanse a home or space of stagnant, negative energy.' },
+          { title: 'For Traditional Havan Rituals', description: 'Used in havan as a matter of faith, to create a calm and devotional atmosphere.' },
           { title: 'Fits Any Ritual', description: 'Works for a daily puja, a weekly havan, or a full ceremony — as little or as much as your practice needs.' },
         ];
 
@@ -288,7 +288,7 @@ export default async function DivyaHawanPowderPage() {
 
             {/* Sticker tag — small rotated pill, kept inside the top-right corner */}
             <span className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 rotate-[8deg] inline-flex items-center rounded-full bg-[#E6B873] text-[#2B1B0C] font-body font-bold text-[10px] sm:text-[11px] px-3 py-1.5 shadow-neo-gold-md">
-              Bestseller
+              Traditional
             </span>
           </div>
         </div>
@@ -307,7 +307,7 @@ export default async function DivyaHawanPowderPage() {
               Let the fire <span className="italic font-light text-[#E6B873]">carry away</span> what no longer serves you.
             </h1>
             <p className="font-body text-sm sm:text-base text-[#E6D3AE]/80 max-w-md mx-auto sm:mx-0 mt-5">
-              A traditional havan powder blend, burned to cleanse your home of negative energy and heaviness.
+              A traditional havan powder blend, used in home rituals as a matter of faith and belief.
             </p>
           </div>
         </div>
@@ -540,6 +540,9 @@ export default async function DivyaHawanPowderPage() {
       {/* Real site footer — this campaign page skipped the (storefront) layout entirely,
           so it never got the shared Footer; a one-line copyright bar wasn't enough once
           the page grew this much real content, visitors need the actual site links. */}
+      <p className="px-5 pb-10 text-center font-body text-[11px] leading-relaxed text-[#8A7A63] max-w-2xl mx-auto">
+        Spiritual and devotional product, sold on the basis of traditional faith and belief. No medical or scientific claim is made and no outcome is guaranteed; experiences and reviews vary. See our <Link href="/terms#disclaimer" className="underline">Terms</Link>.
+      </p>
       <Footer />
 
       {/* This page sits outside the (storefront) route group, so it doesn't inherit the

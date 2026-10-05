@@ -172,7 +172,7 @@ export function Footer() {
       <div className="border-t border-[#2A2A2A]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-4 sm:py-5 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="font-body text-[10px] text-[#5A5A5A]">
-            © {new Date().getFullYear()} Digital Kalakaar Videos Private Limited. All rights reserved.
+            © {new Date().getFullYear()} Digital Kalakaar Videos Private Limited · CIN U22300DL2020PTC367758 · GSTIN 07AAHCD8992N1ZQ. All rights reserved.
           </p>
           <p className="font-body text-[10px] text-[#5A5A5A]">
             Made with intention in India 🇮🇳
