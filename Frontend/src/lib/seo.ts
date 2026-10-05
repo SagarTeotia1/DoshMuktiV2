@@ -1,4 +1,4 @@
-import { SITE_URL } from '@/lib/constants';
+import { SITE_URL, SHIPPING_FEE, FREE_SHIPPING_ABOVE, RETURN_ELIGIBLE_ABOVE } from '@/lib/constants';
 import type { Product, ProductReviewsResponse } from '@/types/api.types';
 
 export interface GenerateProductJsonLdOptions {
@@ -81,6 +81,35 @@ export function generateProductJsonLd({
       priceValidUntil: `${new Date().getFullYear() + 1}-12-31`,
       itemCondition: 'https://schema.org/NewCondition',
       availability: isAvailable ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      shippingDetails: {
+        '@type': 'OfferShippingDetails',
+        shippingRate: {
+          '@type': 'MonetaryAmount',
+          value: Number(price) >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE,
+          currency: 'INR',
+        },
+        shippingDestination: { '@type': 'DefinedRegion', addressCountry: 'IN' },
+        deliveryTime: {
+          '@type': 'ShippingDeliveryTime',
+          handlingTime: { '@type': 'QuantitativeValue', minValue: 1, maxValue: 2, unitCode: 'DAY' },
+          transitTime: { '@type': 'QuantitativeValue', minValue: 5, maxValue: 7, unitCode: 'DAY' },
+        },
+      },
+      hasMerchantReturnPolicy:
+        Number(price) >= RETURN_ELIGIBLE_ABOVE
+          ? {
+              '@type': 'MerchantReturnPolicy',
+              applicableCountry: 'IN',
+              returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+              merchantReturnDays: 7,
+              returnMethod: 'https://schema.org/ReturnByMail',
+              returnFees: 'https://schema.org/ReturnShippingFees',
+            }
+          : {
+              '@type': 'MerchantReturnPolicy',
+              applicableCountry: 'IN',
+              returnPolicyCategory: 'https://schema.org/MerchantReturnNotPermitted',
+            },
     },
   };
 
