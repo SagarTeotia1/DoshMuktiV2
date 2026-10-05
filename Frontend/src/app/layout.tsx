@@ -22,7 +22,7 @@ const TITLE_DEFAULT = 'Doshhmukti — Astrology Products & Remedies';
 const DESCRIPTION =
   'Authentic astrology products — energized gemstones, rudraksha malas and bracelets — chosen with Vedic guidance. Shop remedies for love, wealth, health & protection.';
 
-// Existing brand asset (src/app/icon.png, 533x512). No 1200x630 share image exists yet.
+// Existing brand asset (src/app/icon.png, 512x512). No 1200x630 share image exists yet.
 const DEFAULT_SOCIAL_IMAGE = `${SITE_URL}/icon.png`;
 
 export const metadata: Metadata = {
@@ -71,7 +71,7 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_IN',
     url: SITE_URL,
-    images: [{ url: DEFAULT_SOCIAL_IMAGE, width: 533, height: 512, alt: 'Doshhmukti' }],
+    images: [{ url: DEFAULT_SOCIAL_IMAGE, width: 512, height: 512, alt: 'Doshhmukti' }],
   },
   twitter: {
     card: 'summary_large_image',
