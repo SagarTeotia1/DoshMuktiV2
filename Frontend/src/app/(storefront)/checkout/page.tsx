@@ -822,6 +822,7 @@ function CheckoutPageContent() {
       {isCod && (
         <p className="font-body text-[11px] text-[#8A7A63] -mt-1">
           The {formatCurrency(COD_ADVANCE_FEE)} is your shipping charge — it&apos;s already counted in your total.
+          It is non-refundable if you refuse or don&apos;t accept delivery after dispatch.
         </p>
       )}
       {subtotal > 0 && subtotal <= FREE_SHIPPING_ABOVE && (
@@ -853,6 +854,13 @@ function CheckoutPageContent() {
           <p className="flex items-center justify-center gap-1.5 font-body text-[10px] text-[#8A7A63] mt-1">
             <ShieldCheck className="w-3.5 h-3.5 text-[#9C5A26]" />
             Secured by Razorpay
+          </p>
+          <p className="font-body text-[11px] text-[#8A7A63] text-center leading-relaxed">
+            All payments are subject to our{' '}
+            <a href="/terms#payments" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#9C5A26] underline">
+              Terms &amp; Conditions
+            </a>
+            . Please read them carefully before paying.
           </p>
         </>
       ) : (
