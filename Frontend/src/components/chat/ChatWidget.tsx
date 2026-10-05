@@ -199,6 +199,12 @@ export function ChatWidget() {
             )}
           </div>
 
+          <p className="px-4 py-1.5 text-center font-body text-[10px] leading-snug text-[#7E6E58] border-t border-[#2B1B0C]/10 flex-shrink-0">
+            AI assistant — not a human or a licensed professional. Guidance is traditional, not medical, legal or
+            financial advice. Chats and details you share (e.g. DOB, phone) are stored and processed by our AI
+            provider; by chatting you agree to our{' '}
+            <a href="/privacy#ai-chat" target="_blank" rel="noopener noreferrer" className="underline">Privacy Policy</a>.
+          </p>
           {/* Input */}
           <form onSubmit={handleSubmit} className="flex items-center gap-2 p-3 sm:p-4 border-t border-[#2B1B0C]/10 flex-shrink-0">
             {voice.supported && (

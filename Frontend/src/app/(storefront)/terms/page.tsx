@@ -104,7 +104,15 @@ export default function TermsPage() {
                 guardian, to place an order. You can check out as a guest, or sign in with your mobile number (one-time
                 password) to view your past orders and saved addresses. You are responsible for keeping access to
                 your mobile number secure. A session identifier is stored in your browser to associate your cart
-                with your device; it does not identify you personally.
+                with your device; it does not identify you personally. By logging in, placing an order or using
+                the Site, you confirm that you are 18 or older (or acting with a parent/guardian&rsquo;s consent) and
+                that the details you give us are true and complete.
+              </p>
+              <p>
+                <strong className="text-[#2B1B0C]">Seller information.</strong> The Site is operated by Digital
+                Kalakaar Videos Private Limited, trading as Doshhmukti. Contact: support@doshmukti.com. Product
+                price is the maximum retail price (MRP) inclusive of all taxes; country of origin, net quantity
+                and other mandatory declarations are shown on the product page or on the product packaging.
               </p>
             </Section>
 
@@ -255,6 +263,12 @@ export default function TermsPage() {
                 We reserve the right to refuse service, cancel orders, or block access from any device or IP
                 address engaged in prohibited use.
               </p>
+              <p>
+                <strong className="text-[#2B1B0C]">Promotional messages.</strong> We send order-related messages
+                (confirmations, shipping and delivery updates, OTPs) by SMS, WhatsApp and email as part of
+                the service. We send promotional messages only if you have agreed to receive them, and you can
+                opt out at any time by replying STOP or writing to support@doshmukti.com.
+              </p>
             </Section>
 
             <Section id="disclaimer" title="12. Nature of Products & Disclaimer">
@@ -266,7 +280,26 @@ export default function TermsPage() {
                 condition, or guarantees any specific life outcome (financial, romantic, professional, or
                 otherwise). Any benefit described is rooted in traditional belief and personal experience, not
                 medical or scientific claim. Products are not a substitute for professional medical, legal, or
-                financial advice.
+                financial advice. Names such as &ldquo;dosh nashak&rdquo; or &ldquo;suraksha kavach&rdquo; and
+                any descriptions of purpose reflect traditional use and belief only; individual experiences and
+                customer testimonials vary, are not typical or guaranteed results, and are not endorsements of any
+                outcome.
+              </p>
+              <p>
+                <strong className="text-[#2B1B0C]">AI chat assistant.</strong> Our chat assistant is an automated
+                AI system, not a human, astrologer, doctor or licensed adviser. Its replies are general, may be
+                inaccurate or incomplete, and are provided for information and guidance only. Do not rely on them
+                for medical, legal, financial or safety decisions. Details you share in the chat are handled as
+                described in our{' '}
+                <Link href="/privacy#ai-chat" className="text-[#9C5A26] font-semibold hover:underline">
+                  Privacy Policy
+                </Link>
+                .
+              </p>
+              <p>
+                <strong className="text-[#2B1B0C]">Reviews.</strong> Reviews are submitted by customers, moderated
+                before publication, and reflect their own opinions. We do not pay for or alter the substance of
+                reviews, and we may reject or remove reviews that are fake, abusive, or unrelated to the product.
               </p>
             </Section>
 

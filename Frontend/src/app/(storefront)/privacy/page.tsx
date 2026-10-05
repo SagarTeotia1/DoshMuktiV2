@@ -8,7 +8,7 @@ export const metadata = {
   alternates: { canonical: '/privacy' },
 };
 
-const LAST_UPDATED = 'August 26, 2026';
+const LAST_UPDATED = 'October 5, 2026';
 
 const SECTIONS = [
   { id: 'scope', title: '1. Scope of This Policy' },
@@ -25,7 +25,8 @@ const SECTIONS = [
   { id: 'thirdparty', title: '12. Third-Party Links' },
   { id: 'changes', title: '13. Changes to This Policy' },
   { id: 'grievance', title: '14. Grievance Officer' },
-  { id: 'contact', title: '15. Contact Us' },
+  { id: 'ai-chat', title: '15. AI Chat Assistant' },
+  { id: 'contact', title: '16. Contact Us' },
 ];
 
 export default function PrivacyPage() {
@@ -106,6 +107,26 @@ export default function PrivacyPage() {
                   an order.
                 </li>
               </ul>
+              <ul className="list-disc pl-5 space-y-1.5">
+                <li>
+                  <strong className="text-[#2B1B0C]">Login data</strong> — if you sign in, your mobile number and a
+                  one-time password (OTP) sent by SMS through our OTP provider (2Factor), plus saved addresses
+                  and order history linked to that number.
+                </li>
+                <li>
+                  <strong className="text-[#2B1B0C]">AI chat data</strong> — messages, voice-to-text input, and any
+                  details you choose to share with our AI assistant (such as date of birth, name, phone number,
+                  city, and the concern you describe). See Section 15.
+                </li>
+                <li>
+                  <strong className="text-[#2B1B0C]">Reviews</strong> — the name, rating and text you submit.
+                </li>
+                <li>
+                  <strong className="text-[#2B1B0C]">Advertising and analytics identifiers</strong> — cookie IDs and
+                  event data (pages viewed, products viewed, add-to-cart, checkout and purchase events) collected
+                  through the Meta (Facebook) Pixel and Google/Firebase Analytics. See Section 4.
+                </li>
+              </ul>
               <p>
                 We do not require you to create an account, and we do not collect or store payment card numbers,
                 UPI IDs, or net-banking credentials — see Section 6.
@@ -119,19 +140,47 @@ export default function PrivacyPage() {
                 <li>Respond to support requests and process returns/refunds.</li>
                 <li>Check serviceability of your pincode before you pay.</li>
                 <li>Detect and prevent fraud, abuse, or checkout errors.</li>
-                <li>Understand aggregate Site usage to improve product listings and performance (analytics).</li>
+                <li>Understand Site usage to improve product listings and performance (analytics).</li>
+                <li>Measure and run our advertising, including showing ads to people who visited the Site (Meta Pixel).</li>
+                <li>Reply to you through the AI chat and follow up on enquiries you make there.</li>
+                <li>Verify your identity when you log in with an OTP.</li>
                 <li>Send promotional updates via WhatsApp/email, only if you opted in (e.g. newsletter signup) — you can opt out at any time.</li>
               </ul>
               <p>We do not sell your personal data to third parties.</p>
             </Section>
 
             <Section id="cookies" title="4. Cookies & Tracking">
+              <p>We use the following cookies, local storage entries and similar technologies:</p>
+              <ul className="list-disc pl-5 space-y-1.5">
+                <li>
+                  <strong className="text-[#2B1B0C]">Essential</strong> — a session identifier (cookie, about 1
+                  year) that scopes your cart, and a login token if you sign in. The cart and checkout cannot work
+                  without these.
+                </li>
+                <li>
+                  <strong className="text-[#2B1B0C]">Analytics</strong> — Google/Firebase Analytics (provider:
+                  Google), to understand traffic and usage.
+                </li>
+                <li>
+                  <strong className="text-[#2B1B0C]">Advertising and measurement</strong> — the Meta (Facebook)
+                  Pixel (provider: Meta Platforms), which reports page views and shopping events (view item, add to
+                  cart, checkout, purchase) so we can measure ads, build custom audiences and show you our ads on
+                  Meta platforms. Meta may combine this with data it already holds about you under its own privacy
+                  policy.
+                </li>
+              </ul>
               <p>
-                We use a small number of cookies/local storage entries: a session identifier that scopes your
-                cart, and (where enabled) Firebase Analytics cookies that help us understand traffic and usage
-                patterns in aggregate. These are not used to build advertising profiles. You can block cookies in
-                your browser settings, though the cart and checkout flow require the session identifier to
-                function.
+                By continuing to use the Site you consent to these cookies and tracking technologies. You can
+                withdraw consent or block them at any time through your browser settings, by clearing cookies, or
+                by using Meta&rsquo;s{' '}
+                <a href="https://www.facebook.com/settings?tab=ads" target="_blank" rel="noopener noreferrer" className="text-[#9C5A26] font-semibold hover:underline">
+                  ad preferences
+                </a>{' '}
+                and Google&rsquo;s{' '}
+                <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer" className="text-[#9C5A26] font-semibold hover:underline">
+                  analytics opt-out
+                </a>
+                , or by writing to us (Section 9).
               </p>
             </Section>
 
@@ -142,9 +191,13 @@ export default function PrivacyPage() {
               </p>
               <ul className="list-disc pl-5 space-y-1.5">
                 <li><strong className="text-[#2B1B0C]">Razorpay</strong> — payment processing (Section 6).</li>
-                <li><strong className="text-[#2B1B0C]">Delhivery</strong> (or another courier partner) — your name, address, and phone number, to deliver your order.</li>
+                <li><strong className="text-[#2B1B0C]">Delhivery and Ekart</strong> (or another courier partner) — your name, address, and phone number, to deliver your order.</li>
+                <li><strong className="text-[#2B1B0C]">2Factor</strong> — SMS delivery of login OTPs to your mobile number.</li>
                 <li><strong className="text-[#2B1B0C]">Resend</strong> — transactional email delivery (order confirmations, shipping updates).</li>
-                <li><strong className="text-[#2B1B0C]">Google Cloud Platform</strong> — infrastructure hosting for our servers and database; Firebase Analytics for aggregate usage data.</li>
+                <li><strong className="text-[#2B1B0C]">Google Cloud Platform</strong> — infrastructure hosting for our servers and database; Firebase/Google Analytics for usage data.</li>
+                <li><strong className="text-[#2B1B0C]">Meta Platforms</strong> — Meta Pixel advertising and measurement data (Section 4).</li>
+                <li><strong className="text-[#2B1B0C]">Groq</strong> — AI processing of your chat messages (Section 15).</li>
+                <li><strong className="text-[#2B1B0C]">Fontshare (Indian Type Foundry)</strong> — font files loaded from its CDN, which receives your IP address and browser details when fonts load.</li>
               </ul>
               <p>
                 Each of these providers is contractually restricted to using your data only to perform the service
@@ -166,8 +219,14 @@ export default function PrivacyPage() {
               <p>
                 We retain order data (name, address, order history) for as long as needed to fulfil legal,
                 accounting, and tax obligations under Indian law, and to handle any post-delivery returns,
-                warranty, or dispute matters — typically up to 7 years for financial records. Session identifiers
-                for abandoned/anonymous carts are purged automatically after a limited period of inactivity.
+                warranty, or dispute matters — typically up to 7 years for financial records.
+              </p>
+              <p>
+                We keep your other data (account and login details, saved addresses, AI chat details, reviews)
+                until you ask us to delete it. To request deletion, write to us as described in Section 9. We will
+                erase or anonymise your data within 30 days of a verified request, except records we must keep by
+                law (such as invoices and tax records), which we retain for the legally required period and then
+                delete.
               </p>
             </Section>
 
@@ -177,7 +236,8 @@ export default function PrivacyPage() {
                 across the Site, restricted internal access to order data (JWT-authenticated admin access only),
                 and no storage of payment credentials on our systems. No online system is 100% secure, and we
                 cannot guarantee absolute security, but we take reasonable technical and organizational measures
-                to protect your information against unauthorized access, alteration, or loss.
+                to protect your information against unauthorized access, alteration, or loss. If a personal data
+                breach affects you, we will notify you and the Data Protection Board of India as required by law.
               </p>
             </Section>
 
@@ -204,17 +264,21 @@ export default function PrivacyPage() {
 
             <Section id="transfer" title="10. Cross-Border Data Transfer">
               <p>
-                Our infrastructure runs on Google Cloud Platform, which may process data in data centres located
-                outside India. Where this occurs, we rely on our providers&rsquo; standard contractual and
-                security safeguards to protect your data to a standard consistent with Indian law.
+                Some of our service providers process data outside India: Google (Cloud Platform, Firebase and
+                Analytics), Meta Platforms (Meta Pixel) and Groq (AI chat processing, United States). By using the
+                Site, placing an order, or using the AI chat, you consent to this transfer. We transfer data only to
+                countries not restricted by the Government of India, and rely on our providers&rsquo; contractual
+                and security safeguards to protect your data to a standard consistent with Indian law.
               </p>
             </Section>
 
             <Section id="children" title="11. Children’s Privacy">
               <p>
-                The Site is not directed at children under 18. We do not knowingly collect personal data from
-                children. If you believe a child has provided us with personal data, contact us and we will
-                delete it.
+                The Site is not directed at children under 18, and you must be 18 or older (or use the Site under
+                the supervision of a parent or legal guardian, who gives consent on your behalf) to place an
+                order or use the AI chat. We do not knowingly collect personal data from children or track or
+                target them with advertising. If you believe a child has provided us with personal data, contact
+                us and we will delete it.
               </p>
             </Section>
 
@@ -249,7 +313,29 @@ export default function PrivacyPage() {
               </p>
             </Section>
 
-            <Section id="contact" title="15. Contact Us">
+            <Section id="ai-chat" title="15. AI Chat Assistant">
+              <p>
+                The Site offers an AI chat assistant (&ldquo;Acharya Madhav&rdquo;). It is an automated
+                system, not a human, astrologer or licensed professional. Its replies are general guidance based on
+                traditional belief and are not medical, legal, financial or psychological advice.
+              </p>
+              <p>
+                When you use it, we collect and store your messages and voice-to-text input, and any details you
+                choose to share, such as your date of birth, name, phone number, city and concern. We use them to
+                generate replies, to follow up on your product enquiry, and to improve the service. Your messages
+                are sent to our AI provider, Groq, which processes them outside India (Section 10). Please do not
+                share sensitive information you are not comfortable sharing. Voice input uses your browser&rsquo;s
+                speech-recognition service (provided by your browser or device vendor, e.g. Google), which is
+                governed by its own policy.
+              </p>
+              <p>
+                By using the chat, you consent to this processing. You can withdraw consent and ask us to delete
+                your chat data at any time (Section 9). Chat data is kept until you ask us to delete it
+                (Section 7).
+              </p>
+            </Section>
+
+            <Section id="contact" title="16. Contact Us">
               <p>Questions about this Privacy Policy or your data can be sent to:</p>
               <p>
                 <strong className="text-[#2B1B0C]">Digital Kalakaar Videos Private Limited</strong> (Doshhmukti)

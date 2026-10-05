@@ -203,6 +203,13 @@ function InlineLogin({
               ? 'Verifying...'
               : 'Verify & Continue'}
         </button>
+        <p className="font-body text-[11px] text-[#8A7A63] text-center leading-relaxed">
+          By continuing, you agree to our{' '}
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#9C5A26] underline">Terms &amp; Conditions</a>{' '}
+          and{' '}
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#9C5A26] underline">Privacy Policy</a>
+          , and consent to us processing your mobile number to verify your login. Please read them carefully.
+        </p>
       </form>
     </div>
   );
