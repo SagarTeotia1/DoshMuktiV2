@@ -161,8 +161,8 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
       const colProduct = PAGE_LEFT;
       const colSku = PAGE_LEFT + 190;
       const colQty = PAGE_LEFT + 310;
-      const colPrice = PAGE_LEFT + 355;
-      const colTotal = PAGE_LEFT + 435;
+      const colPrice = PAGE_LEFT + 340;
+      const colTotal = PAGE_LEFT + 410;
       const rowPad = 8;
 
       function tableHeader(headerY: number): number {
