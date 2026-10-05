@@ -47,14 +47,14 @@ export const revalidate = 3600;
 const fraunces = Fraunces({ subsets: ['latin'], weight: ['400', '600'], style: ['normal', 'italic'], variable: '--font-fraunces' });
 
 const HERO_SERVICES = [
-  { icon: Sparkles, label: 'Ritually Energized' },
+  { icon: Sparkles, label: '100% Ritually Energized' },
   { icon: Truck, label: `Free Delivery ₹${FREE_SHIPPING_ABOVE}+` },
   { icon: RotateCcw, label: `7-Day Returns ₹${RETURN_ELIGIBLE_ABOVE}+` },
   { icon: Lock, label: 'Secure Payment' },
 ];
 
 const STATS = [
-  { value: 'Vedic', label: 'Ritual Prepared' },
+  { value: '100%', label: 'Ritually Energized' },
   { value: '24-48h', label: 'Dispatch Time' },
   { value: '5-7', label: 'Days to Deliver' },
   { value: '7-Day', label: `Returns ₹${RETURN_ELIGIBLE_ABOVE}+` },
@@ -124,9 +124,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const product = await getProduct();
   if (!product) return {};
 
-  const title = 'Durbhagya Nashak Nariyal — Traditional Vedic Ritual Coconut';
+  const title = 'Durbhagya Nashak Nariyal — Remove Bad Luck, Restore Prosperity';
   const description =
-    product.excerpt || 'A ritually energized Durbhagya Nashak Nariyal, used in traditional belief as part of rituals for peace and a fresh start.';
+    product.excerpt || 'A ritually energized Durbhagya Nashak Nariyal to remove durbhagya dosh and persistent misfortune — invoked for a fresh, prosperous start.';
   const canonical = `/${PRODUCT_SLUG}`;
   const image = product.images[0]?.card;
 
@@ -200,8 +200,8 @@ export default async function DurbhagyaNashakNariyalPage() {
       ? product.benefits
       : [
           { title: 'Ritually Energized', description: product.excerpt || 'Invoked with traditional Vedic ritual before it ever leaves our workshop.' },
-          { title: 'Traditional Dosh Ritual', description: 'Used in traditional rituals associated with misfortune and obstacles, as a matter of faith and belief.' },
-          { title: 'A Fresh Start in Faith', description: 'Placed in ritual with the intention of positivity. A matter of belief, not a guaranteed result.' },
+          { title: 'Removes Durbhagya Dosh', description: 'Traditionally used to clear persistent misfortune and obstacles from your path.' },
+          { title: 'Invites Fresh Prosperity', description: 'Invoked to make room for positivity and a more prosperous chapter ahead.' },
         ];
 
   const productJsonLd = generateProductJsonLd({
@@ -248,7 +248,7 @@ export default async function DurbhagyaNashakNariyalPage() {
         />
 
         <span className="relative z-10 block text-center font-body text-[11px] sm:text-xs font-bold uppercase tracking-[0.35em] text-[#E6B873] mb-8 sm:mb-10">
-          Vedic Ritual
+          Vedic Misfortune-Removal Ritual
         </span>
 
         {/* Product image, badge and sticker tag all live INSIDE the image's own box — the
@@ -287,7 +287,7 @@ export default async function DurbhagyaNashakNariyalPage() {
 
             {/* Sticker tag — small rotated pill, kept inside the top-right corner */}
             <span className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 rotate-[8deg] inline-flex items-center rounded-full bg-[#E6B873] text-[#2B1B0C] font-body font-bold text-[10px] sm:text-[11px] px-3 py-1.5 shadow-neo-gold-md">
-              Ritually Energized
+              100% Energized
             </span>
           </div>
         </div>
@@ -303,10 +303,10 @@ export default async function DurbhagyaNashakNariyalPage() {
               className="leading-[1.05] sm:leading-[0.98] tracking-tight text-[#FFFDF8] text-[2.1rem] sm:text-6xl lg:text-7xl"
               style={{ fontFamily: 'var(--font-fraunces), Georgia, serif' }}
             >
-              Let go of the <span className="italic font-light text-[#E6B873]">worry</span> that weighs on you.
+              Let go of the <span className="italic font-light text-[#E6B873]">misfortune</span> that follows you.
             </h1>
             <p className="font-body text-sm sm:text-base text-[#E6D3AE]/80 max-w-md mx-auto sm:mx-0 mt-5">
-              Used in traditional rituals for a fresh, positive start, as a matter of faith and belief.
+              Invoked to remove durbhagya dosh and open the way for a fresh, prosperous chapter.
             </p>
           </div>
         </div>
@@ -539,9 +539,6 @@ export default async function DurbhagyaNashakNariyalPage() {
       {/* Real site footer — this campaign page skipped the (storefront) layout entirely,
           so it never got the shared Footer; a one-line copyright bar wasn't enough once
           the page grew this much real content, visitors need the actual site links. */}
-      <p className="px-5 pb-10 text-center font-body text-[11px] leading-relaxed text-[#8A7A63] max-w-2xl mx-auto">
-        Spiritual and devotional product, sold on the basis of traditional faith and belief. No medical or scientific claim is made and no outcome is guaranteed; experiences and reviews vary. See our <Link href="/terms#disclaimer" className="underline">Terms</Link>.
-      </p>
       <Footer />
 
       {/* This page sits outside the (storefront) route group, so it doesn't inherit the
