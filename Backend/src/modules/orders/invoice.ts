@@ -21,7 +21,22 @@ type VariantSnapshot = {
   sku: string;
   attributes?: Record<string, unknown>;
   gstRate?: number | null;
+  hsnCode?: string | null; // optional — shown on the invoice only if the product snapshot carries one
 };
+
+// Seller identity printed on every tax invoice (Rule 46, CGST Rules 2017).
+const SELLER = {
+  name: 'Digital Kalakaar Videos Private Limited (Doshhmukti)',
+  gstin: '07AAHCD8992N1ZQ',
+  cin: 'U22300DL2020PTC367758',
+  stateName: 'Delhi',
+  stateCode: '07',
+  phone: '+91 88823 86868',
+  email: 'support@doshmukti.com',
+} as const;
+
+// Intra-state supply (buyer in Delhi) = CGST + SGST halves; anything else = IGST.
+const isSellerState = (state: string): boolean => /^(news+)?delhi$|^ncts+ofs+delhi$/i.test(state.trim());
 
 const BRAND = '#9C5A26';
 const INK = '#2B1B0C';
@@ -71,7 +86,15 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
       doc.font('Helvetica').fontSize(9).fillColor('#E6D3AE').text(order.orderNumber, PAGE_LEFT, 56, { width: PAGE_RIGHT - PAGE_LEFT, align: 'right' });
 
       doc.fillColor(INK);
-      let y = 112;
+      let y = 104;
+
+      // ── Seller / invoice identity (GSTIN, CIN, invoice no., place of supply) ──
+      const addrForSupply = order.shippingAddress as unknown as ShippingAddress;
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(INK).text(SELLER.name, PAGE_LEFT, y);
+      doc.font('Helvetica').fontSize(8.5).fillColor(MUTED);
+      doc.text(`GSTIN: ${SELLER.gstin}  ·  CIN: ${SELLER.cin}  ·  State: ${SELLER.stateName} (${SELLER.stateCode})`, PAGE_LEFT, doc.y + 2);
+      doc.text(`Invoice No.: ${order.orderNumber}  ·  Invoice Date: ${formatDate(order.createdAt)}  ·  Place of Supply: ${addrForSupply.state}`, PAGE_LEFT, doc.y + 2);
+      y = doc.y + 12;
 
       // ── Order meta strip (order date / payment / AWB) ───────────────────
       const metaBoxHeight = 46;
@@ -191,7 +214,8 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
         if (idx % 2 === 1) doc.rect(PAGE_LEFT, y, PAGE_RIGHT - PAGE_LEFT, rowHeight).fill(PANEL).fillColor(INK);
 
         const textY = y + rowPad;
-        const skuLabel = gstRate !== null ? `${displaySku} (GST ${gstRate}%)` : displaySku;
+        const hsnLabel = snapshot.hsnCode ? ` HSN ${snapshot.hsnCode}` : '';
+        const skuLabel = gstRate !== null ? `${displaySku} (GST ${gstRate}%${hsnLabel})` : displaySku;
 
         doc.font('Helvetica').fontSize(9.5).fillColor(INK);
         doc.text(displayName, colProduct + 10, textY, { width: colSku - colProduct - 20 });
@@ -221,7 +245,12 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
       if (discount > 0) totalsRows.push({ label: 'Discount', value: `- ${formatCurrency(order.discountAmount)}`, accent: true });
       if (showGst) {
         totalsRows.push({ label: 'Taxable Value', value: formatCurrency(totalTaxableValue) });
-        totalsRows.push({ label: 'GST', value: formatCurrency(totalGstAmount) });
+        if (isSellerState(addrForSupply.state)) {
+          totalsRows.push({ label: 'CGST', value: formatCurrency(totalGstAmount / 2) });
+          totalsRows.push({ label: 'SGST', value: formatCurrency(totalGstAmount / 2) });
+        } else {
+          totalsRows.push({ label: 'IGST', value: formatCurrency(totalGstAmount) });
+        }
       }
 
       const isCod = order.paymentMethod === 'COD';
@@ -289,7 +318,7 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
       doc.moveTo(PAGE_LEFT, footerY).lineTo(PAGE_RIGHT, footerY).strokeColor(RULE).stroke();
       doc.font('Helvetica').fontSize(8.5).fillColor(MUTED);
       doc.text('This is a system-generated invoice and does not require a signature.', PAGE_LEFT, footerY + 10);
-      doc.text('support@doshmukti.com  ·  doshmukti.com', PAGE_LEFT, footerY + 24, { width: PAGE_RIGHT - PAGE_LEFT, align: 'right' });
+      doc.text(`${SELLER.email}  ·  ${SELLER.phone}  ·  doshmukti.com`, PAGE_LEFT, footerY + 24, { width: PAGE_RIGHT - PAGE_LEFT, align: 'right' });
 
       doc.end();
     } catch (err) {
