@@ -243,6 +243,7 @@ export type CouponPreviewResponse =
 export interface CheckoutResponse {
   orderId: string;
   orderNumber: string;
+  publicToken: string;
   rzpOrderId: string;
   amount: number;
   currency: string;
@@ -252,6 +253,8 @@ export interface CheckoutResponse {
 
 export interface OrderTrackingResponse {
   orderNumber: string;
+  // Unguessable slug for public order URLs (/track/:token, invoice). Never build those from orderNumber.
+  publicToken: string;
   status: string;
   customerName: string;
   customerPhone: string;

@@ -575,7 +575,7 @@ function CheckoutPageContent() {
           // still correct to invalidate here in case that changes post-payment-confirm.
           queryClient.invalidateQueries({ queryKey: ['cart', sessionIdForScope(scope), scope] });
           router.push(
-            `/checkout/success?orderNumber=${result.orderNumber}&paymentId=${response.razorpay_payment_id}`
+            `/checkout/success?t=${result.publicToken}&paymentId=${response.razorpay_payment_id}`
           );
         },
         modal: { ondismiss: () => setSubmitting(false) },

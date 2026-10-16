@@ -10,7 +10,7 @@ import { getSessionId } from '@/lib/session';
 // A cancelled/failed Razorpay payment leaves the order stuck at PENDING_PAYMENT with
 // no way back in otherwise — this re-adds its items into the visitor's cart and sends
 // them through checkout again, instead of a dead-end order they can never pay for.
-export function CompletePaymentButton({ orderNumber }: { orderNumber: string }) {
+export function CompletePaymentButton({ token }: { token: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
@@ -19,7 +19,7 @@ export function CompletePaymentButton({ orderNumber }: { orderNumber: string }) 
     setLoading(true);
     try {
       const { addedCount, skippedCount } = await api.post<{ addedCount: number; skippedCount: number }>(
-        `/api/orders/${orderNumber}/resume`,
+        `/api/orders/${token}/resume`,
         {},
         { 'x-session-id': getSessionId() }
       );

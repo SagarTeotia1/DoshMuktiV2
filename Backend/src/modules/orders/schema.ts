@@ -6,6 +6,18 @@ export const orderNumberParamSchema = z.object({
   orderNumber: z.string().regex(/^DOSH-\d{8}-\d{4}$/),
 });
 
+// 16-hex slug from Order.publicToken. The sequential orderNumber is deliberately NOT accepted on
+// public routes — it is enumerable (DOSH-YYYYMMDD-0020 -> 0021), the token is not.
+export const publicTokenParamSchema = z.object({
+  token: z.string().regex(/^[a-f0-9]{16}$/),
+});
+
+// "Find my order" form: orderNumber alone is guessable, so it must be paired with the phone on the order.
+export const orderLookupSchema = z.object({
+  orderNumber: z.string().regex(/^DOSH-\d{8}-\d{4}$/),
+  phone: z.string().regex(/^\d{10}$/),
+});
+
 export const phoneQuerySchema = z.object({
   phone: z.string().regex(/^\d{10}$/),
 });

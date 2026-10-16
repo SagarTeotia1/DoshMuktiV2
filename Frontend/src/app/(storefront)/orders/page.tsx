@@ -79,7 +79,7 @@ export default function OrdersPage() {
                     icon below stays independently clickable via its own z-10 (avoids
                     nesting an <a> inside a <Link>, which is invalid HTML). */}
                 <Link
-                  href={`/track/${order.orderNumber}`}
+                  href={`/track/${order.publicToken}`}
                   className="absolute inset-0"
                   aria-label={`Track order ${order.orderNumber}`}
                 />
@@ -125,7 +125,7 @@ export default function OrdersPage() {
                       <div className="flex items-center gap-3">
                         {invoiceEligible && (
                           <a
-                            href={invoiceUrl(order.orderNumber)}
+                            href={invoiceUrl(order.publicToken)}
                             aria-label={`Download invoice for order ${order.orderNumber}`}
                             title="Download Invoice"
                             className="relative z-10 flex items-center gap-1 font-body text-xs font-bold text-[#8A7A63] hover:text-[#9C5A26] transition-colors duration-200"

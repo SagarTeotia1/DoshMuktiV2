@@ -1,6 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import {
-  orderNumberParamSchema,
+  publicTokenParamSchema,
+  orderLookupSchema,
   phoneQuerySchema,
   listOrdersQuerySchema,
   updateOrderStatusSchema,
@@ -13,7 +14,8 @@ import {
   labelSizeQuerySchema,
 } from './schema';
 import {
-  getOrderByNumber,
+  getOrderByPublicToken,
+  lookupOrderPublicToken,
   listOrdersByPhone,
   listOrdersForUser,
   getOrderById,
@@ -36,10 +38,10 @@ import { generateInvoicePdf } from './invoice';
 import { estimateDeliveryWindow } from '../../shared/shipping/deliveryEstimate';
 
 export async function trackOrderHandler(req: FastifyRequest, reply: FastifyReply) {
-  const parsed = orderNumberParamSchema.safeParse(req.params);
-  if (!parsed.success) return reply.code(400).send({ error: 'Invalid order number' });
+  const parsed = publicTokenParamSchema.safeParse(req.params);
+  if (!parsed.success) return reply.code(404).send({ error: 'Order not found' });
 
-  const order = await getOrderByNumber(parsed.data.orderNumber);
+  const order = await getOrderByPublicToken(parsed.data.token);
   if (!order) return reply.code(404).send({ error: 'Order not found' });
 
   return reply.send({
@@ -50,14 +52,14 @@ export async function trackOrderHandler(req: FastifyRequest, reply: FastifyReply
 }
 
 export async function resumeOrderHandler(req: FastifyRequest, reply: FastifyReply) {
-  const parsed = orderNumberParamSchema.safeParse(req.params);
-  if (!parsed.success) return reply.code(400).send({ error: 'Invalid order number' });
+  const parsed = publicTokenParamSchema.safeParse(req.params);
+  if (!parsed.success) return reply.code(404).send({ error: 'Order not found' });
 
   const sessionId = req.headers['x-session-id'];
   if (typeof sessionId !== 'string' || !sessionId) return reply.code(400).send({ error: 'Missing session id' });
 
   try {
-    const result = await resumeOrder(parsed.data.orderNumber, sessionId);
+    const result = await resumeOrder(parsed.data.token, sessionId);
     return reply.send(result);
   } catch (err) {
     if (err instanceof OrderNotResumableError) return reply.code(409).send({ error: err.message });
@@ -67,10 +69,10 @@ export async function resumeOrderHandler(req: FastifyRequest, reply: FastifyRepl
 }
 
 export async function invoiceHandler(req: FastifyRequest, reply: FastifyReply) {
-  const parsed = orderNumberParamSchema.safeParse(req.params);
-  if (!parsed.success) return reply.code(400).send({ error: 'Invalid order number' });
+  const parsed = publicTokenParamSchema.safeParse(req.params);
+  if (!parsed.success) return reply.code(404).send({ error: 'Order not found' });
 
-  const order = await getOrderByNumber(parsed.data.orderNumber);
+  const order = await getOrderByPublicToken(parsed.data.token);
   if (!order) return reply.code(404).send({ error: 'Order not found' });
 
   if (order.payment?.status !== 'CAPTURED') {
@@ -88,6 +90,16 @@ export async function invoiceHandler(req: FastifyRequest, reply: FastifyReply) {
 export async function listMyOrdersHandler(req: FastifyRequest, reply: FastifyReply) {
   const userId = (req.user as { sub: string }).sub;
   return reply.send(await listOrdersForUser(userId));
+}
+
+export async function lookupOrderHandler(req: FastifyRequest, reply: FastifyReply) {
+  const parsed = orderLookupSchema.safeParse(req.body);
+  if (!parsed.success) return reply.code(400).send({ error: 'Enter your order number and the 10-digit phone number used on the order' });
+
+  const token = await lookupOrderPublicToken(parsed.data.orderNumber, parsed.data.phone);
+  // One message for "no such order" and "wrong phone" — don't confirm which order numbers exist.
+  if (!token) return reply.code(404).send({ error: 'No order found for that order number and phone number' });
+  return reply.send({ token });
 }
 
 export async function listOrdersByPhoneHandler(req: FastifyRequest, reply: FastifyReply) {

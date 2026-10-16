@@ -5,6 +5,7 @@ import {
   resumeOrderHandler,
   invoiceHandler,
   listOrdersByPhoneHandler,
+  lookupOrderHandler,
   listMyOrdersHandler,
   listOrdersHandler,
   getOrderByIdHandler,
@@ -22,10 +23,13 @@ const publicOrderRateLimit = { rateLimit: { max: 20, timeWindow: '1 minute' } };
 
 export async function orderRoutes(app: FastifyInstance) {
   app.get('/orders/mine', { preHandler: verifyCustomer }, listMyOrdersHandler); // logged-in customer's own orders
-  app.get('/orders', { config: publicOrderRateLimit }, listOrdersByPhoneHandler); // public — list by phone (legacy/support lookup)
-  app.get('/orders/:orderNumber', { config: publicOrderRateLimit }, trackOrderHandler); // public — track by orderNumber
-  app.get('/orders/:orderNumber/invoice', { config: publicOrderRateLimit }, invoiceHandler); // public — PDF invoice, gated on payment.status === 'CAPTURED'
-  app.post('/orders/:orderNumber/resume', { config: publicOrderRateLimit }, resumeOrderHandler); // public — re-adds a PENDING_PAYMENT order's items into the caller's cart so checkout can be retried
+  // Public order URLs are keyed by Order.publicToken (16 random hex), NOT the sequential orderNumber —
+  // anyone holding the link can view it (shareable), nobody can walk 0020 -> 0021 to read other orders.
+  app.post('/orders/lookup', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, lookupOrderHandler); // orderNumber + phone -> token
+  app.get('/orders/:token', { config: publicOrderRateLimit }, trackOrderHandler); // public — track by token
+  app.get('/orders/:token/invoice', { config: publicOrderRateLimit }, invoiceHandler); // public — PDF invoice, gated on payment.status === 'CAPTURED'
+  app.post('/orders/:token/resume', { config: publicOrderRateLimit }, resumeOrderHandler); // public — re-adds a PENDING_PAYMENT order's items into the caller's cart so checkout can be retried
+  app.get('/admin/orders/by-phone', { preHandler: verifyAdmin }, listOrdersByPhoneHandler); // support lookup — was public and returned every order for any phone
   app.get('/admin/orders', { preHandler: verifyAdmin }, listOrdersHandler);
   app.get('/admin/orders/gst-report', { preHandler: verifyAdmin }, gstReportHandler);
   app.get('/admin/orders/:id', { preHandler: verifyAdmin }, getOrderByIdHandler);

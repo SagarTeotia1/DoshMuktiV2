@@ -5,7 +5,7 @@ import { SITE_URL } from '@/lib/constants';
 // citing this site) needs them able to fetch product/content pages. Cart, checkout,
 // account and admin-adjacent paths stay blocked from every agent, human-search or AI.
 export default function robots(): MetadataRoute.Robots {
-  const disallow = ['/cart', '/checkout', '/checkout/success', '/profile', '/orders', '/login', '/api/'];
+  const disallow = ['/cart', '/checkout', '/checkout/success', '/profile', '/orders', '/track/', '/login', '/api/'];
 
   return {
     rules: [

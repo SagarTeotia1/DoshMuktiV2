@@ -439,6 +439,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
   return {
     orderId: order.id,
     orderNumber: order.orderNumber,
+    publicToken: order.publicToken,
     rzpOrderId: rzpOrder.id,
     amount: Math.round(finalTotal * 100),
     currency: "INR",

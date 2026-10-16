@@ -233,6 +233,10 @@ model OrderSequence {
 model Order {
   id                   String           @id @default(cuid())
   orderNumber          String           @unique // DOSH-20240615-0042
+  // Unguessable 16-hex slug used in every PUBLIC order URL (track page, invoice, resume). orderNumber is
+  // sequential and therefore enumerable, so it must never be accepted as a credential. DB-generated
+  // so every insert path gets one without touching the checkout code.
+  publicToken          String           @unique @default(dbgenerated("left(replace(gen_random_uuid()::text, '-', ''), 16)"))
   userId               String? // logged-in customer this order belongs to — nullable for orders placed before accounts existed
   user                 User?            @relation(fields: [userId], references: [id])
   customerName         String

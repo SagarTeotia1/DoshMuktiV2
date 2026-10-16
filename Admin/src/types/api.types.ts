@@ -294,6 +294,8 @@ export interface OrderItem {
 export interface Order {
   id: string;
   orderNumber: string;
+  // Unguessable slug for the customer's public track/invoice links (never use orderNumber in URLs).
+  publicToken: string;
   userId: string | null;
   customerName: string;
   customerPhone: string;

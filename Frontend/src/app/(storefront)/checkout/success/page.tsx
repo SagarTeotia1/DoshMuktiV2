@@ -9,9 +9,9 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function getOrder(orderNumber: string): Promise<OrderTrackingResponse | null> {
+async function getOrder(token: string): Promise<OrderTrackingResponse | null> {
   try {
-    return await api.get<OrderTrackingResponse>(`/api/orders/${orderNumber}`, undefined, 0);
+    return await api.get<OrderTrackingResponse>(`/api/orders/${token}`, undefined, 0);
   } catch {
     return null;
   }
@@ -26,11 +26,11 @@ async function getOrder(orderNumber: string): Promise<OrderTrackingResponse | nu
 // order, ever — no second chance, since PurchaseTracker only ever mounts once off this
 // server-rendered gate. Retrying a few times over ~6s catches the transient case without
 // meaningfully delaying the page for the common case (already CAPTURED on the first try).
-async function getOrderWithRetry(orderNumber: string): Promise<OrderTrackingResponse | null> {
-  let order = await getOrder(orderNumber);
+async function getOrderWithRetry(token: string): Promise<OrderTrackingResponse | null> {
+  let order = await getOrder(token);
   for (let attempt = 0; attempt < 4 && order?.payment?.status !== 'CAPTURED'; attempt++) {
     await sleep(1500);
-    order = await getOrder(orderNumber);
+    order = await getOrder(token);
   }
   return order;
 }
@@ -38,14 +38,15 @@ async function getOrderWithRetry(orderNumber: string): Promise<OrderTrackingResp
 export default async function CheckoutSuccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ orderNumber?: string }>;
+  searchParams: Promise<{ t?: string }>;
 }) {
-  const { orderNumber } = await searchParams;
+  const { t: token } = await searchParams;
   // Payment confirmation (POST /api/checkout/verify, fired from the checkout page's Razorpay
   // handler) is best-effort and can still be in flight when this page renders — gate the
   // invoice link on the order's actual payment status rather than showing a link that's
   // likely to 409 on the very first click.
-  const order = orderNumber ? await getOrderWithRetry(orderNumber) : null;
+  const order = token ? await getOrderWithRetry(token) : null;
+  const orderNumber = order?.orderNumber;
   const invoiceEligible = order?.payment?.status === 'CAPTURED';
   const deliveryEstimate = order ? formatDeliveryEstimate(order) : null;
 
@@ -83,9 +84,9 @@ export default async function CheckoutSuccessPage({
       </p>
 
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
-        {orderNumber && (
+        {order && (
           <Link
-            href={`/track/${orderNumber}`}
+            href={`/track/${order!.publicToken}`}
             className="bg-[#2B1B0C] text-white border border-[#2B1B0C] rounded-full px-8 py-4 font-body font-bold uppercase tracking-widest text-sm hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200"
           >
             Track Order
@@ -93,7 +94,7 @@ export default async function CheckoutSuccessPage({
         )}
         {invoiceEligible && (
           <a
-            href={invoiceUrl(orderNumber!)}
+            href={invoiceUrl(order!.publicToken)}
             className="bg-white text-[#2B1B0C] border border-[#2B1B0C] rounded-full px-8 py-4 font-body font-bold uppercase tracking-widest text-sm hover:bg-[#F6E4C2] transition-all duration-200"
           >
             Download Invoice

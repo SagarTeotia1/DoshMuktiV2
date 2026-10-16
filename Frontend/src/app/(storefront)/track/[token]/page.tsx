@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import { CheckCircle2, Package, Truck, Home, MapPin, Phone, Download, ExternalLink, XCircle, RotateCcw, CreditCard } from 'lucide-react';
@@ -7,9 +8,9 @@ import { ORDER_STATUS_LABELS } from '@/lib/constants';
 import { CompletePaymentButton } from './complete-payment-button';
 import type { OrderTrackingResponse } from '@/types/api.types';
 
-async function getOrder(orderNumber: string): Promise<OrderTrackingResponse | null> {
+async function getOrder(token: string): Promise<OrderTrackingResponse | null> {
   try {
-    return await api.get<OrderTrackingResponse>(`/api/orders/${orderNumber}`, undefined, 0);
+    return await api.get<OrderTrackingResponse>(`/api/orders/${token}`, undefined, 0);
   } catch {
     return null;
   }
@@ -96,9 +97,12 @@ function ItemAttributes({ attributes }: { attributes?: Record<string, unknown> }
   return <p className="font-body text-xs text-[#8A7A63] mt-0.5">{label}</p>;
 }
 
-export default async function TrackOrderPage({ params }: { params: Promise<{ orderNumber: string }> }) {
-  const { orderNumber } = await params;
-  const order = await getOrder(orderNumber);
+// Private-by-URL page: reachable only via the unguessable token, so keep it out of search indexes.
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
+export default async function TrackOrderPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
+  const order = await getOrder(token);
   if (!order) notFound();
 
   const exception = EXCEPTION_STATUS[order.status];
@@ -121,7 +125,7 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ ord
         </div>
         {order.payment?.status === 'CAPTURED' && (
           <a
-            href={invoiceUrl(order.orderNumber)}
+            href={invoiceUrl(order.publicToken)}
             className="flex items-center gap-1.5 border border-[#2B1B0C] rounded-full px-4 py-2 font-body font-bold text-xs uppercase tracking-wide text-[#2B1B0C] hover:bg-[#2B1B0C] hover:text-white transition-colors flex-shrink-0"
           >
             <Download className="w-3.5 h-3.5" />
@@ -136,7 +140,7 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ ord
           <div className={`flex items-center gap-3 flex-wrap rounded-xl border px-4 py-3.5 ${exception.tone}`}>
             <exception.icon className="w-5 h-5 flex-shrink-0" />
             <p className="font-body font-bold text-sm flex-1 min-w-0">{exception.label}</p>
-            {order.status === 'PENDING_PAYMENT' && <CompletePaymentButton orderNumber={order.orderNumber} />}
+            {order.status === 'PENDING_PAYMENT' && <CompletePaymentButton token={order.publicToken} />}
           </div>
         ) : (
           <>

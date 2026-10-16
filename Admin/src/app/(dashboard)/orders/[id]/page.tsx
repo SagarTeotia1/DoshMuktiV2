@@ -292,7 +292,7 @@ export default function OrderDetailPage() {
 
             {order.payment?.status === 'CAPTURED' && (
               <a
-                href={`${BACKEND_URL}/api/orders/${order.orderNumber}/invoice`}
+                href={`${BACKEND_URL}/api/orders/${order.publicToken}/invoice`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-700 border border-slate-300 hover:border-slate-400 transition-colors"
@@ -300,6 +300,15 @@ export default function OrderDetailPage() {
                 Print Invoice
               </a>
             )}
+
+            <a
+              href={`${process.env.NEXT_PUBLIC_STOREFRONT_URL ?? 'https://doshmukti.com'}/track/${order.publicToken}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-700 border border-slate-300 hover:border-slate-400 transition-colors"
+            >
+              Open customer tracking link
+            </a>
 
             <ShippingActions order={order} />
 

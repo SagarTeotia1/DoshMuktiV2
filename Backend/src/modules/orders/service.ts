@@ -75,8 +75,8 @@ export async function cancelPendingOrderTx(
 // earlier hold (worst case if stock is down to the last unit), or silently double-lock
 // the same units until release-holds' cron eventually notices — which assumes that
 // cron is even wired up in this deploy.
-export async function resumeOrder(orderNumber: string, sessionId: string): Promise<{ addedCount: number; skippedCount: number }> {
-  const order = await db.order.findUnique({ where: { orderNumber }, include: { items: true } });
+export async function resumeOrder(publicToken: string, sessionId: string): Promise<{ addedCount: number; skippedCount: number }> {
+  const order = await db.order.findUnique({ where: { publicToken }, include: { items: true } });
   if (!order) throw new Error('Order not found');
   if (order.status !== 'PENDING_PAYMENT') throw new OrderNotResumableError();
 
@@ -276,11 +276,21 @@ export async function updateOrderEwaybill(orderId: string, ewaybillNumber: strin
 // (Amazon/Flipkart-style) instead of a generic icon per line item.
 const itemsWithProductImage = { items: { include: { variant: { include: { product: true } } } } } as const;
 
-export async function getOrderByNumber(orderNumber: string) {
+// Public order reads are keyed by the unguessable publicToken, never the sequential orderNumber.
+export async function getOrderByPublicToken(publicToken: string) {
   return db.order.findUnique({
-    where: { orderNumber },
+    where: { publicToken },
     include: { ...itemsWithProductImage, payment: true, shipment: true },
   });
+}
+
+// "Find my order": the orderNumber alone is enumerable, so it only yields the slug when paired with
+// the phone number on the order. Returns null for both "no such order" and "wrong phone" so the
+// caller can't tell which one failed.
+export async function lookupOrderPublicToken(orderNumber: string, phone: string): Promise<string | null> {
+  const order = await db.order.findUnique({ where: { orderNumber }, select: { publicToken: true, customerPhone: true } });
+  if (!order || order.customerPhone !== phone) return null;
+  return order.publicToken;
 }
 
 // The customer-facing "Your Orders" list — CANCELLED and PENDING_PAYMENT are excluded
