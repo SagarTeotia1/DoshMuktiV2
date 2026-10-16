@@ -32,6 +32,7 @@ export async function checkServiceability(pincode: string): Promise<boolean> {
 // before ever building the payload.
 function sanitizeAddressLine(line: string): string {
   return line
+    .replace(/\s*&\s*/g, ' and ')
     .replace(/\.{2,}/g, '.')
     .replace(/,{2,}/g, ',')
     .replace(/\s*,\s*/g, ', ')
@@ -77,8 +78,10 @@ export async function createShipment(params: {
 
   const res = await fetch(`${env.DELHIVERY_BASE_URL}/api/cmu/create.json`, {
     method: 'POST',
-    headers: { Authorization: `Token ${env.DELHIVERY_API_KEY}`, 'Content-Type': 'application/json' },
-    body: `format=json&data=${JSON.stringify(payload)}`,
+    headers: { Authorization: `Token ${env.DELHIVERY_API_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    // Form-encoded: an unencoded `&`/`#`/`%` inside any field (e.g. an address) would
+    // otherwise split or corrupt the data= value and Delhivery rejects with no remarks.
+    body: `format=json&data=${encodeURIComponent(JSON.stringify(payload))}`,
   });
   if (!res.ok) return { error: `Delhivery returned HTTP ${res.status}` };
 
