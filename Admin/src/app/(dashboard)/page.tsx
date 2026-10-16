@@ -1,12 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { IndianRupee, ShoppingBag, AlertTriangle, PackageX, Wallet, Users } from 'lucide-react';
+import { IndianRupee, ShoppingBag, AlertTriangle, PackageX, Wallet, Users, CreditCard, Package, Truck, PackageCheck } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { StatCard } from '@/components/ui/StatCard';
 import { SalesChart } from '@/components/charts/SalesChart';
 import { useDashboard } from '@/hooks/use-dashboard';
 import { formatCurrency } from '@/lib/utils';
+
+const PIPELINE = [
+  { key: 'paid', label: 'Paid', status: 'PAID', icon: CreditCard, tone: 'warning' },
+  { key: 'packed', label: 'Packed', status: 'PACKED', icon: Package, tone: 'default' },
+  { key: 'shipped', label: 'Shipped', status: 'SHIPPED', icon: Truck, tone: 'default' },
+  { key: 'delivered', label: 'Delivered', status: 'DELIVERED', icon: PackageCheck, tone: 'default' },
+] as const;
 
 export default function DashboardPage() {
   const { summary, sales } = useDashboard();
@@ -27,6 +34,17 @@ export default function DashboardPage() {
           <StatCard label="Total Users" value={summary.data?.totalUsers ?? '—'} icon={Users} />
           <StatCard label="Needs Packing" value={summary.data?.ordersNeedingAction ?? '—'} icon={AlertTriangle} tone="warning" />
           <StatCard label="Low Stock Items" value={summary.data?.lowStockCount ?? '—'} icon={PackageX} tone="danger" />
+        </div>
+
+        <div>
+          <h2 className="font-heading font-bold text-sm text-slate-900 mb-3">Order Pipeline (all time)</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {PIPELINE.map(({ key, label, status, icon, tone }) => (
+              <Link key={key} href={`/orders?status=${status}&from=`} className="block hover:opacity-90 transition-opacity">
+                <StatCard label={label} value={summary.data?.pipeline[key] ?? '—'} icon={icon} tone={tone} />
+              </Link>
+            ))}
+          </div>
         </div>
 
         <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">

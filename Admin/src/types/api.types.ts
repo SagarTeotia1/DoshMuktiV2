@@ -389,6 +389,7 @@ export interface DashboardSummary {
   allTimeRevenue: number;
   allTimeOrderCount: number;
   totalUsers: number;
+  pipeline: { paid: number; packed: number; shipped: number; delivered: number };
 }
 
 export interface SalesTrendPoint {

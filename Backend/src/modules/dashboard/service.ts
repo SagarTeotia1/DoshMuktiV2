@@ -8,7 +8,7 @@ export async function getDashboardSummary() {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const [todayOrders, actionNeeded, lowStockRows, allTimeAgg, totalUsers] = await Promise.all([
+  const [todayOrders, actionNeeded, lowStockRows, allTimeAgg, totalUsers, statusGroups] = await Promise.all([
     db.order.findMany({
       where: { status: { in: ['PAID', 'PROCESSING', 'PACKED', 'SHIPPED', 'DELIVERED'] }, createdAt: { gte: startOfDay } },
       select: { total: true },
@@ -24,7 +24,10 @@ export async function getDashboardSummary() {
       _count: true,
     }),
     db.user.count(),
+    db.order.groupBy({ by: ['status'], _count: { _all: true } }),
   ]);
+
+  const statusCount = (status: string) => statusGroups.find((g) => g.status === status)?._count._all ?? 0;
 
   const todayRevenue = todayOrders.reduce((sum, o) => sum + Number(o.total), 0);
 
@@ -36,6 +39,13 @@ export async function getDashboardSummary() {
     allTimeRevenue: Number(allTimeAgg._sum.total ?? 0),
     allTimeOrderCount: allTimeAgg._count,
     totalUsers,
+    // Fulfilment pipeline, all-time: where every order currently sits.
+    pipeline: {
+      paid: statusCount('PAID'),
+      packed: statusCount('PACKED'),
+      shipped: statusCount('SHIPPED'),
+      delivered: statusCount('DELIVERED'),
+    },
   };
 }
 
