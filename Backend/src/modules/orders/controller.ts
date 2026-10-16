@@ -1,4 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import { z } from 'zod';
+import { syncOpenShipments, SyncBusyError, MANUAL_SYNC_LIMIT } from '../../jobs/tracking-sync';
 import {
   publicTokenParamSchema,
   orderLookupSchema,
@@ -206,6 +208,25 @@ export async function bookShipmentHandler(req: FastifyRequest, reply: FastifyRep
     return reply.send(shipment);
   } catch (err) {
     return reply.code(502).send({ error: err instanceof Error ? err.message : 'Booking failed' });
+  }
+}
+
+// Manual trigger for the tracking-sync cron — same function, run on demand from Admin.
+// ?mode=shipped  -> only BOOKED parcels (picked up yet? order -> SHIPPED)
+// ?mode=delivered -> only IN_TRANSIT / OUT_FOR_DELIVERY parcels (delivered yet? order -> DELIVERED)
+// Each click is a bounded batch (MANUAL_SYNC_LIMIT per carrier), never the whole backlog.
+const syncTrackingQuerySchema = z.object({ mode: z.enum(['shipped', 'delivered']) });
+
+export async function syncTrackingHandler(req: FastifyRequest, reply: FastifyReply) {
+  const parsed = syncTrackingQuerySchema.safeParse(req.query);
+  if (!parsed.success) return reply.code(400).send({ error: 'mode must be "shipped" or "delivered"' });
+
+  try {
+    return reply.send(await syncOpenShipments(parsed.data.mode, MANUAL_SYNC_LIMIT));
+  } catch (err) {
+    if (err instanceof SyncBusyError) return reply.code(409).send({ error: err.message });
+    req.log.error({ err }, 'Manual tracking sync failed');
+    return reply.code(502).send({ error: err instanceof Error ? err.message : 'Tracking sync failed' });
   }
 }
 

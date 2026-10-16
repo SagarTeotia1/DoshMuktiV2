@@ -69,6 +69,24 @@ export function useBookShipment(id: string) {
   });
 }
 
+export type SyncMode = 'shipped' | 'delivered';
+
+// On-demand carrier tracking sync, one bounded batch per click:
+//   shipped   - BOOKED parcels: picked up yet? (order PACKED -> SHIPPED)
+//   delivered - IN_TRANSIT / OUT_FOR_DELIVERY parcels: delivered yet? (-> DELIVERED)
+// totalOpen > checked means more parcels are waiting — click again.
+export function useSyncTracking(mode: SyncMode) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      api.post<{ synced: number; checked: number; totalOpen: number }>(`/api/admin/orders/sync-tracking?mode=${mode}`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-orders'] });
+      qc.invalidateQueries({ queryKey: ['admin-order'] });
+    },
+  });
+}
+
 export function useNdrAction(id: string) {
   const qc = useQueryClient();
   return useMutation({

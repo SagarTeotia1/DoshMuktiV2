@@ -13,6 +13,7 @@ import {
   gstReportHandler,
   shipmentLabelHandler,
   bookShipmentHandler,
+  syncTrackingHandler,
   ndrActionHandler,
   ewaybillUpdateHandler,
   riskFlagHandler,
@@ -32,6 +33,7 @@ export async function orderRoutes(app: FastifyInstance) {
   app.get('/admin/orders/by-phone', { preHandler: verifyAdmin }, listOrdersByPhoneHandler); // support lookup — was public and returned every order for any phone
   app.get('/admin/orders', { preHandler: verifyAdmin }, listOrdersHandler);
   app.get('/admin/orders/gst-report', { preHandler: verifyAdmin }, gstReportHandler);
+  app.post('/admin/orders/sync-tracking', { preHandler: verifyAdmin }, syncTrackingHandler);
   app.get('/admin/orders/:id', { preHandler: verifyAdmin }, getOrderByIdHandler);
   app.patch('/admin/orders/:id/status', { preHandler: verifyAdmin }, updateOrderStatusHandler);
   app.get('/admin/orders/:id/shipment/label', { preHandler: verifyAdmin }, shipmentLabelHandler);

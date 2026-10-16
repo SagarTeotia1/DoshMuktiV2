@@ -6,7 +6,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Topbar } from '@/components/layout/Topbar';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge, PaymentBadge } from '@/components/ui/StatusBadge';
-import { useOrders } from '@/hooks/use-orders';
+import { useOrders, useSyncTracking, type SyncMode } from '@/hooks/use-orders';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ORDER_STATUSES } from '@/lib/constants';
 import type { Order } from '@/types/api.types';
@@ -80,6 +80,39 @@ export default function OrdersPage() {
   );
 }
 
+// One bounded batch per click (see useSyncTracking). The server rejects a second sync while
+// one is running, so the button is disabled in-flight and a 409 just shows its message.
+function SyncResult({ synced, checked, totalOpen }: { synced: number; checked: number; totalOpen: number }) {
+  if (totalOpen === 0) return <span className="text-xs text-slate-500">Nothing to check (all checked in the last 30 min)</span>;
+  const left = totalOpen - checked;
+  return left > 0 ? (
+    <span className="text-xs text-amber-700">
+      Checked {checked} · updated {synced} · {left} left — click again
+    </span>
+  ) : (
+    <span className="text-xs text-emerald-700">All checked ✓ · {checked} checked · {synced} updated</span>
+  );
+}
+
+function SyncButton({ mode, label }: { mode: SyncMode; label: string }) {
+  const sync = useSyncTracking(mode);
+  return (
+    <div className="flex items-center gap-2">
+      {sync.isSuccess && <SyncResult {...sync.data} />}
+      {sync.isError && (
+        <span className="text-xs text-red-600">{sync.error instanceof Error ? sync.error.message : 'Sync failed'}</span>
+      )}
+      <button
+        onClick={() => sync.mutate()}
+        disabled={sync.isPending}
+        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#9C5A26] text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-wait transition-colors"
+      >
+        {sync.isPending ? 'Syncing…' : label}
+      </button>
+    </div>
+  );
+}
+
 function OrdersPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -148,6 +181,10 @@ function OrdersPageContent() {
               onChange={(e) => setToAndResetPage(e.target.value)}
               className="border border-slate-300 rounded px-2 py-1.5 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none"
             />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            <SyncButton mode="shipped" label="Sync → Shipped" />
+            <SyncButton mode="delivered" label="Sync → Delivered" />
           </div>
           {(from || to) && (
             <button

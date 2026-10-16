@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { env } from '../config/env';
 import { releaseExpiredHolds } from './release-holds';
-import { syncOpenShipments } from './tracking-sync';
+import { syncOpenShipments, SyncBusyError, CRON_SYNC_LIMIT } from './tracking-sync';
 import { sendLowStockDigest } from './low-stock-digest';
 import { warmCache } from './warm-cache';
 
@@ -27,7 +27,13 @@ export async function jobRoutes(app: FastifyInstance) {
 
   app.post('/jobs/tracking-sync', async (req, reply) => {
     if (!verifyCronSecret(req, reply)) return;
-    return reply.send(await syncOpenShipments());
+    try {
+      return reply.send(await syncOpenShipments('all', CRON_SYNC_LIMIT));
+    } catch (err) {
+      // Admin's manual sync already running: not a failure, the scheduler shouldn't retry-storm.
+      if (err instanceof SyncBusyError) return reply.code(200).send({ skipped: true, reason: err.message });
+      throw err;
+    }
   });
 
   app.post('/jobs/low-stock-digest', async (req, reply) => {
