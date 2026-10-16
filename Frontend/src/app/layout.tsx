@@ -18,7 +18,7 @@ const outfit = Outfit({
 // Title kept in the 50-60 char sweet spot and description under ~160 — both were
 // previously 86/247 chars (truncated mid-sentence) then over-corrected to 43 chars
 // (too short to carry secondary keywords) in the Google SERP.
-const TITLE_DEFAULT = 'Doshhmukti — Astrology Products & Remedies';
+const TITLE_DEFAULT = 'Doshmukti — Astrology Products & Remedies';
 const DESCRIPTION =
   'Authentic astrology products — energized gemstones, rudraksha malas and bracelets — chosen with Vedic guidance. Shop remedies for love, wealth, health & protection.';
 
@@ -27,7 +27,7 @@ const DEFAULT_SOCIAL_IMAGE = `${SITE_URL}/icon.png`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: TITLE_DEFAULT, template: '%s — Doshhmukti' },
+  title: { default: TITLE_DEFAULT, template: '%s — Doshmukti' },
   description: DESCRIPTION,
   keywords: [
     'doshmukti',
@@ -65,13 +65,13 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
   robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
   openGraph: {
-    siteName: 'Doshhmukti',
+    siteName: 'Doshmukti',
     title: TITLE_DEFAULT,
     description: DESCRIPTION,
     type: 'website',
     locale: 'en_IN',
     url: SITE_URL,
-    images: [{ url: DEFAULT_SOCIAL_IMAGE, width: 512, height: 512, alt: 'Doshhmukti' }],
+    images: [{ url: DEFAULT_SOCIAL_IMAGE, width: 512, height: 512, alt: 'Doshmukti' }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -101,12 +101,12 @@ const businessAddress = {
 const organizationJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
-  name: 'Doshhmukti',
+  name: 'Doshmukti',
   url: SITE_URL,
   logo: `${SITE_URL}/icon.png`,
   alternateName: 'Dosh Mukti',
   description:
-    'Doshhmukti (dosh mukti — freedom from planetary doshas) sells authentic, ritually-energized gemstones, rudraksha malas and pooja accessories, chosen for the customer using Vedic astrology and numerology, for goals spanning love, wealth, health, success, protection and clarity.',
+    'Doshmukti (dosh mukti — freedom from planetary doshas) sells authentic, ritually-energized gemstones, rudraksha malas and pooja accessories, chosen for the customer using Vedic astrology and numerology, for goals spanning love, wealth, health, success, protection and clarity.',
   telephone: '+91-88823-86868',
   address: businessAddress,
   sameAs: [SOCIAL_LINKS.instagram, SOCIAL_LINKS.youtube],
@@ -117,7 +117,7 @@ const organizationJsonLd = {
 const localBusinessJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'LocalBusiness',
-  name: 'Doshhmukti',
+  name: 'Doshmukti',
   url: SITE_URL,
   telephone: '+91-88823-86868',
   address: businessAddress,
@@ -128,7 +128,7 @@ const localBusinessJsonLd = {
 const websiteJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
-  name: 'Doshhmukti',
+  name: 'Doshmukti',
   alternateName: 'Dosh Mukti',
   url: SITE_URL,
   potentialAction: {

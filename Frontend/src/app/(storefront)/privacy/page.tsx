@@ -3,8 +3,8 @@ import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { Reveal } from '@/components/motion/Reveal';
 
 export const metadata = {
-  title: 'Privacy Policy — Doshhmukti',
-  description: 'How Doshhmukti collects, uses, and protects your personal data.',
+  title: 'Privacy Policy — Doshmukti',
+  description: 'How Doshmukti collects, uses, and protects your personal data.',
   alternates: { canonical: '/privacy' },
 };
 
@@ -73,7 +73,7 @@ export default function PrivacyPage() {
           {/* Body */}
           <article className="max-w-3xl font-body text-sm text-[#6B5539] leading-relaxed space-y-10">
             <p>
-              This Privacy Policy explains how Digital Kalakaar Videos Private Limited, trading as Doshhmukti
+              This Privacy Policy explains how Digital Kalakaar Videos Private Limited, trading as Doshmukti
               (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;) collects, uses, shares, and protects
               information when you visit doshmukti.com or place an order (together, the &ldquo;Site&rdquo;). We
               built the Site on a guest-checkout model — you never need to create an account or hand us a password
@@ -82,7 +82,7 @@ export default function PrivacyPage() {
 
             <Section id="scope" title="1. Scope of This Policy">
               <p>
-                This policy applies to the Doshhmukti storefront and checkout flow. It does not apply to
+                This policy applies to the Doshmukti storefront and checkout flow. It does not apply to
                 third-party sites linked from the Site (see Section 12), or to our internal admin systems, which
                 are not customer-facing.
               </p>
@@ -202,7 +202,7 @@ export default function PrivacyPage() {
               <p>
                 Each of these providers is contractually restricted to using your data only to perform the service
                 we&rsquo;ve engaged them for. We may also disclose information where required by law, court order,
-                or to protect the rights, safety, or property of Doshhmukti or others.
+                or to protect the rights, safety, or property of Doshmukti or others.
               </p>
             </Section>
 
@@ -210,7 +210,7 @@ export default function PrivacyPage() {
               <p>
                 All payments are processed directly by Razorpay, a PCI-DSS compliant payment gateway. Your card,
                 UPI, or net-banking details are entered directly into Razorpay&rsquo;s secure interface and never
-                pass through or get stored on Doshhmukti&rsquo;s servers. We only receive a payment confirmation
+                pass through or get stored on Doshmukti&rsquo;s servers. We only receive a payment confirmation
                 and a reference ID from Razorpay to reconcile your order.
               </p>
             </Section>
@@ -340,7 +340,7 @@ export default function PrivacyPage() {
             <Section id="contact" title="16. Contact Us">
               <p>Questions about this Privacy Policy or your data can be sent to:</p>
               <p>
-                <strong className="text-[#2B1B0C]">Digital Kalakaar Videos Private Limited</strong> (Doshhmukti)
+                <strong className="text-[#2B1B0C]">Digital Kalakaar Videos Private Limited</strong> (Doshmukti)
                 <br />
                 Email:{' '}
                 <a href="mailto:support@doshmukti.com" className="text-[#9C5A26] font-semibold hover:underline">

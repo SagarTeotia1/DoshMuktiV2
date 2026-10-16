@@ -41,6 +41,17 @@ function mainImage(images: unknown): string {
   return arr[0]?.full ?? arr[0]?.card ?? '';
 }
 
+// Google product taxonomy paths (Merchant Center accepts the text form). Only jewellery lines map
+// cleanly; everything else is left blank so Google auto-categorises rather than us guessing wrong.
+function googleCategory(name: string): string {
+  const n = name.toLowerCase();
+  if (/bracelet/.test(n)) return 'Apparel & Accessories > Jewelry > Bracelets';
+  if (/ring/.test(n)) return 'Apparel & Accessories > Jewelry > Rings';
+  if (/mala|necklace|chain/.test(n)) return 'Apparel & Accessories > Jewelry > Necklaces';
+  if (/pendant|locket/.test(n)) return 'Apparel & Accessories > Jewelry > Charms & Pendants';
+  return '';
+}
+
 function money(n: number): string {
   return `${n.toFixed(2)} INR`;
 }
@@ -83,7 +94,7 @@ export async function buildCatalogCsv(): Promise<string> {
         image,
         BRAND,
         money(price),
-        '',
+        googleCategory(product.name),
         '',
         String(variant.stockQuantity),
         salePrice !== null ? money(salePrice) : '',

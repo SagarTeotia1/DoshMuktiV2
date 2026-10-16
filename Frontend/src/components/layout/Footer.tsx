@@ -12,12 +12,17 @@ const COLS = [
     heading: 'Shop',
     links: [
       { label: 'All Products', href: '/shop' },
+      { label: 'Complete Catalogue (A–Z)', href: '/all-products' },
       { label: 'Love & Relationships', href: '/shop?purpose=love' },
       { label: 'Wealth & Prosperity', href: '/shop?purpose=wealth' },
       { label: 'Health & Vitality', href: '/shop?purpose=health' },
       { label: 'Success & Career', href: '/shop?purpose=success' },
       { label: 'Protection & Safety', href: '/shop?purpose=protection' },
       { label: 'Clarity & Peace', href: '/shop?purpose=clarity' },
+      { label: 'Durghatna Nashak Yantra', href: '/durghatna-nashak-yantra' },
+      { label: 'Divya Hawan Powder', href: '/divya-hawan-powder' },
+      { label: 'Ghoda Ki Naal', href: '/ghoda-ki-naal' },
+      { label: 'Durbhagya Nashak Nariyal', href: '/durbhagya-nashak-nariyal' },
     ],
   },
   {
@@ -33,7 +38,7 @@ const COLS = [
   {
     heading: 'Company',
     links: [
-      { label: 'About Doshhmukti', href: '/about' },
+      { label: 'About Doshmukti', href: '/about' },
       { label: 'Privacy Policy', href: '/privacy' },
       { label: 'Terms of Service', href: '/terms' },
     ],
@@ -120,7 +125,7 @@ export function Footer() {
           {/* Brand column */}
           <div>
             <div className="flex items-center mb-4">
-              <Image src={logo} alt="Doshhmukti" className="h-10 w-auto" />
+              <Image src={logo} alt="Doshmukti" className="h-10 w-auto" />
             </div>
             <p className="font-body text-xs text-[#8A7A63] leading-relaxed mb-5 max-w-[180px]">
               Authentic spiritual products curated with intention, for every seeker.

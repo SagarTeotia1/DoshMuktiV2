@@ -63,7 +63,7 @@ const STATS = [
 const FAQ_ITEMS = [
   {
     q: 'What is Divya Hawan Powder made of?',
-    a: 'A traditional blend of herbs, wood, ghee-soaked samagri and havan ingredients, prepared following Vedic tradition — the same purity standard used across every Doshhmukti product.',
+    a: 'A traditional blend of herbs, wood, ghee-soaked samagri and havan ingredients, prepared following Vedic tradition — the same purity standard used across every Doshmukti product.',
   },
   {
     q: 'How do I use it for a havan at home?',

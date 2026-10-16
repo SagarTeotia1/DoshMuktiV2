@@ -35,7 +35,7 @@ export function CampaignHeader({ variantId, productName, price }: { variantId: s
             solid ? 'text-[#2B1B0C]' : 'text-[#FFFDF8]'
           }`}
         >
-          Doshhmukti
+          Doshmukti
         </Link>
 
         <span

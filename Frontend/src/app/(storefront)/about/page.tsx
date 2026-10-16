@@ -30,11 +30,11 @@ const VALUES = [
   },
 ];
 
-// No "Doshhmukti" here — root layout's `%s — Doshhmukti` template already appends
+// No "Doshmukti" here — root layout's `%s — Doshmukti` template already appends
 // the brand, so including it in the page title doubled it up in the rendered <title>.
 const TITLE = 'About — Authentic Astrology-Guided Gemstones';
 const DESCRIPTION =
-  'Doshhmukti sources authentic, ritually-energized gemstones and rudraksha directly from verified artisans, with Vedic-astrology guidance from Acharya Madhav for every purchase.';
+  'Doshmukti sources authentic, ritually-energized gemstones and rudraksha directly from verified artisans, with Vedic-astrology guidance from Acharya Madhav for every purchase.';
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -49,9 +49,9 @@ const personJsonLd = {
   name: 'Acharya Madhav',
   jobTitle: 'Vedic Astrologer',
   url: `${SITE_URL}/about`,
-  worksFor: { '@type': 'Organization', name: 'Doshhmukti' },
+  worksFor: { '@type': 'Organization', name: 'Doshmukti' },
   description:
-    'Acharya Madhav is Doshhmukti\'s in-house Vedic astrologer, recommending gemstones and remedies based on birth-chart (kundli) and numerology readings for love, wealth, health, career, and protection.',
+    'Acharya Madhav is Doshmukti\'s in-house Vedic astrologer, recommending gemstones and remedies based on birth-chart (kundli) and numerology readings for love, wealth, health, career, and protection.',
 };
 
 export default function AboutPage() {
@@ -72,7 +72,7 @@ export default function AboutPage() {
             Authentic Gemstones, Astrology-Backed Guidance
           </h1>
           <p className="font-body text-sm sm:text-base text-[#B8A98A] leading-relaxed max-w-xl mx-auto">
-            Doshhmukti is an Indian spiritual ecommerce store, operated by Digital Kalakaar Videos Private Limited,
+            Doshmukti is an Indian spiritual ecommerce store, operated by Digital Kalakaar Videos Private Limited,
             selling authentic, ritually-energized gemstones, rudraksha malas and bracelets for love, wealth, health,
             success, protection and clarity. Every product is sourced directly from verified artisans — never a
             mass-produced imitation — and paired with Vedic astrology guidance from Acharya Madhav so you buy the
@@ -81,7 +81,7 @@ export default function AboutPage() {
           <p className="font-body text-sm sm:text-base text-[#B8A98A] leading-relaxed max-w-xl mx-auto mt-4">
             The name comes from &ldquo;dosh mukti&rdquo; — freedom from the doshas, or planetary afflictions, that
             Vedic astrology holds responsible for recurring trouble in love, money, health or career. Every gemstone
-            and remedy on Doshhmukti is chosen to work toward that: dosh nivaran (remedy) matched to your actual
+            and remedy on Doshmukti is chosen to work toward that: dosh nivaran (remedy) matched to your actual
             kundli, not a generic best-seller.
           </p>
         </Reveal>

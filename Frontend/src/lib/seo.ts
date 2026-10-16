@@ -71,7 +71,7 @@ export function generateProductJsonLd({
     ...(primaryVariant?.sku ? { sku: primaryVariant.sku } : {}),
     brand: {
       '@type': 'Brand',
-      name: 'Doshhmukti',
+      name: 'Doshmukti',
     },
     offers: {
       '@type': 'Offer',

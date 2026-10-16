@@ -60,7 +60,7 @@ const STATS = [
 const FAQ_ITEMS = [
   {
     q: 'Is the bracelet really energized before shipping?',
-    a: 'Yes — every Rose Quartz Bracelet is ritually energized following traditional Vedic practice before it leaves our workshop, the same process used across every Doshhmukti product.',
+    a: 'Yes — every Rose Quartz Bracelet is ritually energized following traditional Vedic practice before it leaves our workshop, the same process used across every Doshmukti product.',
   },
   {
     q: 'How long does delivery take?',

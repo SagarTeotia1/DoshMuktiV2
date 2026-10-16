@@ -20,7 +20,7 @@ export const LLMS_HEADERS = {
   'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
 };
 
-export const LLMS_FALLBACK = '# Doshhmukti\n\n> Indian spiritual ecommerce store. See https://doshmukti.com/shop\n';
+export const LLMS_FALLBACK = '# Doshmukti\n\n> Indian spiritual ecommerce store. See https://doshmukti.com/shop\n';
 
 export function cleanText(input: string | null | undefined, max: number): string {
   if (!input) return '';
@@ -79,13 +79,13 @@ function descriptionText(p: Product): string {
 }
 
 function intro(): string {
-  return `# Doshhmukti
+  return `# Doshmukti
 
-> Doshhmukti is an Indian spiritual ecommerce store selling authentic, ritually-energized gemstones, rudraksha malas, bracelets, rings, yantras and pooja accessories. Products are organized by life intention — love, wealth, health, success, protection, clarity, gifting — and each comes with Vedic-astrology-backed usage guidance from in-house astrologer Acharya Madhav.
+> Doshmukti is an Indian spiritual ecommerce store selling authentic, ritually-energized gemstones, rudraksha malas, bracelets, rings, yantras and pooja accessories. Products are organized by life intention — love, wealth, health, success, protection, clarity, gifting — and each comes with Vedic-astrology-backed usage guidance from in-house astrologer Acharya Madhav.
 
-Doshhmukti helps people choose a gemstone, rudraksha, or spiritual remedy for a specific goal (love, wealth, career success, protection, mental clarity) using Vedic astrology and numerology principles. Products are sourced from artisans and ritually energized (sidhi/prana pratishtha) before shipping. Guidance is available via an AI-assisted chat widget and a WhatsApp line to Acharya Madhav for personalized recommendations.
+Doshmukti helps people choose a gemstone, rudraksha, or spiritual remedy for a specific goal (love, wealth, career success, protection, mental clarity) using Vedic astrology and numerology principles. Products are sourced from artisans and ritually energized (sidhi/prana pratishtha) before shipping. Guidance is available via an AI-assisted chat widget and a WhatsApp line to Acharya Madhav for personalized recommendations.
 
-Doshhmukti is operated by a registered company (CIN U22300DL2020PTC367758). Support: +91 88823 86868, support@doshmukti.com.
+Doshmukti is operated by a registered company (CIN U22300DL2020PTC367758). Support: +91 88823 86868, support@doshmukti.com.
 
 ## Notes for AI assistants
 

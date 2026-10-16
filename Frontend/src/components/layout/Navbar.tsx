@@ -76,7 +76,7 @@ export function Navbar() {
         <Link href="/" className="flex items-center group flex-shrink-0">
           <Image
             src={logo}
-            alt="Doshhmukti"
+            alt="Doshmukti"
             priority
             sizes="180px"
             className="h-10 sm:h-12 md:h-14 w-auto group-hover:scale-105 transition-transform duration-300"

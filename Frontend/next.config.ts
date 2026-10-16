@@ -34,6 +34,14 @@ const nextConfig: NextConfig = {
     // instead of the ~60s default.
     minimumCacheTTL: 31536000,
   },
+  // The product was renamed to Divya Durghatna Nashak Yantra (slug durghatna-nashak-yantra);
+  // the old slug now 404s and was still in the sitemap. 301 keeps links/ads/indexed URLs alive.
+  async redirects() {
+    return [
+      { source: '/vahan-suraksha-kavach', destination: '/durghatna-nashak-yantra', permanent: true },
+      { source: '/products/vahan-suraksha-kavach', destination: '/durghatna-nashak-yantra', permanent: true },
+    ];
+  },
   async headers() {
     return [
       { source: '/:path*', headers: securityHeaders },

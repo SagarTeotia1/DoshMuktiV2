@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { SITE_URL, PURPOSES } from '@/lib/constants';
+import { SITE_URL } from '@/lib/constants';
 import { api } from '@/lib/api-client';
 import type { PaginatedProducts } from '@/types/api.types';
 
@@ -20,12 +20,18 @@ const STATIC_ROUTES = [
   '/faq',
   '/privacy',
   '/terms',
-  '/vahan-suraksha-kavach',
-  '/durghatna-nashak-yantra',
-  '/durbhagya-nashak-nariyal',
-  '/divya-hawan-powder',
-  '/ghoda-ki-naal',
-  '/rose-quartz-bracelet',
+  '/all-products',
+];
+
+// One-product campaign pages (outside the (storefront) group). Each calls notFound() when
+// its product is missing from the catalog, so listing one here without checking made the
+// sitemap advertise a live 404 (vahan-suraksha-kavach) — only emit it if the slug exists.
+const CAMPAIGN_SLUGS = [
+  'durghatna-nashak-yantra',
+  'durbhagya-nashak-nariyal',
+  'divya-hawan-powder',
+  'ghoda-ki-naal',
+  'rose-quartz-bracelet',
 ];
 
 // Backend caps `limit` at 100 (products/schema.ts) — requesting more 400s. A prior
@@ -33,8 +39,8 @@ const STATIC_ROUTES = [
 // and silently produced an empty product sitemap for months. Paginate at the real cap.
 const BACKEND_PAGE_LIMIT = 100;
 
-async function getAllProductSlugs(): Promise<Array<{ slug: string }>> {
-  const slugs: Array<{ slug: string }> = [];
+async function getAllProductSlugs(): Promise<Array<{ slug: string; updatedAt?: string }>> {
+  const slugs: Array<{ slug: string; updatedAt?: string }> = [];
   let page = 1;
 
   while (true) {
@@ -45,7 +51,7 @@ async function getAllProductSlugs(): Promise<Array<{ slug: string }>> {
       console.error(`sitemap: failed to fetch products page ${page}`, err);
       break;
     }
-    slugs.push(...data.products.map((p) => ({ slug: p.slug })));
+    slugs.push(...data.products.map((p) => ({ slug: p.slug, updatedAt: (p as { updatedAt?: string }).updatedAt })));
     if (page >= data.pages) break;
     page += 1;
   }
@@ -55,28 +61,30 @@ async function getAllProductSlugs(): Promise<Array<{ slug: string }>> {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const products = await getAllProductSlugs();
-  const now = new Date();
+  const productSlugs = new Set(products.map((p) => p.slug));
 
+  // No lastModified on static pages: stamping "now" on every regen teaches Google to
+  // ignore the sitemap's dates. Only products carry a real updatedAt.
   const staticEntries: MetadataRoute.Sitemap = STATIC_ROUTES.map((path) => ({
     url: `${SITE_URL}${path}`,
-    lastModified: now,
     changeFrequency: path === '' ? 'daily' : 'weekly',
     priority: path === '' ? 1 : 0.7,
   }));
 
-  const purposeEntries: MetadataRoute.Sitemap = PURPOSES.map((p) => ({
-    url: `${SITE_URL}/shop?purpose=${p.id}`,
-    lastModified: now,
-    changeFrequency: 'daily',
-    priority: 0.8,
-  }));
-
-  const productEntries: MetadataRoute.Sitemap = products.map((p) => ({
-    url: `${SITE_URL}/products/${p.slug}`,
-    lastModified: now,
+  const campaignEntries: MetadataRoute.Sitemap = CAMPAIGN_SLUGS.filter((slug) => productSlugs.has(slug)).map((slug) => ({
+    url: `${SITE_URL}/${slug}`,
     changeFrequency: 'weekly',
     priority: 0.9,
   }));
 
-  return [...staticEntries, ...purposeEntries, ...productEntries];
+  // /shop?purpose=… URLs are deliberately not listed: parameter variants of /shop get
+  // treated as duplicates and waste crawl budget on a brand-new domain.
+  const productEntries: MetadataRoute.Sitemap = products.map((p) => ({
+    url: `${SITE_URL}/products/${p.slug}`,
+    ...(p.updatedAt ? { lastModified: new Date(p.updatedAt) } : {}),
+    changeFrequency: 'weekly',
+    priority: 0.9,
+  }));
+
+  return [...staticEntries, ...campaignEntries, ...productEntries];
 }

@@ -4,8 +4,8 @@ import { Reveal } from '@/components/motion/Reveal';
 import { RETURN_ELIGIBLE_ABOVE, SHIPPING_FEE, FREE_SHIPPING_ABOVE, COD_ADVANCE_FEE } from '@/lib/constants';
 
 export const metadata = {
-  title: 'Terms & Conditions — Doshhmukti',
-  description: 'Terms and conditions governing your use of the Doshhmukti website and purchase of products.',
+  title: 'Terms & Conditions — Doshmukti',
+  description: 'Terms and conditions governing your use of the Doshmukti website and purchase of products.',
   alternates: { canonical: '/terms' },
 };
 
@@ -80,7 +80,7 @@ export default function TermsPage() {
             <p>
               These Terms &amp; Conditions (&ldquo;Terms&rdquo;) govern your access to and use of the website
               located at doshmukti.com (the &ldquo;Site&rdquo;) and any purchase of products made through it,
-              operated by Digital Kalakaar Videos Private Limited, trading as Doshhmukti (&ldquo;Doshhmukti&rdquo;,
+              operated by Digital Kalakaar Videos Private Limited, trading as Doshmukti (&ldquo;Doshmukti&rdquo;,
               &ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;). By browsing the Site or placing an order, you
               (&ldquo;you&rdquo;, &ldquo;user&rdquo;, &ldquo;customer&rdquo;) agree to be bound by these Terms. If
               you do not agree, do not use the Site.
@@ -110,7 +110,7 @@ export default function TermsPage() {
               </p>
               <p>
                 <strong className="text-[#2B1B0C]">Seller information.</strong> The Site is operated by Digital
-                Kalakaar Videos Private Limited, trading as Doshhmukti. CIN: U22300DL2020PTC367758; GSTIN: 07AAHCD8992N1ZQ. Contact: support@doshmukti.com, +91 88823 86868. Product
+                Kalakaar Videos Private Limited, trading as Doshmukti. CIN: U22300DL2020PTC367758; GSTIN: 07AAHCD8992N1ZQ. Contact: support@doshmukti.com, +91 88823 86868. Product
                 price is the maximum retail price (MRP) inclusive of all taxes; country of origin, net quantity
                 and other mandatory declarations are shown on the product page or on the product packaging.
               </p>
@@ -244,7 +244,7 @@ export default function TermsPage() {
             <Section id="ip" title="10. Intellectual Property">
               <p>
                 All content on the Site — text, graphics, logos, product photography, and design — is the
-                property of Doshhmukti or its licensors and is protected under Indian copyright and trademark
+                property of Doshmukti or its licensors and is protected under Indian copyright and trademark
                 law. You may not reproduce, distribute, or create derivative works from Site content without our
                 prior written consent.
               </p>
@@ -273,7 +273,7 @@ export default function TermsPage() {
 
             <Section id="disclaimer" title="12. Nature of Products & Disclaimer">
               <p>
-                Doshhmukti sells spiritual, devotional, and lifestyle products — rings, bracelets, crystals,
+                Doshmukti sells spiritual, devotional, and lifestyle products — rings, bracelets, crystals,
                 rudraksha, and pooja accessories. These products are sold as items of devotional, cultural, or
                 decorative significance. We do not claim, and no representation on this Site should be taken to
                 claim, that any product cures, treats, or prevents any medical, psychological, or physical
@@ -305,7 +305,7 @@ export default function TermsPage() {
 
             <Section id="liability" title="13. Limitation of Liability">
               <p>
-                To the maximum extent permitted by law, Doshhmukti&rsquo;s total liability arising out of or
+                To the maximum extent permitted by law, Doshmukti&rsquo;s total liability arising out of or
                 relating to your use of the Site or any product purchased shall not exceed the amount you paid
                 for the order giving rise to the claim. We are not liable for any indirect, incidental,
                 consequential, or punitive damages, including loss of profits, data, or goodwill, arising from
@@ -317,7 +317,7 @@ export default function TermsPage() {
 
             <Section id="indemnity" title="14. Indemnity">
               <p>
-                You agree to indemnify and hold Doshhmukti, its officers, employees, and partners harmless from
+                You agree to indemnify and hold Doshmukti, its officers, employees, and partners harmless from
                 any claim, liability, loss, or expense (including reasonable legal fees) arising from your breach
                 of these Terms or misuse of the Site.
               </p>
@@ -380,7 +380,7 @@ export default function TermsPage() {
             <Section id="contact" title="20. Contact Us">
               <p>Questions about these Terms can be sent to:</p>
               <p>
-                <strong className="text-[#2B1B0C]">Digital Kalakaar Videos Private Limited</strong> (Doshhmukti)
+                <strong className="text-[#2B1B0C]">Digital Kalakaar Videos Private Limited</strong> (Doshmukti)
                 <br />
                 Email:{' '}
                 <a href="mailto:support@doshmukti.com" className="text-[#9C5A26] font-semibold hover:underline">

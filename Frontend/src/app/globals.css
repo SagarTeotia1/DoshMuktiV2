@@ -11,7 +11,7 @@
 /* ─── Brand CSS Variables ────────────────────────────────────────────────────── */
 @layer base {
   :root {
-    /* ── "Temple Warmth" — bronze/copper on peach-cream, from the Doshhmukti wordmark ── */
+    /* ── "Temple Warmth" — bronze/copper on peach-cream, from the Doshmukti wordmark ── */
     --background:           40 53% 79%;    /* #E6D3AE */
     --foreground:           29 56% 11%;    /* #2B1B0C */
     --card:                 43 100% 99%;   /* #FFFDF8 */

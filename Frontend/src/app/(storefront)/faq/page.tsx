@@ -6,7 +6,7 @@ import { SITE_URL, RETURN_ELIGIBLE_ABOVE } from '@/lib/constants';
 
 const TITLE = 'FAQ — Gemstones, Astrology Remedies & Wealth Jewellery';
 const DESCRIPTION =
-  'Answers on choosing gemstones for love and wealth, how astrology remedies work, energizing rituals, authenticity, shipping and returns — everything before you buy from Doshhmukti.';
+  'Answers on choosing gemstones for love and wealth, how astrology remedies work, energizing rituals, authenticity, shipping and returns — everything before you buy from Doshmukti.';
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -36,7 +36,7 @@ const FAQS = [
     a: 'Vedic astrology ties wealth to Jupiter, Venus and the 2nd/11th houses of your chart. Common remedies include wearing a wealth-aligned gemstone (Pukhraj or Pyrite), keeping a Kuber Yantra or Laughing Buddha at your workspace, and performing simple daily rituals like lighting a ghee lamp on Thursdays. These are supportive remedies, not guarantees — they work alongside real financial effort, not instead of it.',
   },
   {
-    q: 'Are Doshhmukti gemstones and rudraksha authentic?',
+    q: 'Are Doshmukti gemstones and rudraksha authentic?',
     a: 'Yes. Every rudraksha, gemstone, and mala is sourced directly from verified artisans, not mass-produced imitations, and each product page states its material clearly. We do not sell lab-created stones as natural without disclosure.',
   },
   {
@@ -48,7 +48,7 @@ const FAQS = [
     a: 'Most products include specific "How to Wear & Recharge" steps on their product page — typically worn on a specific hand/finger, on a specific day of the week, after a short cleansing ritual. Follow the steps on your exact product page, since timing and hand differ by stone.',
   },
   {
-    q: 'Does Doshhmukti offer AI or astrology chat guidance?',
+    q: 'Does Doshmukti offer AI or astrology chat guidance?',
     a: 'Yes — the chat widget on this site and our WhatsApp line connect you to AI-assisted, astrology-informed guidance modeled on Acharya Madhav\'s approach, so you can ask what stone or remedy fits your goal (love, wealth, health, career, protection) before you buy.',
   },
   {

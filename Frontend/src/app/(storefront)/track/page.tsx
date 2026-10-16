@@ -1,8 +1,8 @@
 import { TrackForm } from './track-form';
 
 export const metadata = {
-  title: 'Track Your Order — Doshhmukti',
-  description: 'Enter your order number to see your Doshhmukti order status and estimated delivery.',
+  title: 'Track Your Order — Doshmukti',
+  description: 'Enter your order number to see your Doshmukti order status and estimated delivery.',
   alternates: { canonical: '/track' },
 };
 

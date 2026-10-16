@@ -40,9 +40,9 @@ const CHANNELS = [
   },
 ];
 
-const TITLE = 'Contact Doshhmukti — WhatsApp Astrology Guidance';
+const TITLE = 'Contact Doshmukti — WhatsApp Astrology Guidance';
 const DESCRIPTION =
-  'Reach Doshhmukti support or chat with Acharya Madhav for personalized gemstone and astrology-remedy guidance via WhatsApp, email, Instagram or YouTube.';
+  'Reach Doshmukti support or chat with Acharya Madhav for personalized gemstone and astrology-remedy guidance via WhatsApp, email, Instagram or YouTube.';
 
 export const metadata: Metadata = {
   title: TITLE,

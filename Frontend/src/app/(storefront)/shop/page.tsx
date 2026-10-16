@@ -37,7 +37,7 @@ export async function generateMetadata({
   const title = match ? `${match.label} — Gemstones & Remedies` : 'Shop All Products';
   const description = match
     ? `${match.description}. Authentic, energized gemstones, rudraksha and bracelets chosen with Vedic astrology guidance — shop the full ${match.label.toLowerCase()} collection.`
-    : 'Browse the full Doshhmukti collection — gemstones, rudraksha malas, bracelets and pooja accessories for love, wealth, health, success, protection and clarity.';
+    : 'Browse the full Doshmukti collection — gemstones, rudraksha malas, bracelets and pooja accessories for love, wealth, health, success, protection and clarity.';
   const canonical = match ? `/shop?purpose=${match.id}` : '/shop';
 
   return {

@@ -531,7 +531,7 @@ function CheckoutPageContent() {
       await openCheckout({
         amount: result.amount,
         currency: result.currency,
-        name: 'Doshhmukti',
+        name: 'Doshmukti',
         description: isCod
           ? `COD shipping advance — pay ${formatCurrency(result.codAmountDue)} on delivery`
           : undefined,
