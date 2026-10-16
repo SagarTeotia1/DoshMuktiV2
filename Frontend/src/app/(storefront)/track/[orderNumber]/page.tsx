@@ -162,7 +162,11 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ ord
               Waybill: <span className="font-bold text-[#2B1B0C]">{order.shipment.delhiveryWaybill}</span>
             </p>
             <a
-              href={`https://www.delhivery.com/track/package/${order.shipment.delhiveryWaybill}`}
+              href={
+                order.shipment.carrier === 'EKART'
+                  ? `https://ekartlogistics.com/shipmenttrack/${order.shipment.delhiveryWaybill}`
+                  : `https://www.delhivery.com/track/package/${order.shipment.delhiveryWaybill}`
+              }
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 font-body text-xs font-bold text-[#9C5A26] hover:text-[#2B1B0C] transition-colors"

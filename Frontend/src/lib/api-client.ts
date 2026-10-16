@@ -10,8 +10,10 @@ const BASE_URL =
     ? process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_BACKEND_URL!
     : process.env.NEXT_PUBLIC_BACKEND_URL!;
 
+// Always the public URL: this becomes an <a href> the customer's browser opens. Using BASE_URL
+// here baked the SSR-only internal address (http://127.0.0.1:4000) into the rendered HTML.
 export function invoiceUrl(orderNumber: string): string {
-  return `${BASE_URL}/api/orders/${orderNumber}/invoice`;
+  return `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/orders/${orderNumber}/invoice`;
 }
 
 export interface ApiErrorBody {

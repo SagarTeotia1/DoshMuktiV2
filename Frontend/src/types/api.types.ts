@@ -282,6 +282,7 @@ export interface OrderTrackingResponse {
   }>;
   shipment: {
     delhiveryWaybill: string | null;
+    carrier?: 'DELHIVERY' | 'EKART';
     status: string;
     estimatedDelivery: string | null;
     trackingEvents: Array<{ timestamp: string; status: string; location?: string; description?: string }>;
