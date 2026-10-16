@@ -3,8 +3,17 @@ import { db } from '../../shared/db/client';
 // Every row here is a real phone+OTP account (see User model — identity is the phone
 // number, login is OTP-only). Guest checkouts never create a User row, so this list is
 // exactly "who has actually logged in", never a superset that needs filtering.
-export async function listUsers(query: { phone?: string; page: number; limit: number }) {
-  const where = query.phone ? { phone: { contains: query.phone } } : {};
+export async function listUsers(query: { q?: string; page: number; limit: number }) {
+  // Phone is stored normalized (+91XXXXXXXXXX); strip separators so "99515 52047" still matches.
+  const digits = query.q?.replace(/[\s-]/g, '');
+  const where = query.q
+    ? {
+        OR: [
+          { name: { contains: query.q, mode: 'insensitive' as const } },
+          ...(digits ? [{ phone: { contains: digits } }] : []),
+        ],
+      }
+    : {};
 
   const [users, total] = await Promise.all([
     db.user.findMany({

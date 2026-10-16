@@ -46,7 +46,7 @@ export default function UsersPage() {
             <input
               value={phoneInput}
               onChange={(e) => setPhoneInput(e.target.value)}
-              placeholder="Search by phone number"
+              placeholder="Search by name or phone number"
               className="w-full bg-white border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none"
             />
           </div>
