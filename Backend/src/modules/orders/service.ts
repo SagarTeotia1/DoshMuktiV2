@@ -133,34 +133,63 @@ export async function bookOrderShipment(orderId: string): Promise<{ waybill: str
     order.packageWeightOverride ??
     order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS;
   const address = order.shippingAddress as unknown as BookableAddress;
-  const carrier = chooseCarrier(order.paymentMethod, weight);
+  const primary = chooseCarrier(order.paymentMethod, weight);
+  const fallback: CarrierId = primary === 'EKART' ? 'DELHIVERY' : 'EKART';
 
-  const result =
-    carrier === 'EKART'
-      ? await createEkartShipment({
-          orderNumber: order.orderNumber,
-          customerName: order.customerName,
-          customerPhone: order.customerPhone,
-          address,
-          weight,
-          codAmount: Number(order.codAmountDue),
-          orderTotal: Number(order.total),
-          taxValue: Math.round(computeOrderGst(order.items).gstAmount * 100) / 100,
-          productsDesc: order.items
-            .map((i) => (i.variantSnapshot as { productName?: string } | null)?.productName ?? i.variant.sku)
-            .join(', '),
-          quantity: order.items.reduce((sum, i) => sum + i.quantity, 0),
-          invoiceDate: order.createdAt.toISOString().slice(0, 10),
-        })
-      : await createShipment({
-          orderNumber: order.orderNumber,
-          customerName: order.customerName,
-          customerPhone: order.customerPhone,
-          address,
-          weight,
-        });
-  if (!result) throw new Error(`${carrier} did not return a waybill — check API key/wallet balance and address details`);
-  if ('error' in result) throw new Error(result.error);
+  const codAmount = Number(order.codAmountDue);
+  const productsDesc = order.items
+    .map((i) => (i.variantSnapshot as { productName?: string } | null)?.productName ?? i.variant.sku)
+    .join(', ');
+  const quantity = order.items.reduce((sum, i) => sum + i.quantity, 0);
+  const invoiceDate = order.createdAt.toISOString().slice(0, 10);
+
+  // Never throws — a network failure becomes { error } so the fallback carrier still gets a shot.
+  const attempt = async (c: CarrierId): Promise<{ waybill: string } | { error: string } | null> => {
+    try {
+      return c === 'EKART'
+        ? await createEkartShipment({
+            orderNumber: order.orderNumber,
+            customerName: order.customerName,
+            customerPhone: order.customerPhone,
+            address,
+            weight,
+            codAmount,
+            orderTotal: Number(order.total),
+            taxValue: Math.round(computeOrderGst(order.items).gstAmount * 100) / 100,
+            productsDesc,
+            quantity,
+            invoiceDate,
+          })
+        : await createShipment({
+            orderNumber: order.orderNumber,
+            customerName: order.customerName,
+            customerPhone: order.customerPhone,
+            address,
+            weight,
+            // COD must keep collecting cash even when it lands on Delhivery as the fallback.
+            cod: codAmount > 0 ? { codAmount, orderTotal: Number(order.total), productsDesc, quantity, invoiceDate } : undefined,
+          });
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : `${c} request failed` };
+    }
+  };
+
+  let carrier: CarrierId = primary;
+  let result = await attempt(primary);
+  // Primary rejected (pincode not serviceable, embargo, bad address, wallet, network…) —
+  // try the other carrier. `null` = that carrier isn't configured (treated as a failure too).
+  if (!result || 'error' in result) {
+    const primaryReason = !result ? `${primary} not configured` : result.error;
+    const second = await attempt(fallback);
+    if (second && !('error' in second)) {
+      logger.warn({ orderId, primary, fallback, primaryReason }, 'Primary carrier failed — booked on fallback carrier');
+      carrier = fallback;
+      result = second;
+    } else {
+      const secondReason = !second ? `${fallback} not configured` : second.error;
+      throw new Error(`${primary}: ${primaryReason} | ${fallback}: ${secondReason}`);
+    }
+  }
 
   if (existing) {
     await db.shipment.update({ where: { orderId }, data: { delhiveryWaybill: result.waybill, carrier, status: 'BOOKED' } });

@@ -46,9 +46,12 @@ export async function createShipment(params: {
   customerPhone: string;
   address: { line1: string; line2?: string; city: string; state: string; pincode: string };
   weight: number;
+  /** Set only when this is a COD fallback (e.g. Ekart couldn't serve the pincode). */
+  cod?: { codAmount: number; orderTotal: number; productsDesc: string; quantity: number; invoiceDate: string };
 }): Promise<{ waybill: string } | { error: string } | null> {
   if (!env.DELHIVERY_API_KEY) return null; // graceful degrade in dev
 
+  const cod = params.cod && params.cod.codAmount > 0 ? params.cod : null;
   const payload = {
     shipments: [
       {
@@ -64,12 +67,19 @@ export async function createShipment(params: {
         country: 'India',
         phone: params.customerPhone,
         order: params.orderNumber,
-        payment_mode: 'Prepaid',
+        payment_mode: cod ? 'COD' : 'Prepaid',
         // 0, not the real order total — Delhivery prints total_amount as a Product/Price
         // table on the shipping label. That's meant for COD (courier needs to know what
         // to collect); on Prepaid it just exposes the order value to whoever handles the
-        // package for no reason. Every order here is Prepaid (see payment_mode above).
-        total_amount: 0,
+        // package for no reason.
+        total_amount: cod ? cod.orderTotal : 0,
+        ...(cod && {
+          cod_amount: cod.codAmount,
+          products_desc: cod.productsDesc.slice(0, 200),
+          quantity: cod.quantity,
+          seller_inv: params.orderNumber,
+          order_date: cod.invoiceDate,
+        }),
         weight: params.weight,
       },
     ],
