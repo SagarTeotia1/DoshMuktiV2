@@ -22,7 +22,15 @@
       </button>
 
       {%- if shop.customer_accounts_enabled -%}
-        <a href="{{ routes.account_url }}" class="icon-btn icon-btn--ghost site-header__account" aria-label="{{ 'accessibility.account' | t }}">{% render 'icon', icon: 'user', size: 20 %}</a>
+        {%- if customer -%}
+          <a href="{{ routes.account_url }}" class="account-chip site-header__account" aria-label="{{ 'accessibility.account' | t }}">
+            {% render 'icon', icon: 'user', size: 18 %}
+            <span class="account-chip__name">{{ customer.first_name | default: 'Account' }}</span>
+          </a>
+          <a href="{{ routes.account_logout_url }}" class="icon-btn icon-btn--ghost site-header__account" aria-label="Log out">{% render 'icon', icon: 'logout', size: 16 %}</a>
+        {%- else -%}
+          <a href="{{ routes.account_login_url }}" class="icon-btn icon-btn--ghost site-header__account" aria-label="Log in">{% render 'icon', icon: 'user', size: 20 %}</a>
+        {%- endif -%}
       {%- endif -%}
 
       <a href="{{ routes.cart_url }}" class="icon-btn icon-btn--ghost cart-link" aria-label="{{ 'accessibility.cart' | t }}">

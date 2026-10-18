@@ -10,26 +10,84 @@
   {
     "name": "Colors",
     "settings": [
-      { "type": "color", "id": "color_accent", "label": "Bronze (CTAs, active states)", "default": "#9C5A26" },
-      { "type": "color", "id": "color_ink", "label": "Warm ink (text, borders, footer)", "default": "#2B1B0C" },
-      { "type": "color", "id": "color_background", "label": "Page background", "default": "#E6D3AE" },
-      { "type": "color", "id": "color_paper", "label": "Card surface", "default": "#FFFDF8" }
+      {
+        "type": "color",
+        "id": "color_accent",
+        "label": "Bronze (CTAs, active states)",
+        "default": "#9C5A26"
+      },
+      {
+        "type": "color",
+        "id": "color_ink",
+        "label": "Warm ink (text, borders, footer)",
+        "default": "#2B1B0C"
+      },
+      {
+        "type": "color",
+        "id": "color_background",
+        "label": "Page background",
+        "default": "#E6D3AE"
+      },
+      {
+        "type": "color",
+        "id": "color_paper",
+        "label": "Card surface",
+        "default": "#FFFDF8"
+      }
     ]
   },
   {
     "name": "Brand",
     "settings": [
-      { "type": "image_picker", "id": "logo", "label": "Logo" },
-      { "type": "range", "id": "logo_width", "min": 80, "max": 260, "step": 10, "unit": "px", "label": "Logo width (desktop)", "default": 160 },
-      { "type": "image_picker", "id": "favicon", "label": "Favicon (square PNG)" },
-      { "type": "text", "id": "company_legal", "label": "Footer legal line", "default": "Digital Kalakaar Videos Private Limited · CIN U22300DL2020PTC367758 · GSTIN 07AAHCD8992N1ZQ. All rights reserved." }
+      {
+        "type": "image_picker",
+        "id": "logo",
+        "label": "Logo"
+      },
+      {
+        "type": "range",
+        "id": "logo_width",
+        "min": 80,
+        "max": 260,
+        "step": 10,
+        "unit": "px",
+        "label": "Logo width (desktop)",
+        "default": 160
+      },
+      {
+        "type": "image_picker",
+        "id": "favicon",
+        "label": "Favicon (square PNG)"
+      },
+      {
+        "type": "text",
+        "id": "company_legal",
+        "label": "Footer legal line",
+        "default": "Digital Kalakaar Videos Private Limited · CIN U22300DL2020PTC367758 · GSTIN 07AAHCD8992N1ZQ. All rights reserved."
+      }
     ]
   },
   {
     "name": "Shipping & returns",
     "settings": [
-      { "type": "number", "id": "free_shipping_above", "label": "Free shipping above (₹)", "default": 299 },
-      { "type": "number", "id": "return_eligible_above", "label": "7-day returns above (₹)", "default": 299 }
+      {
+        "type": "number",
+        "id": "shipping_fee",
+        "label": "Flat shipping fee (₹)",
+        "default": 90
+      },
+      {
+        "type": "number",
+        "id": "free_shipping_above",
+        "label": "Free shipping above (₹)",
+        "default": 299
+      },
+      {
+        "type": "number",
+        "id": "return_eligible_above",
+        "label": "7-day returns above (₹)",
+        "default": 299
+      }
     ]
   },
   {
@@ -39,18 +97,53 @@
         "type": "paragraph",
         "content": "The chat runs on the Doshmukti Backend. Enter its public base URL (no trailing slash). The Backend's FRONTEND_ORIGIN must include this store's domain."
       },
-      { "type": "url", "id": "acharya_api_url", "label": "Backend base URL", "info": "e.g. https://api.doshmukti.com — leave empty to hide the chat widget." },
-      { "type": "image_picker", "id": "acharya_avatar", "label": "Acharya avatar (optional)", "info": "Defaults to the bundled icon." },
-      { "type": "text", "id": "acharya_popup", "label": "Chat teaser text", "default": "Kundli & Astrological Advice Free ✨" }
+      {
+        "type": "url",
+        "id": "acharya_api_url",
+        "label": "Backend base URL",
+        "info": "e.g. https://api.doshmukti.com — leave empty to hide the chat widget."
+      },
+      {
+        "type": "image_picker",
+        "id": "acharya_avatar",
+        "label": "Acharya avatar (optional)",
+        "info": "Defaults to the bundled icon."
+      },
+      {
+        "type": "text",
+        "id": "acharya_popup",
+        "label": "Chat teaser text",
+        "default": "Kundli & Astrological Advice Free ✨"
+      }
     ]
   },
   {
     "name": "Social & support",
     "settings": [
-      { "type": "text", "id": "social_instagram", "label": "Instagram URL", "default": "https://instagram.com/doshhmukti" },
-      { "type": "text", "id": "social_youtube", "label": "YouTube URL", "default": "https://youtube.com/@doshhmukti" },
-      { "type": "text", "id": "whatsapp_number", "label": "WhatsApp number (with country code)", "info": "e.g. 919999999999. Leave empty to hide the WhatsApp button." },
-      { "type": "text", "id": "whatsapp_message", "label": "WhatsApp prefilled message", "default": "Namaste, I need help with an order." }
+      {
+        "type": "text",
+        "id": "social_instagram",
+        "label": "Instagram URL",
+        "default": "https://instagram.com/doshhmukti"
+      },
+      {
+        "type": "text",
+        "id": "social_youtube",
+        "label": "YouTube URL",
+        "default": "https://youtube.com/@doshhmukti"
+      },
+      {
+        "type": "text",
+        "id": "whatsapp_number",
+        "label": "WhatsApp number (with country code)",
+        "info": "e.g. 919999999999. Leave empty to hide the WhatsApp button."
+      },
+      {
+        "type": "text",
+        "id": "whatsapp_message",
+        "label": "WhatsApp prefilled message",
+        "default": "Namaste, I need help with an order."
+      }
     ]
   }
 ]

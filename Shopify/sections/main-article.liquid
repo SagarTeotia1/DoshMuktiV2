@@ -1,6 +1,6 @@
 <article class="container page-content article">
   <header class="page-content__head">
-    <p class="eyebrow"><time datetime="{{ article.published_at | date: '%Y-%m-%d' }}">{{ article.published_at | date: '%B %d, %Y' }}</time>{% if article.author != blank %} · {{ article.author }}{% endif %}</p>
+    <p class="kicker"><time datetime="{{ article.published_at | date: '%Y-%m-%d' }}">{{ article.published_at | date: '%B %d, %Y' }}</time>{% if article.author != blank %} · {{ article.author }}{% endif %}</p>
     <h1 class="page-title">{{ article.title }}</h1>
   </header>
   {%- if article.image -%}

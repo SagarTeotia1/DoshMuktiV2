@@ -5,18 +5,43 @@
     "footer": {
       "type": "footer",
       "blocks": {
-        "shop": { "type": "menu", "settings": { "heading": "Shop", "menu": "footer" } },
-        "help": { "type": "menu", "settings": { "heading": "Help", "menu": "footer" } }
+        "shop": {
+          "type": "menu",
+          "settings": {
+            "heading": "Shop",
+            "menu": "footer"
+          }
+        },
+        "help": {
+          "type": "menu",
+          "settings": {
+            "heading": "Help",
+            "menu": "footer-help"
+          }
+        },
+        "company": {
+          "type": "menu",
+          "settings": {
+            "heading": "Company",
+            "menu": "footer-company"
+          }
+        }
       },
-      "block_order": ["shop", "help"],
+      "block_order": [
+        "shop",
+        "help",
+        "company"
+      ],
       "settings": {
         "show_newsletter": true,
-        "newsletter_eyebrow": "Stay Connected",
-        "newsletter_heading": "Good Energy, Delivered Weekly",
-        "newsletter_note": "Exclusive deals + spiritual guidance, straight to your inbox.",
+        "newsletter_eyebrow": "Stay connected",
+        "newsletter_heading": "Good energy, delivered weekly",
+        "newsletter_note": "Exclusive deals and spiritual guidance, straight to your inbox.",
         "tagline": "Authentic spiritual products curated with intention, for every seeker."
       }
     }
   },
-  "order": ["footer"]
+  "order": [
+    "footer"
+  ]
 }

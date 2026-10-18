@@ -1,7 +1,6 @@
 {%- paginate search.results by 12 -%}
 <section class="container collection">
   <header class="collection__head">
-    <p class="eyebrow">{{ 'search.title' | t }}</p>
     <h1 class="collection__title">
       {%- if search.performed and search.terms != blank -%}
         {{ 'search.results' | t: count: search.results_count, terms: search.terms }}

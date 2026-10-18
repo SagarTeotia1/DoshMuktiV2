@@ -152,65 +152,72 @@
         "p1": {
           "type": "purpose",
           "settings": {
-            "label": "Love",
+            "label": "Prem",
             "icon": "heart",
             "tone": "love",
-            "tag": "love"
+            "tag": "love",
+            "label_hi": "प्रेम"
           }
         },
         "p2": {
           "type": "purpose",
           "settings": {
-            "label": "Wealth",
+            "label": "Dhan",
             "icon": "trending-up",
             "tone": "wealth",
-            "tag": "wealth"
+            "tag": "wealth",
+            "label_hi": "धन"
           }
         },
         "p3": {
           "type": "purpose",
           "settings": {
-            "label": "Health",
+            "label": "Swasthya",
             "icon": "leaf",
             "tone": "health",
-            "tag": "health"
+            "tag": "health",
+            "label_hi": "स्वास्थ्य"
           }
         },
         "p4": {
           "type": "purpose",
           "settings": {
-            "label": "Success",
+            "label": "Safalta",
             "icon": "trophy",
             "tone": "success",
-            "tag": "success"
+            "tag": "success",
+            "label_hi": "सफलता"
           }
         },
         "p5": {
           "type": "purpose",
           "settings": {
-            "label": "Protection",
+            "label": "Suraksha",
             "icon": "shield",
             "tone": "protection",
-            "tag": "protection"
+            "tag": "protection",
+            "label_hi": "सुरक्षा"
           }
         },
         "p6": {
           "type": "purpose",
           "settings": {
-            "label": "Clarity",
+            "label": "Shanti",
             "icon": "sparkles",
             "tone": "clarity",
-            "tag": "clarity"
+            "tag": "clarity",
+            "label_hi": "शांति"
           }
         },
         "p7": {
           "type": "purpose",
           "settings": {
-            "label": "Gifting",
+            "label": "Upahar",
             "icon": "gift",
             "tone": "gifting",
             "tag": "gifting",
-            "hide_on_mobile": true
+            "hide_on_mobile": true,
+            "label_hi": "उपहार"
           }
         }
       },
@@ -224,7 +231,8 @@
         "p7"
       ],
       "settings": {
-        "heading": "What Do You Seek?"
+        "heading": "Kya talash hai aapko?",
+        "subtitle": "अपनी मनोकामना चुनिए"
       }
     },
     "rail-1": {
@@ -234,7 +242,8 @@
         "collection": "home-this-weeks-blessings",
         "limit": 12,
         "tinted": false,
-        "show_view_all": false
+        "show_view_all": true,
+        "subtitle": "इस हफ़्ते का आशीर्वाद"
       }
     },
     "acharya": {
@@ -274,10 +283,10 @@
         "t3"
       ],
       "settings": {
-        "eyebrow": "Ancient Wisdom, On Demand",
+        "subtitle": "आचार्य से पूछिए",
         "heading": "Acharya Madhav",
-        "text": "Tell him what is on your mind — love, money, career, health. He reads your birth details through Vedic astrology and numerology, and tells you exactly what to wear.",
-        "button_label": "Chat with Acharya Madhav"
+        "text": "Apne man ki baat batayein: prem, dhan, career ya swasthya. Woh aapki janm tithi se kundli aur ank-jyotish dekhkar bataenge ki kya dharan karna aapke liye shubh hai.",
+        "button_label": "Acharya se baat karein"
       }
     },
     "rail-2": {
@@ -287,7 +296,8 @@
         "collection": "home-doshmukti-special",
         "limit": 12,
         "tinted": true,
-        "show_view_all": false
+        "show_view_all": true,
+        "subtitle": "दोषमुक्ति विशेष"
       }
     },
     "trust": {
@@ -341,7 +351,8 @@
         "collection": "home-rudraksha",
         "limit": 12,
         "tinted": false,
-        "show_view_all": false
+        "show_view_all": true,
+        "subtitle": "रुद्राक्ष"
       }
     },
     "testimonials": {
@@ -378,99 +389,8 @@
         "r3"
       ],
       "settings": {
-        "heading": "Loved By Seekers"
-      }
-    },
-    "mulank": {
-      "type": "shop-by-number",
-      "blocks": {
-        "m1": {
-          "type": "number",
-          "settings": {
-            "number": "1",
-            "label": "Success & Confidence",
-            "tag": "mulank-1"
-          }
-        },
-        "m2": {
-          "type": "number",
-          "settings": {
-            "number": "2",
-            "label": "Love & Emotional Balance",
-            "tag": "mulank-2"
-          }
-        },
-        "m3": {
-          "type": "number",
-          "settings": {
-            "number": "3",
-            "label": "Wealth & Growth",
-            "tag": "mulank-3"
-          }
-        },
-        "m4": {
-          "type": "number",
-          "settings": {
-            "number": "4",
-            "label": "Protection & Stability",
-            "tag": "mulank-4"
-          }
-        },
-        "m5": {
-          "type": "number",
-          "settings": {
-            "number": "5",
-            "label": "Communication & Success",
-            "tag": "mulank-5"
-          }
-        },
-        "m6": {
-          "type": "number",
-          "settings": {
-            "number": "6",
-            "label": "Love & Harmony",
-            "tag": "mulank-6"
-          }
-        },
-        "m7": {
-          "type": "number",
-          "settings": {
-            "number": "7",
-            "label": "Intuition & Spirituality",
-            "tag": "mulank-7"
-          }
-        },
-        "m8": {
-          "type": "number",
-          "settings": {
-            "number": "8",
-            "label": "Protection & Prosperity",
-            "tag": "mulank-8"
-          }
-        },
-        "m9": {
-          "type": "number",
-          "settings": {
-            "number": "9",
-            "label": "Courage & Power",
-            "tag": "mulank-9"
-          }
-        }
-      },
-      "block_order": [
-        "m1",
-        "m2",
-        "m3",
-        "m4",
-        "m5",
-        "m6",
-        "m7",
-        "m8",
-        "m9"
-      ],
-      "settings": {
-        "heading": "Shop by Mulank",
-        "subheading": "Your birth number decides your lucky stone. Pick yours."
+        "heading": "Loved by seekers",
+        "subtitle": "हमारे साधकों की बात"
       }
     },
     "rail-4": {
@@ -480,7 +400,8 @@
         "collection": "home-bracelets",
         "limit": 12,
         "tinted": true,
-        "show_view_all": false
+        "show_view_all": true,
+        "subtitle": "ब्रेसलेट"
       }
     }
   },
@@ -489,7 +410,6 @@
     "hero",
     "purposes",
     "rail-1",
-    "mulank",
     "acharya",
     "rail-2",
     "trust",

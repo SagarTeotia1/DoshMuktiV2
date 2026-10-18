@@ -4,11 +4,20 @@
   if current_variant.compare_at_price > current_variant.price
     assign discount = current_variant.compare_at_price | minus: current_variant.price | times: 100.0 | divided_by: current_variant.compare_at_price | round
   endif
+
   assign return_ok = false
   assign threshold = settings.return_eligible_above | times: 100
   if current_variant.price >= threshold
     assign return_ok = true
   endif
+
+  assign rating_value = product.metafields.reviews.rating.value
+  assign rating_count = product.metafields.reviews.rating_count.value
+  assign offers = product.metafields.custom.offers.value
+  assign video_url = product.metafields.custom.how_to_use_video.value
+  assign social_proof = product.metafields.custom.social_proof.value
+  assign self_energize = product.metafields.custom.self_energize.value
+  assign purposes = 'love,wealth,health,success,protection,clarity,gifting' | split: ','
 -%}
 <section class="pdp container" data-product-section data-product-id="{{ product.id }}">
   <nav class="breadcrumbs" aria-label="Breadcrumb">
@@ -34,7 +43,7 @@
                   media
                   | image_url: width: 1400
                   | image_tag:
-                    widths: '600, 800, 1000, 1400',
+                    widths: '500, 700, 900, 1200, 1400',
                     sizes: '(min-width: 1024px) 50vw, 100vw',
                     loading: img_loading,
                     fetchpriority: img_priority,
@@ -46,7 +55,11 @@
             </div>
           {%- endfor -%}
           {%- if discount > 0 -%}
-            <span class="sticker discount-sticker" data-discount-badge>{% render 'icon', icon: 'tag', size: 11 %}{{ 'products.product.off' | t: percent: discount }}</span>
+            <span class="seal" data-discount-badge aria-label="{{ discount }}% off">{{ discount }}%<small>off</small></span>
+          {%- endif -%}
+          {%- if product.media.size > 1 -%}
+            <button type="button" class="gallery__arrow gallery__arrow--prev" data-gallery-prev aria-label="Previous image">{% render 'icon', icon: 'chevron-left', size: 20 %}</button>
+            <button type="button" class="gallery__arrow gallery__arrow--next" data-gallery-next aria-label="Next image">{% render 'icon', icon: 'chevron-right', size: 20 %}</button>
           {%- endif -%}
         {%- else -%}
           <div class="gallery__empty">{{ 'products.product.no_image' | t }}</div>
@@ -65,17 +78,42 @@
     </div>
 
     <div class="pdp__info">
-      {%- if product.vendor != blank and section.settings.show_vendor -%}<p class="eyebrow">{{ product.vendor }}</p>{%- endif -%}
       <h1 class="pdp__title">{{ product.title }}</h1>
 
+      {%- if rating_count > 0 -%}
+        <div class="pdp__rating">
+          {% render 'stars', rating: rating_value.rating, size: 16 %}
+          <a href="#reviews">{{ rating_value.rating | round: 1 }} ({{ rating_count }} review{% if rating_count != 1 %}s{% endif %})</a>
+        </div>
+      {%- endif -%}
+
+      <div class="pdp__tags">
+        {%- for tag in product.tags -%}
+          {%- if purposes contains tag -%}
+            <a class="pill" href="{{ routes.all_products_collection_url }}/{{ tag }}">{{ tag | capitalize }}</a>
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+
       <div class="pdp__price" data-price-wrap>
-        <span class="price price--lg" data-price>{{ current_variant.price | money }}</span>
-        <s class="price price--compare" data-compare {% unless current_variant.compare_at_price > current_variant.price %}hidden{% endunless %}>{{ current_variant.compare_at_price | money }}</s>
+        <span class="price price--lg" data-price>{% render 'price', amount: current_variant.price %}</span>
+        <s class="price price--compare" data-compare {% unless current_variant.compare_at_price > current_variant.price %}hidden{% endunless %}>{% render 'price', amount: current_variant.compare_at_price %}</s>
+        <span class="pdp__off" data-off {% unless discount > 0 %}hidden{% endunless %}>{{ discount }}% off</span>
         <span class="pdp__tax">Inclusive of all taxes</span>
       </div>
 
-      {%- if product.metafields.custom.excerpt != blank -%}
-        <p class="pdp__excerpt">{{ product.metafields.custom.excerpt }}</p>
+      {%- if offers.size > 0 -%}
+        <div class="offer-chips">
+          {%- for offer in offers -%}
+            <div class="offer-chip">
+              {%- assign offer_icon = offer.icon | default: 'gift' -%}{% render 'icon', icon: offer_icon, size: 20 %}
+              <div>
+                <strong>{{ offer.title }}</strong>
+                {%- if offer.description != blank -%}<span>{{ offer.description }}</span>{%- endif -%}
+              </div>
+            </div>
+          {%- endfor -%}
+        </div>
       {%- endif -%}
 
       {%- form 'product', product, id: 'ProductForm', class: 'pdp__form', data-product-form: '' -%}
@@ -97,15 +135,19 @@
 
         <script type="application/json" data-variants>{{ product.variants | json }}</script>
 
+        <p class="pdp__ship" data-ship data-threshold="{{ settings.free_shipping_above | times: 100 }}" data-fee="{{ settings.shipping_fee | default: 90 | times: 100 }}" data-price="{{ current_variant.price }}"></p>
+
         <div class="pdp__buy">
           <div class="qty" data-qty>
             <button type="button" data-qty-minus aria-label="Decrease quantity">{% render 'icon', icon: 'minus', size: 14 %}</button>
             <input type="number" name="quantity" value="1" min="1" max="10" inputmode="numeric" aria-label="{{ 'products.product.quantity' | t }}">
             <button type="button" data-qty-plus aria-label="Increase quantity">{% render 'icon', icon: 'plus', size: 14 %}</button>
           </div>
-          <button type="submit" name="add" class="btn btn--primary btn--lg pdp__add" data-add-btn {% unless current_variant.available %}disabled{% endunless %}>
+          <button type="submit" name="add" class="btn btn--secondary btn--lg pdp__add" data-add-btn {% unless current_variant.available %}disabled{% endunless %}>
+            {% render 'icon', icon: 'shopping-bag', size: 18 %}
             <span data-add-label>{% if current_variant.available %}{{ 'products.product.add_to_cart' | t }}{% else %}{{ 'products.product.sold_out' | t }}{% endif %}</span>
           </button>
+          <button type="submit" name="buy_now" value="1" class="btn btn--kumkum btn--lg pdp__now" data-buy-now {% unless current_variant.available %}disabled{% endunless %}>Order now</button>
         </div>
 
         {%- if section.settings.show_dynamic_checkout -%}
@@ -114,23 +156,60 @@
       {%- endform -%}
 
       <ul class="pdp__trust">
-        <li>{% render 'icon', icon: 'gem', size: 14 %}<span>Authentic &amp; Energized</span></li>
-        <li>{% render 'icon', icon: 'truck', size: 14 %}<span>Free Shipping ₹{{ settings.free_shipping_above }}+</span></li>
-        <li>{% render 'icon', icon: 'shield-check', size: 14 %}<span>Secure Payments</span></li>
+        <li>{% render 'icon', icon: 'gem', size: 16 %}<span>Authentic &amp; energized</span></li>
+        <li>{% render 'icon', icon: 'truck', size: 16 %}<span>Free shipping ₹{{ settings.free_shipping_above }}+</span></li>
+        <li>{% render 'icon', icon: 'shield-check', size: 16 %}<span>Secure payments</span></li>
         {%- if return_ok -%}
-          <li>{% render 'icon', icon: 'rotate-ccw', size: 14 %}<span>7-Day Returns</span></li>
+          <li>{% render 'icon', icon: 'rotate-ccw', size: 16 %}<span>7-day returns</span></li>
         {%- else -%}
-          <li>{% render 'icon', icon: 'ban', size: 14 %}<span>Non-Returnable</span></li>
+          <li>{% render 'icon', icon: 'ban', size: 16 %}<span>Non-returnable</span></li>
         {%- endif -%}
       </ul>
 
+      {%- if social_proof != blank -%}
+        <p class="pdp__proof">{% render 'icon', icon: 'sparkles', size: 15 %}{{ social_proof }}</p>
+      {%- endif -%}
+
+      {%- if self_energize != blank -%}
+        <details class="accordion__item">
+          <summary>Prefer to energize it yourself? {% render 'icon', icon: 'chevron-down', size: 16 %}</summary>
+          <div class="rte">{{ self_energize | newline_to_br }}</div>
+        </details>
+      {%- endif -%}
+
+      {%- if video_url != blank -%}
+        <div class="pdp-block">
+          <h2 class="pdp-block__title">How to use</h2>
+          {%- if video_url contains 'youtube.com' or video_url contains 'youtu.be' -%}
+            {%- if video_url contains 'youtu.be/' -%}
+              {%- assign yt = video_url | split: 'youtu.be/' | last | split: '?' | first -%}
+            {%- else -%}
+              {%- assign yt = video_url | split: 'v=' | last | split: '&' | first -%}
+            {%- endif -%}
+            <div class="how-video how-video--wide">
+              <iframe src="https://www.youtube-nocookie.com/embed/{{ yt }}" title="How to use {{ product.title | escape }}" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+          {%- elsif video_url contains 'vimeo.com' -%}
+            {%- assign vm = video_url | split: 'vimeo.com/' | last | split: '?' | first -%}
+            <div class="how-video how-video--wide">
+              <iframe src="https://player.vimeo.com/video/{{ vm }}" title="How to use {{ product.title | escape }}" loading="lazy" allow="fullscreen; picture-in-picture" allowfullscreen></iframe>
+            </div>
+          {%- else -%}
+            <div class="how-video" data-video>
+              <video src="{{ video_url }}" controls playsinline preload="metadata" aria-label="How to use {{ product.title | escape }}"></video>
+            </div>
+          {%- endif -%}
+        </div>
+      {%- endif -%}
+
+      {%- if product.description != blank -%}
+        <div class="pdp-block">
+          <h2 class="pdp-block__title">About this piece</h2>
+          <div class="rte desc" data-desc>{{ product.description }}</div>
+        </div>
+      {%- endif -%}
+
       <div class="accordion">
-        {%- if product.description != blank -%}
-          <details class="accordion__item" open>
-            <summary>Description {% render 'icon', icon: 'chevron-down', size: 16 %}</summary>
-            <div class="rte">{{ product.description }}</div>
-          </details>
-        {%- endif -%}
         {%- for block in section.blocks -%}
           <details class="accordion__item" {{ block.shopify_attributes }}>
             <summary>{{ block.settings.title }} {% render 'icon', icon: 'chevron-down', size: 16 %}</summary>
@@ -142,6 +221,14 @@
   </div>
 </section>
 
+<div class="buybar" data-buybar hidden>
+  <div class="buybar__price">
+    <strong data-bar-price>{% render 'price', amount: current_variant.price %}</strong>
+    {%- if current_variant.compare_at_price > current_variant.price -%}<s>{% render 'price', amount: current_variant.compare_at_price %}</s>{%- endif -%}
+  </div>
+  <button type="button" class="btn btn--kumkum" data-buybar-order {% unless current_variant.available %}disabled{% endunless %}>Order now</button>
+</div>
+
 {{ product | structured_data }}
 
 {% schema %}
@@ -149,15 +236,14 @@
   "name": "Product",
   "tag": "section",
   "settings": [
-    { "type": "checkbox", "id": "show_vendor", "label": "Show vendor", "default": false },
-    { "type": "checkbox", "id": "show_dynamic_checkout", "label": "Show dynamic checkout buttons", "default": true, "info": "Express buttons (Razorpay/UPI/GPay) depend on your payment settings." }
+    { "type": "checkbox", "id": "show_dynamic_checkout", "label": "Show Shopify express checkout buttons", "default": false, "info": "GPay / Shop Pay buttons. Styled by Shopify, so they may not match the theme." }
   ],
   "blocks": [
     {
       "type": "accordion",
       "name": "Accordion",
       "settings": [
-        { "type": "text", "id": "title", "label": "Title", "default": "Delivery & Shipping" },
+        { "type": "text", "id": "title", "label": "Title", "default": "Delivery & shipping" },
         { "type": "richtext", "id": "content", "label": "Content", "default": "<p>Orders are dispatched within 24–48 hours and typically arrive within 5–7 business days across India.</p>" }
       ]
     }

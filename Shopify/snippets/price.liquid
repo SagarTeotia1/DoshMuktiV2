@@ -1,0 +1,6 @@
+{%- comment -%}
+  Rupee price without ".00" — the store's default money format prints "Rs. 599.00".
+  Param: amount (money in minor units, required)
+{%- endcomment -%}
+{%- assign _amt = amount | money_without_currency | strip | remove: '.00' -%}
+₹{{ _amt }}

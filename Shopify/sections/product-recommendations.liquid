@@ -1,16 +1,15 @@
 <div
-  class="rail rail--tinted"
+  class="rail rail--tinted torana"
   data-recommendations
   data-url="{{ routes.product_recommendations_url }}?section_id={{ section.id }}&product_id={{ product.id }}&limit={{ section.settings.limit }}&intent=related"
 >
   {%- if recommendations.performed and recommendations.products_count > 0 -%}
     <div class="container">
-      <div class="rail__head">
-        <h2 class="section-title">
-          {%- assign words = section.settings.heading | split: ' ' -%}
-          <span class="section-title__strong">{{ words | first }}</span>
-          <span class="section-title__light">{{ words | slice: 1, 20 | join: ' ' }}</span>
-        </h2>
+      <div class="section-head rail__head">
+        <div class="section-head__text">
+          <h2 class="section-title">{{ section.settings.heading }}</h2>
+          {%- if section.settings.subtitle != blank -%}<span class="section-head__hi" lang="hi">{{ section.settings.subtitle }}</span>{%- endif -%}
+        </div>
       </div>
     </div>
     <div class="rail__track hide-scrollbar">
@@ -25,7 +24,8 @@
 {
   "name": "Product recommendations",
   "settings": [
-    { "type": "text", "id": "heading", "label": "Heading", "default": "You May Also Like" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "You may also like" },
+    { "type": "text", "id": "subtitle", "label": "Hindi subtitle (optional)", "default": "आपको ये भी पसंद आएगा" },
     { "type": "range", "id": "limit", "min": 4, "max": 10, "step": 1, "label": "Products", "default": 8 }
   ]
 }

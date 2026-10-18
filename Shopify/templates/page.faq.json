@@ -3,14 +3,95 @@
     "main": {
       "type": "faq",
       "blocks": {
-        "q1": { "type": "qa", "settings": { "question": "How long does delivery take?", "answer": "<p>Orders are dispatched within 24–48 hours and usually arrive in 5–7 business days across India.</p>" } },
-        "q2": { "type": "qa", "settings": { "question": "Are your products authentic and energized?", "answer": "<p>Yes. Every piece is sourced from verified artisans and ritually energized before dispatch.</p>" } },
-        "q3": { "type": "qa", "settings": { "question": "What is your returns policy?", "answer": "<p>Damaged or incorrect items can be reported within 48 hours of delivery for a free replacement. Eligible orders also qualify for a 7-day return.</p>" } },
-        "q4": { "type": "qa", "settings": { "question": "Which payment methods do you accept?", "answer": "<p>UPI, credit and debit cards, netbanking, wallets and EMI.</p>" } }
+        "q1": {
+          "type": "qa",
+          "settings": {
+            "question": "Which gemstone is best for attracting wealth?",
+            "answer": "<p>In Vedic astrology, Yellow Sapphire (Pukhraj) and Pyrite are the two most commonly recommended stones for wealth and financial growth — Pukhraj strengthens Jupiter (the planet of abundance and luck), while Pyrite is worn or kept at home/desk as a magnet for opportunity and cash flow. The right choice depends on your birth chart, which is why we recommend a quick check with Acharya Madhav before buying.</p>"
+          }
+        },
+        "q2": {
+          "type": "qa",
+          "settings": {
+            "question": "Which gemstone or bracelet is best for love and relationships?",
+            "answer": "<p>Rose Quartz is the classic stone for love, self-worth, and relationship harmony, and Moonstone is often paired with it for emotional balance. Both are available as bracelets and malas in our Love &amp; Relationships collection.</p>"
+          }
+        },
+        "q3": {
+          "type": "qa",
+          "settings": {
+            "question": "How do I know which gemstone is right for my birth chart?",
+            "answer": "<p>The right gemstone depends on your weak or afflicted planets, which only a birth-chart (kundli) reading can show. Message Acharya Madhav with your date, time, and place of birth via WhatsApp or the chat widget on this site for a free, personalized recommendation.</p>"
+          }
+        },
+        "q4": {
+          "type": "qa",
+          "settings": {
+            "question": "How can I increase wealth using astrology?",
+            "answer": "<p>Vedic astrology ties wealth to Jupiter, Venus and the 2nd/11th houses of your chart. Common remedies include wearing a wealth-aligned gemstone (Pukhraj or Pyrite), keeping a Kuber Yantra or Laughing Buddha at your workspace, and performing simple daily rituals like lighting a ghee lamp on Thursdays. These are supportive remedies, not guarantees — they work alongside real financial effort, not instead of it.</p>"
+          }
+        },
+        "q5": {
+          "type": "qa",
+          "settings": {
+            "question": "Are Doshmukti gemstones and rudraksha authentic?",
+            "answer": "<p>Yes. Every rudraksha, gemstone, and mala is sourced directly from verified artisans, not mass-produced imitations, and each product page states its material clearly. We do not sell lab-created stones as natural without disclosure.</p>"
+          }
+        },
+        "q6": {
+          "type": "qa",
+          "settings": {
+            "question": "What does \"energized\" or \"sidhi\" mean for a product?",
+            "answer": "<p>Energizing (prana pratishtha) is a traditional Vedic ritual performed on each piece before it ships, intended to activate the stone's properties before you start wearing it. Some products also offer a paid self-energizing option with printed instructions if you prefer to perform the ritual yourself on arrival.</p>"
+          }
+        },
+        "q7": {
+          "type": "qa",
+          "settings": {
+            "question": "How do I wear or activate a gemstone bracelet for the first time?",
+            "answer": "<p>Most products include specific \"How to Wear &amp; Recharge\" steps on their product page — typically worn on a specific hand/finger, on a specific day of the week, after a short cleansing ritual. Follow the steps on your exact product page, since timing and hand differ by stone.</p>"
+          }
+        },
+        "q8": {
+          "type": "qa",
+          "settings": {
+            "question": "Does Doshmukti offer AI or astrology chat guidance?",
+            "answer": "<p>Yes — the chat widget on this site and our WhatsApp line connect you to AI-assisted, astrology-informed guidance modeled on Acharya Madhav's approach, so you can ask what stone or remedy fits your goal (love, wealth, health, career, protection) before you buy.</p>"
+          }
+        },
+        "q9": {
+          "type": "qa",
+          "settings": {
+            "question": "How long does shipping take?",
+            "answer": "<p>Orders are dispatched within 24-48 hours and typically arrive within 5-7 business days across India. Free shipping applies on orders above ₹999.</p>"
+          }
+        },
+        "q10": {
+          "type": "qa",
+          "settings": {
+            "question": "What is the return policy?",
+            "answer": "<p>Damaged or incorrect items can be reported within 48 hours of delivery for a free replacement. Eligible items priced ₹299 and above also come with a 7-day change-of-mind return window; items priced below ₹299 are final sale. See each product page for item-specific return notes.</p>"
+          }
+        }
       },
-      "block_order": ["q1", "q2", "q3", "q4"],
-      "settings": { "eyebrow": "Help" }
+      "block_order": [
+        "q1",
+        "q2",
+        "q3",
+        "q4",
+        "q5",
+        "q6",
+        "q7",
+        "q8",
+        "q9",
+        "q10"
+      ],
+      "settings": {
+        "eyebrow": "Help"
+      }
     }
   },
-  "order": ["main"]
+  "order": [
+    "main"
+  ]
 }

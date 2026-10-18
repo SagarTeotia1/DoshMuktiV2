@@ -1,53 +1,53 @@
 <section class="purpose-grid">
-  {% render 'mandala', class: 'purpose-grid__mandala' %}
   <div class="container">
-    <div class="purpose-grid__head">
+    <div class="purpose-grid__head" data-reveal>
       <h2 class="section-title">{{ section.settings.heading }}</h2>
-      <span class="sticker sticker--paper purpose-grid__sticker">{% render 'icon', icon: 'moon-star', size: 12 %}Energized</span>
+      {%- if section.settings.subtitle != blank -%}<span class="section-head__hi" lang="hi">{{ section.settings.subtitle }}</span>{%- endif -%}
     </div>
+  </div>
 
-    <div class="purpose-grid__list" data-reveal-group>
-      {%- for block in section.blocks -%}
-        {%- liquid
-          case block.settings.tone
-            when 'love'
-              assign c1 = '#D98BA0'
-              assign c2 = '#B8546B'
-            when 'wealth'
-              assign c1 = '#C9863F'
-              assign c2 = '#9C5A26'
-            when 'health'
-              assign c1 = '#9CBF8C'
-              assign c2 = '#6B8F5C'
-            when 'success'
-              assign c1 = '#8CAAC9'
-              assign c2 = '#5B7A9C'
-            when 'protection'
-              assign c1 = '#B69BD1'
-              assign c2 = '#8B6BAE'
-            when 'clarity'
-              assign c1 = '#A6A6D1'
-              assign c2 = '#7A7AAE'
-            else
-              assign c1 = '#E0A9C4'
-              assign c2 = '#B8698F'
-          endcase
-          assign href = block.settings.link
-          if href == blank
-            assign tag = block.settings.tag | default: block.settings.tone
-            assign href = routes.all_products_collection_url | append: '/' | append: tag
-          endif
-        -%}
-        <a href="{{ href }}" class="purpose{% if block.settings.hide_on_mobile %} purpose--desktop-only{% endif %}" {{ block.shopify_attributes }}>
-          <span class="purpose__ring">
-            <span class="purpose__orb" style="background: radial-gradient(circle at 32% 28%, {{ c1 }}, {{ c2 }});">
-              {% render 'icon', icon: block.settings.icon, size: 32, class: 'purpose__icon' %}
-            </span>
+  <div class="purpose-grid__list hide-scrollbar">
+    {%- for block in section.blocks -%}
+      {%- liquid
+        case block.settings.tone
+          when 'love'
+            assign c1 = '#D98BA0'
+            assign c2 = '#B8546B'
+          when 'wealth'
+            assign c1 = '#E8A317'
+            assign c2 = '#9C5A26'
+          when 'health'
+            assign c1 = '#9CBF8C'
+            assign c2 = '#4F7A41'
+          when 'success'
+            assign c1 = '#8CAAC9'
+            assign c2 = '#456A8F'
+          when 'protection'
+            assign c1 = '#B69BD1'
+            assign c2 = '#7A5A9E'
+          when 'clarity'
+            assign c1 = '#A6A6D1'
+            assign c2 = '#6B6BA3'
+          else
+            assign c1 = '#E0A9C4'
+            assign c2 = '#B8698F'
+        endcase
+        assign href = block.settings.link
+        if href == blank
+          assign tag = block.settings.tag | default: block.settings.tone
+          assign href = routes.all_products_collection_url | append: '/' | append: tag
+        endif
+      -%}
+      <a href="{{ href }}" class="purpose{% if block.settings.hide_on_mobile %} purpose--desktop-only{% endif %}" {{ block.shopify_attributes }}>
+        <span class="purpose__ring">
+          <span class="purpose__orb" style="background: radial-gradient(circle at 32% 28%, {{ c1 }}, {{ c2 }});">
+            {% render 'icon', icon: block.settings.icon, size: 32, class: 'purpose__icon' %}
           </span>
-          <span class="purpose__label">{{ block.settings.label }}</span>
-        </a>
-      {%- endfor -%}
-    </div>
+        </span>
+        <span class="purpose__label">{{ block.settings.label }}</span>
+        {%- if block.settings.label_hi != blank -%}<span class="purpose__hi" lang="hi">{{ block.settings.label_hi }}</span>{%- endif -%}
+      </a>
+    {%- endfor -%}
   </div>
 </section>
 
@@ -55,14 +55,16 @@
 {
   "name": "Purpose grid",
   "settings": [
-    { "type": "text", "id": "heading", "label": "Heading", "default": "What Do You Seek?" }
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Kya talash hai aapko?" },
+    { "type": "text", "id": "subtitle", "label": "Hindi subtitle (optional)", "default": "अपनी मनोकामना चुनिए" }
   ],
   "blocks": [
     {
       "type": "purpose",
       "name": "Purpose",
       "settings": [
-        { "type": "text", "id": "label", "label": "Label", "default": "Love" },
+        { "type": "text", "id": "label", "label": "Label", "default": "Prem" },
+        { "type": "text", "id": "label_hi", "label": "Hindi label (optional)", "default": "प्रेम" },
         {
           "type": "select",
           "id": "icon",
@@ -84,7 +86,7 @@
           "label": "Colour",
           "options": [
             { "value": "love", "label": "Rose" },
-            { "value": "wealth", "label": "Bronze" },
+            { "value": "wealth", "label": "Marigold" },
             { "value": "health", "label": "Green" },
             { "value": "success", "label": "Blue" },
             { "value": "protection", "label": "Violet" },
@@ -99,19 +101,6 @@
       ]
     }
   ],
-  "presets": [
-    {
-      "name": "Purpose grid",
-      "blocks": [
-        { "type": "purpose", "settings": { "label": "Love", "icon": "heart", "tone": "love", "tag": "love" } },
-        { "type": "purpose", "settings": { "label": "Wealth", "icon": "trending-up", "tone": "wealth", "tag": "wealth" } },
-        { "type": "purpose", "settings": { "label": "Health", "icon": "leaf", "tone": "health", "tag": "health" } },
-        { "type": "purpose", "settings": { "label": "Success", "icon": "trophy", "tone": "success", "tag": "success" } },
-        { "type": "purpose", "settings": { "label": "Protection", "icon": "shield", "tone": "protection", "tag": "protection" } },
-        { "type": "purpose", "settings": { "label": "Clarity", "icon": "sparkles", "tone": "clarity", "tag": "clarity" } },
-        { "type": "purpose", "settings": { "label": "Gifting", "icon": "gift", "tone": "gifting", "tag": "gifting", "hide_on_mobile": true } }
-      ]
-    }
-  ]
+  "presets": [{ "name": "Purpose grid" }]
 }
 {% endschema %}
