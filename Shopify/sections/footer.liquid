@@ -1,11 +1,11 @@
 <footer class="site-footer">
-  <span class="site-footer__mark" aria-hidden="true" lang="hi">शुभ लाभ</span>
+  {% render 'mandala', class: 'site-footer__mandala' %}
 
   {%- if section.settings.show_newsletter -%}
     <div class="site-footer__newsletter">
       <div class="container site-footer__newsletter-grid">
         <div>
-          <p class="kicker">{{ section.settings.newsletter_eyebrow }}</p>
+          <p class="eyebrow">{{ section.settings.newsletter_eyebrow }}</p>
           <h3 class="site-footer__newsletter-title">{{ section.settings.newsletter_heading }}</h3>
         </div>
         <div>

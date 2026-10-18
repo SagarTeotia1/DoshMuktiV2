@@ -1,7 +1,7 @@
 {%- comment -%}
-  Product card — image sits in a mehrab (temple-arch) niche; discount is a kumkum seal.
+  Product card (port of ProductCard.tsx).
   Params: product (required), list_name (optional)
-  A tag of the form "badge:Bestseller" shows as a small ink tag on the photo.
+  A tag of the form "badge:Bestseller" renders as the ink-stamp seal on the photo.
 {%- endcomment -%}
 {%- liquid
   assign badge = ''
@@ -25,8 +25,8 @@
     endif
   endif
 -%}
-<a href="{{ product.url }}" class="product-card" data-product-id="{{ product.id }}" data-list="{{ list_name | escape }}">
-  <div class="product-card__media">
+<a href="{{ product.url }}" class="product-card neo-card" data-product-id="{{ product.id }}" data-list="{{ list_name | escape }}">
+  <div class="product-card__media product-image-container">
     {%- if product.featured_image -%}
       {%- assign second = product.images[1] -%}
       {{
@@ -35,7 +35,7 @@
         | image_tag:
           loading: 'lazy',
           widths: '240, 360, 480, 600',
-          sizes: '(max-width: 640px) 44vw, (max-width: 1024px) 33vw, 25vw',
+          sizes: '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw',
           alt: product.featured_image.alt,
           class: 'product-card__img'
       }}
@@ -46,7 +46,7 @@
           | image_tag:
             loading: 'lazy',
             widths: '240, 360, 480, 600',
-            sizes: '(max-width: 640px) 44vw, (max-width: 1024px) 33vw, 25vw',
+            sizes: '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw',
             alt: product.title,
             class: 'product-card__img product-card__img--hover'
         }}
@@ -56,26 +56,29 @@
     {%- endif -%}
 
     {%- if discount > 0 and product.available -%}
-      <span class="seal" aria-label="{{ discount }}% off">{{ discount }}%<small>off</small></span>
+      <span class="sticker discount-sticker">{% render 'icon', icon: 'tag', size: 10 %}{{ 'products.product.off' | t: percent: discount }}</span>
     {%- endif -%}
 
     {%- if low_stock > 0 -%}
       <span class="low-stock">Only {{ low_stock }} left</span>
-    {%- elsif badge != blank -%}
-      <span class="badge-tag">{{ badge }}</span>
     {%- endif -%}
 
     {%- unless product.available -%}
       <div class="product-card__soldout"><span>{{ 'products.product.sold_out' | t }}</span></div>
     {%- endunless -%}
 
-    {%- if quick_variant -%}
-      <div class="product-card__actions">
-        <button type="button" class="icon-btn icon-btn--bronze" data-quick-add data-variant-id="{{ quick_variant.id }}" aria-label="{{ 'products.product.add_to_cart' | t }}">
-          {% render 'icon', icon: 'shopping-bag', size: 18 %}
-        </button>
-      </div>
+    {%- if badge != blank -%}
+      <span class="stamp"><span class="stamp__inner">{{ badge }}</span></span>
     {%- endif -%}
+
+    <div class="product-card__actions">
+      <span class="icon-btn" aria-hidden="true">{% render 'icon', icon: 'eye', size: 16 %}</span>
+      {%- if quick_variant -%}
+        <button type="button" class="icon-btn icon-btn--bronze" data-quick-add data-variant-id="{{ quick_variant.id }}" aria-label="{{ 'products.product.add_to_cart' | t }}">
+          {% render 'icon', icon: 'shopping-bag', size: 16 %}
+        </button>
+      {%- endif -%}
+    </div>
   </div>
 
   <div class="product-card__body">

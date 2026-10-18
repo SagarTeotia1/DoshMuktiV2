@@ -1,85 +1,163 @@
 {%- paginate collection.products by section.settings.per_page -%}
-<section class="container collection">
-  <header class="collection__head">
-    <h1 class="collection__title">{{ collection.title }}</h1>
-    {%- if collection.description != blank -%}<div class="rte collection__desc">{{ collection.description }}</div>{%- endif -%}
-  </header>
+{%- liquid
+  assign sort_current = collection.sort_by | default: collection.default_sort_by
+  assign purpose_ids = 'love,wealth,health,success,protection,clarity,gifting' | split: ','
+  assign purpose_labels = 'Love,Wealth,Health,Success,Protection,Clarity,Gifting' | split: ','
+  assign purpose_icons = 'heart,trending-up,leaf,trophy,shield,sparkles,gift' | split: ','
+  assign purpose_c1 = '#C97B63,#D4A64A,#8FA876,#D4B24C,#8570A6,#7FA3A0,#C98F82' | split: ','
+  assign purpose_c2 = '#8C4A36,#9C5A26,#5C7245,#96731E,#5A4A78,#4E6E6B,#8C5648' | split: ','
+  assign sort_values = 'created-descending,best-selling,price-ascending,price-descending' | split: ','
+  assign sort_names = 'Newest First,Most Popular,Price: Low to High,Price: High to Low' | split: ','
+  assign active_purpose = ''
+  for id in purpose_ids
+    if current_tags contains id
+      assign active_purpose = id
+    endif
+  endfor
+-%}
+<div class="container shop">
+  <h1 class="sr-only">{{ collection.title }}</h1>
 
-  <form class="collection__bar" id="FacetForm" method="get" action="{{ collection.url }}" data-facet-form>
-    <div class="collection__bar-left">
-      {%- if section.settings.enable_filtering and collection.filters.size > 0 -%}
-        <button type="button" class="btn btn--secondary btn--sm" data-filter-toggle aria-expanded="false" aria-controls="FacetPanel">
-          {% render 'icon', icon: 'filter', size: 14 %}{{ 'collection.filter' | t }}
-        </button>
+  <aside class="shop__side">
+    <div class="shop-filters">
+      <div class="shop-filters__title">{% render 'icon', icon: 'filter', size: 14 %}<span>Filter</span></div>
+
+      {%- if section.blocks.size > 0 -%}
+        <div class="shop-filters__section">
+          <p class="shop-filters__label">Category</p>
+          <a href="{{ routes.all_products_collection_url }}" class="filter-row{% if collection.handle == 'all' and active_purpose == blank %} is-active{% endif %}">
+            <span class="filter-row__thumb filter-row__thumb--all">All</span>
+            <span class="filter-row__text">All</span>
+          </a>
+          {%- for block in section.blocks -%}
+            {%- assign c = block.settings.collection -%}
+            {%- if c != blank -%}
+              <a href="{{ c.url }}" class="filter-row{% if collection.handle == c.handle %} is-active{% endif %}" {{ block.shopify_attributes }}>
+                <span class="filter-row__thumb">{%- if c.image -%}{{ c.image | image_url: width: 64 | image_tag: loading: 'lazy', alt: '', width: 32, height: 32 }}{%- endif -%}</span>
+                <span class="filter-row__text">{{ block.settings.label | default: c.title }}</span>
+              </a>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
       {%- endif -%}
-      <span class="collection__count">{{ 'collection.products_count' | t: count: collection.products_count }}</span>
+
+      <div class="shop-filters__section">
+        <p class="shop-filters__label">Purpose</p>
+        {%- for id in purpose_ids -%}
+          {%- assign i = forloop.index0 -%}
+          {%- assign href = collection.url | append: '/' | append: id -%}
+          {%- if active_purpose == id -%}{%- assign href = collection.url -%}{%- endif -%}
+          <a href="{{ href }}" class="filter-row{% if active_purpose == id %} is-active{% endif %}">
+            <span class="filter-row__thumb" style="background: radial-gradient(circle at 32% 28%, {{ purpose_c1[i] }}, {{ purpose_c2[i] }});">
+              {% render 'icon', icon: purpose_icons[i], size: 14 %}
+            </span>
+            <span class="filter-row__text">{{ purpose_labels[i] }}</span>
+          </a>
+        {%- endfor -%}
+      </div>
+    </div>
+  </aside>
+
+  <div class="shop__main">
+    <div class="shop-mobile">
+      {%- if section.blocks.size > 0 -%}
+        <p class="shop-filters__label">Shop by Category</p>
+        <div class="shop-mobile__row hide-scrollbar">
+          <a href="{{ routes.all_products_collection_url }}" class="tile{% if collection.handle == 'all' and active_purpose == blank %} is-active{% endif %}">
+            <span class="tile__thumb tile__thumb--all">All</span><span class="tile__label">All</span>
+          </a>
+          {%- for block in section.blocks -%}
+            {%- assign c = block.settings.collection -%}
+            {%- if c != blank -%}
+              <a href="{{ c.url }}" class="tile{% if collection.handle == c.handle %} is-active{% endif %}">
+                <span class="tile__thumb">{%- if c.image -%}{{ c.image | image_url: width: 80 | image_tag: loading: 'lazy', alt: '', width: 40, height: 40 }}{%- endif -%}</span>
+                <span class="tile__label">{{ block.settings.label | default: c.title }}</span>
+              </a>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      {%- endif -%}
+      <div class="shop-mobile__purpose">
+        <button type="button" class="shop-mobile__toggle" data-purpose-toggle aria-expanded="false">
+          <span class="shop-filters__label">Shop by Purpose{% if active_purpose != blank %} · {{ active_purpose | capitalize }}{% endif %}</span>
+          {% render 'icon', icon: 'chevron-down', size: 12 %}
+        </button>
+        <div class="shop-mobile__row hide-scrollbar" data-purpose-row hidden>
+          {%- for id in purpose_ids -%}
+            {%- assign i = forloop.index0 -%}
+            {%- assign href = collection.url | append: '/' | append: id -%}
+            {%- if active_purpose == id -%}{%- assign href = collection.url -%}{%- endif -%}
+            <a href="{{ href }}" class="tile{% if active_purpose == id %} is-active{% endif %}">
+              <span class="tile__thumb" style="background: radial-gradient(circle at 32% 28%, {{ purpose_c1[i] }}, {{ purpose_c2[i] }});">{% render 'icon', icon: purpose_icons[i], size: 16 %}</span>
+              <span class="tile__label">{{ purpose_labels[i] }}</span>
+            </a>
+          {%- endfor -%}
+        </div>
+      </div>
     </div>
 
-    {%- if section.settings.enable_sorting -%}
-      <label class="collection__sort">
-        <span>{{ 'collection.sort_by' | t }}</span>
-        <select name="sort_by" class="input input--sm" data-auto-submit>
-          {%- assign sort_by = collection.sort_by | default: collection.default_sort_by -%}
-          {%- for option in collection.sort_options -%}
-            <option value="{{ option.value }}" {% if option.value == sort_by %}selected{% endif %}>{{ option.name }}</option>
+    <div class="toolbar">
+      <div class="toolbar__filter">
+        <span>Filter</span>{% render 'icon', icon: 'filter', size: 14 %}
+      </div>
+
+      <div class="toolbar__sort">
+        <span class="toolbar__sort-label">Sort by</span>
+        <span class="toolbar__sort-value" data-sort-label>
+          {%- for v in sort_values -%}{%- if v == sort_current -%}{{ sort_names[forloop.index0] }}{%- endif -%}{%- endfor -%}
+          {%- unless sort_values contains sort_current %}Newest First{% endunless -%}
+          {% render 'icon', icon: 'chevron-down', size: 12 %}
+        </span>
+        <select aria-label="Sort products" data-sort-select>
+          {%- for v in sort_values -%}
+            <option value="{{ v }}" {% if v == sort_current %}selected{% endif %}>{{ sort_names[forloop.index0] }}</option>
           {%- endfor -%}
         </select>
-      </label>
-    {%- endif -%}
+      </div>
 
-    {%- if section.settings.enable_filtering and collection.filters.size > 0 -%}
-      <div class="facets" id="FacetPanel" hidden>
-        {%- for filter in collection.filters -%}
-          <details class="facet" open>
-            <summary>{{ filter.label }} {% render 'icon', icon: 'chevron-down', size: 14 %}</summary>
-            {%- case filter.type -%}
-              {%- when 'list' or 'boolean' -%}
-                <ul>
-                  {%- for value in filter.values -%}
-                    <li>
-                      <label class="check{% if value.count == 0 and value.active == false %} is-disabled{% endif %}">
-                        <input type="checkbox" name="{{ value.param_name }}" value="{{ value.value }}" {% if value.active %}checked{% endif %} {% if value.count == 0 and value.active == false %}disabled{% endif %} data-auto-submit>
-                        <span>{{ value.label }} <small>({{ value.count }})</small></span>
-                      </label>
-                    </li>
-                  {%- endfor -%}
-                </ul>
-              {%- when 'price_range' -%}
-                <div class="facet__price">
-                  <input class="input input--sm" type="number" name="{{ filter.min_value.param_name }}" value="{{ filter.min_value.value | money_without_currency | replace: ',', '' }}" placeholder="0" min="0" max="{{ filter.range_max | money_without_currency | replace: ',', '' }}" data-auto-submit>
-                  <span>–</span>
-                  <input class="input input--sm" type="number" name="{{ filter.max_value.param_name }}" value="{{ filter.max_value.value | money_without_currency | replace: ',', '' }}" placeholder="{{ filter.range_max | money_without_currency | replace: ',', '' }}" min="0" data-auto-submit>
-                </div>
-            {%- endcase -%}
-          </details>
+      <div class="toolbar__view">
+        <span class="toolbar__view-label">View</span>
+        <div class="view-toggle">
+          <button type="button" data-view="list" aria-label="List view">{% render 'icon', icon: 'list', size: 14 %}</button>
+          <button type="button" data-view="grid" aria-label="Grid view" class="is-active">{% render 'icon', icon: 'grid', size: 14 %}</button>
+        </div>
+      </div>
+    </div>
+
+    {%- if collection.products.size > 0 -%}
+      <ul class="product-grid shop-grid" data-shop-grid>
+        {%- for product in collection.products -%}
+          <li>{% render 'product-card', product: product, list_name: collection.title %}</li>
         {%- endfor -%}
-        {%- if collection.filters.size > 0 -%}
-          <a class="facets__clear" href="{{ collection.url }}">{{ 'collection.clear_all' | t }}</a>
-        {%- endif -%}
+      </ul>
+      {% render 'pagination', paginate: paginate %}
+    {%- else -%}
+      <div class="shop-empty">
+        <span class="shop-empty__icon">{% render 'icon', icon: 'search', size: 24 %}</span>
+        <h2>{{ 'collection.no_products' | t }}</h2>
+        <p>Try a different intention or clear your filters to see everything we have.</p>
+        <a href="{{ routes.all_products_collection_url }}" class="btn btn--primary">Clear Filters</a>
       </div>
     {%- endif -%}
-  </form>
-
-  {%- if collection.products.size > 0 -%}
-    <ul class="product-grid">
-      {%- for product in collection.products -%}
-        <li>{% render 'product-card', product: product, list_name: collection.title %}</li>
-      {%- endfor -%}
-    </ul>
-    {% render 'pagination', paginate: paginate %}
-  {%- else -%}
-    <p class="empty-state">{{ 'collection.no_products' | t }}</p>
-  {%- endif -%}
-</section>
+  </div>
+</div>
 {%- endpaginate -%}
 
 {% schema %}
 {
   "name": "Collection",
   "settings": [
-    { "type": "range", "id": "per_page", "min": 8, "max": 48, "step": 4, "label": "Products per page", "default": 12 },
-    { "type": "checkbox", "id": "enable_sorting", "label": "Enable sorting", "default": true },
-    { "type": "checkbox", "id": "enable_filtering", "label": "Enable filtering", "default": true, "info": "Configure filters in Shopify Admin → Search & Discovery." }
+    { "type": "range", "id": "per_page", "min": 8, "max": 48, "step": 4, "label": "Products per page", "default": 24 }
+  ],
+  "blocks": [
+    {
+      "type": "category",
+      "name": "Category",
+      "settings": [
+        { "type": "collection", "id": "collection", "label": "Collection" },
+        { "type": "text", "id": "label", "label": "Label (defaults to collection title)" }
+      ]
+    }
   ]
 }
 {% endschema %}

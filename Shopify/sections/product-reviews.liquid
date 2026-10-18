@@ -1,52 +1,49 @@
 {%- assign data = product.metafields.custom.reviews.value -%}
 {%- if data.total > 0 -%}
 <section class="reviews container" id="reviews">
-  <div class="section-head">
-    <div class="section-head__text">
-      <h2 class="section-title">{{ section.settings.heading }}</h2>
-      {%- if section.settings.subtitle != blank -%}<span class="section-head__hi" lang="hi">{{ section.settings.subtitle }}</span>{%- endif -%}
+  <div class="reviews__head">
+    <p class="kicker">From Our Customers</p>
+    <h2 class="reviews__title">Customer Reviews</h2>
+  </div>
+
+  <div class="reviews__summary">
+    <div class="reviews__avg-wrap">
+      <span class="reviews__avg">{{ data.average | round: 1 }}</span>
+      {% render 'stars', rating: data.average, size: 16 %}
+      <p>{{ data.total }} review{% if data.total != 1 %}s{% endif %}</p>
+    </div>
+    <div class="reviews__bars">
+      {%- for i in (1..5) reversed -%}
+        {%- assign key = i | append: '' -%}
+        {%- assign count = data.counts[key] | default: 0 -%}
+        {%- assign pct = count | times: 100 | divided_by: data.total -%}
+        <div class="reviews__bar"><span>{{ i }}★</span><i><b style="width: {{ pct }}%"></b></i><span>{{ pct }}%</span></div>
+      {%- endfor -%}
     </div>
   </div>
 
-  <div class="reviews__grid">
-    <div class="reviews__summary">
-      <div class="reviews__avg">{{ data.average | round: 1 }}</div>
-      {% render 'stars', rating: data.average, size: 18 %}
-      <p>{{ data.total }} review{% if data.total != 1 %}s{% endif %}</p>
-      <div class="reviews__bars">
-        {%- for i in (1..5) reversed -%}
-          {%- assign key = i | append: '' -%}
-          {%- assign count = data.counts[key] | default: 0 -%}
-          {%- assign pct = count | times: 100 | divided_by: data.total -%}
-          <div class="reviews__bar"><span>{{ i }}</span><i><b style="width: {{ pct }}%"></b></i><span>{{ count }}</span></div>
-        {%- endfor -%}
-      </div>
-    </div>
-
-    <div class="reviews__list">
-      {%- for item in data.items -%}
-        <article class="review">
-          <div class="review__head">
-            <span class="review__name">{{ item.name }}</span>
-            <span class="review__date">{{ item.date | date: '%d %b %Y' }}</span>
+  <div class="reviews__list">
+    {%- for item in data.items limit: 12 -%}
+      <article class="review">
+        <span class="review__quote" aria-hidden="true">“</span>
+        <div class="review__head">
+          <span class="review__avatar">{{ item.name | slice: 0 | upcase }}</span>
+          <div>
+            <p class="review__name">{{ item.name }}</p>
+            <p class="review__date">{{ item.date | date: '%d %b %Y' }}</p>
           </div>
-          {% render 'stars', rating: item.rating, size: 14 %}
-          {%- if item.title != blank -%}<strong>{{ item.title }}</strong>{%- endif -%}
-          <p>{{ item.body }}</p>
-          <span class="review__verified">{% render 'icon', icon: 'check', size: 14 %} Verified buyer</span>
-        </article>
-      {%- endfor -%}
-    </div>
+        </div>
+        {% render 'stars', rating: item.rating, size: 14 %}
+        {%- if item.title != blank -%}<p class="review__title">{{ item.title }}</p>{%- endif -%}
+        <p class="review__body">{{ item.body }}</p>
+      </article>
+    {%- endfor -%}
   </div>
 </section>
 {%- endif -%}
 
 {% schema %}
 {
-  "name": "Product reviews",
-  "settings": [
-    { "type": "text", "id": "heading", "label": "Heading", "default": "What buyers say" },
-    { "type": "text", "id": "subtitle", "label": "Hindi subtitle (optional)", "default": "खरीदारों के अनुभव" }
-  ]
+  "name": "Product reviews"
 }
 {% endschema %}

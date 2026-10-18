@@ -55,7 +55,7 @@
             </div>
           {%- endfor -%}
           {%- if discount > 0 -%}
-            <span class="seal" data-discount-badge aria-label="{{ discount }}% off">{{ discount }}%<small>off</small></span>
+            <span class="sticker discount-sticker" data-discount-badge>{% render 'icon', icon: 'tag', size: 11 %}{{ discount }}% off</span>
           {%- endif -%}
           {%- if product.media.size > 1 -%}
             <button type="button" class="gallery__arrow gallery__arrow--prev" data-gallery-prev aria-label="Previous image">{% render 'icon', icon: 'chevron-left', size: 20 %}</button>
@@ -75,6 +75,15 @@
           {%- endfor -%}
         </div>
       {%- endif -%}
+
+      <div class="accordion pdp__policy-desktop">
+        {%- for block in section.blocks -%}
+          <details class="accordion__item">
+            <summary>{{ block.settings.title }} {% render 'icon', icon: 'chevron-down', size: 16 %}</summary>
+            <div class="rte">{{ block.settings.content }}</div>
+          </details>
+        {%- endfor -%}
+      </div>
     </div>
 
     <div class="pdp__info">
@@ -105,13 +114,8 @@
       {%- if offers.size > 0 -%}
         <div class="offer-chips">
           {%- for offer in offers -%}
-            <div class="offer-chip">
-              {%- assign offer_icon = offer.icon | default: 'gift' -%}{% render 'icon', icon: offer_icon, size: 20 %}
-              <div>
-                <strong>{{ offer.title }}</strong>
-                {%- if offer.description != blank -%}<span>{{ offer.description }}</span>{%- endif -%}
-              </div>
-            </div>
+            {%- assign offer_icon = offer.icon | default: 'gift' -%}
+            <div class="offer-chip">{% render 'icon', icon: offer_icon, size: 16 %}<strong>{{ offer.badge | default: offer.title }}</strong></div>
           {%- endfor -%}
         </div>
       {%- endif -%}
@@ -147,7 +151,7 @@
             {% render 'icon', icon: 'shopping-bag', size: 18 %}
             <span data-add-label>{% if current_variant.available %}{{ 'products.product.add_to_cart' | t }}{% else %}{{ 'products.product.sold_out' | t }}{% endif %}</span>
           </button>
-          <button type="submit" name="buy_now" value="1" class="btn btn--kumkum btn--lg pdp__now" data-buy-now {% unless current_variant.available %}disabled{% endunless %}>Order now</button>
+          <button type="submit" name="buy_now" value="1" class="btn btn--primary btn--lg pdp__now" data-buy-now {% unless current_variant.available %}disabled{% endunless %}>Order now</button>
         </div>
 
         {%- if section.settings.show_dynamic_checkout -%}
@@ -179,7 +183,7 @@
 
       {%- if video_url != blank -%}
         <div class="pdp-block">
-          <h2 class="pdp-block__title">How to use</h2>
+          <h2 class="pdp-block__title">How to Use/Wear</h2>
           {%- if video_url contains 'youtube.com' or video_url contains 'youtu.be' -%}
             {%- if video_url contains 'youtu.be/' -%}
               {%- assign yt = video_url | split: 'youtu.be/' | last | split: '?' | first -%}
@@ -203,13 +207,12 @@
       {%- endif -%}
 
       {%- if product.description != blank -%}
-        <div class="pdp-block">
-          <h2 class="pdp-block__title">About this piece</h2>
+        <div class="pdp-block pdp-block--desc">
           <div class="rte desc" data-desc>{{ product.description }}</div>
         </div>
       {%- endif -%}
 
-      <div class="accordion">
+      <div class="accordion pdp__policy-mobile">
         {%- for block in section.blocks -%}
           <details class="accordion__item" {{ block.shopify_attributes }}>
             <summary>{{ block.settings.title }} {% render 'icon', icon: 'chevron-down', size: 16 %}</summary>
@@ -220,14 +223,6 @@
     </div>
   </div>
 </section>
-
-<div class="buybar" data-buybar hidden>
-  <div class="buybar__price">
-    <strong data-bar-price>{% render 'price', amount: current_variant.price %}</strong>
-    {%- if current_variant.compare_at_price > current_variant.price -%}<s>{% render 'price', amount: current_variant.compare_at_price %}</s>{%- endif -%}
-  </div>
-  <button type="button" class="btn btn--kumkum" data-buybar-order {% unless current_variant.available %}disabled{% endunless %}>Order now</button>
-</div>
 
 {{ product | structured_data }}
 

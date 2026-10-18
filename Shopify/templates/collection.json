@@ -1,4 +1,20 @@
 {
-  "sections": { "main": { "type": "main-collection", "settings": { "per_page": 12, "enable_sorting": true, "enable_filtering": true } } },
+  "sections": {
+    "main": {
+      "type": "main-collection",
+      "blocks": {
+        "c1": { "type": "category", "settings": { "collection": "rudraksha" } },
+        "c2": { "type": "category", "settings": { "collection": "bracelets" } },
+        "c3": { "type": "category", "settings": { "collection": "doshmukti-special", "label": "DoshMukti Special" } },
+        "c4": { "type": "category", "settings": { "collection": "pyrite-items" } },
+        "c5": { "type": "category", "settings": { "collection": "attar" } },
+        "c6": { "type": "category", "settings": { "collection": "dhoop-sticks" } },
+        "c7": { "type": "category", "settings": { "collection": "spiritual-car-perfume" } },
+        "c8": { "type": "category", "settings": { "collection": "mulank-bracelets" } }
+      },
+      "block_order": ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"],
+      "settings": { "per_page": 24 }
+    }
+  },
   "order": ["main"]
 }

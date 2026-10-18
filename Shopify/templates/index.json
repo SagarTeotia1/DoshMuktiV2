@@ -152,72 +152,65 @@
         "p1": {
           "type": "purpose",
           "settings": {
-            "label": "Prem",
+            "label": "Love",
             "icon": "heart",
             "tone": "love",
-            "tag": "love",
-            "label_hi": "प्रेम"
+            "tag": "love"
           }
         },
         "p2": {
           "type": "purpose",
           "settings": {
-            "label": "Dhan",
+            "label": "Wealth",
             "icon": "trending-up",
             "tone": "wealth",
-            "tag": "wealth",
-            "label_hi": "धन"
+            "tag": "wealth"
           }
         },
         "p3": {
           "type": "purpose",
           "settings": {
-            "label": "Swasthya",
+            "label": "Health",
             "icon": "leaf",
             "tone": "health",
-            "tag": "health",
-            "label_hi": "स्वास्थ्य"
+            "tag": "health"
           }
         },
         "p4": {
           "type": "purpose",
           "settings": {
-            "label": "Safalta",
+            "label": "Success",
             "icon": "trophy",
             "tone": "success",
-            "tag": "success",
-            "label_hi": "सफलता"
+            "tag": "success"
           }
         },
         "p5": {
           "type": "purpose",
           "settings": {
-            "label": "Suraksha",
+            "label": "Protection",
             "icon": "shield",
             "tone": "protection",
-            "tag": "protection",
-            "label_hi": "सुरक्षा"
+            "tag": "protection"
           }
         },
         "p6": {
           "type": "purpose",
           "settings": {
-            "label": "Shanti",
+            "label": "Clarity",
             "icon": "sparkles",
             "tone": "clarity",
-            "tag": "clarity",
-            "label_hi": "शांति"
+            "tag": "clarity"
           }
         },
         "p7": {
           "type": "purpose",
           "settings": {
-            "label": "Upahar",
+            "label": "Gifting",
             "icon": "gift",
             "tone": "gifting",
             "tag": "gifting",
-            "hide_on_mobile": true,
-            "label_hi": "उपहार"
+            "hide_on_mobile": true
           }
         }
       },
@@ -231,8 +224,7 @@
         "p7"
       ],
       "settings": {
-        "heading": "Kya talash hai aapko?",
-        "subtitle": "अपनी मनोकामना चुनिए"
+        "heading": "What Do You Seek?"
       }
     },
     "rail-1": {
@@ -242,8 +234,7 @@
         "collection": "home-this-weeks-blessings",
         "limit": 12,
         "tinted": false,
-        "show_view_all": true,
-        "subtitle": "इस हफ़्ते का आशीर्वाद"
+        "show_view_all": false
       }
     },
     "acharya": {
@@ -283,10 +274,10 @@
         "t3"
       ],
       "settings": {
-        "subtitle": "आचार्य से पूछिए",
+        "eyebrow": "Ancient Wisdom, On Demand",
         "heading": "Acharya Madhav",
-        "text": "Apne man ki baat batayein: prem, dhan, career ya swasthya. Woh aapki janm tithi se kundli aur ank-jyotish dekhkar bataenge ki kya dharan karna aapke liye shubh hai.",
-        "button_label": "Acharya se baat karein"
+        "text": "Tell him what is on your mind — love, money, career, health. He reads your birth details through Vedic astrology and numerology, and tells you exactly what to wear.",
+        "button_label": "Chat with Acharya Madhav"
       }
     },
     "rail-2": {
@@ -296,8 +287,7 @@
         "collection": "home-doshmukti-special",
         "limit": 12,
         "tinted": true,
-        "show_view_all": true,
-        "subtitle": "दोषमुक्ति विशेष"
+        "show_view_all": false
       }
     },
     "trust": {
@@ -351,8 +341,7 @@
         "collection": "home-rudraksha",
         "limit": 12,
         "tinted": false,
-        "show_view_all": true,
-        "subtitle": "रुद्राक्ष"
+        "show_view_all": false
       }
     },
     "testimonials": {
@@ -361,36 +350,89 @@
         "r1": {
           "type": "review",
           "settings": {
-            "name": "Priya S.",
+            "name": "Priya",
             "rating": 5,
-            "text": "Beautiful energized product, felt the difference within weeks."
+            "text": "How to use this one please and were to keep please tell",
+            "product": "durbhagya-nashak-nariyal"
           }
         },
         "r2": {
           "type": "review",
           "settings": {
-            "name": "Rahul M.",
+            "name": "Aryan",
             "rating": 5,
-            "text": "Authentic stones and quick delivery. The guidance from Acharya Madhav was spot on."
+            "text": "Quality is outstanding will surely shop again",
+            "product": "7-mukhi-rudraksh"
           }
         },
         "r3": {
           "type": "review",
           "settings": {
-            "name": "Anita K.",
+            "name": "Aryan",
             "rating": 5,
-            "text": "Packaging was lovely and the bracelet looks exactly like the photos."
+            "text": "Product ki finishing aur packaging dono achhi lagi. Good experience and the best part is product lab report card ke saath aata hai",
+            "product": "durghatna-nashak-yantra"
+          }
+        },
+        "r4": {
+          "type": "review",
+          "settings": {
+            "name": "Aryan Khatri",
+            "rating": 5,
+            "text": "Achhi quality aur achhi service. Product properly packed tha aur mujhe order mein koi issue nahi hua. Definitely a good experience.",
+            "product": "ghoda-ki-naal"
+          }
+        },
+        "r5": {
+          "type": "review",
+          "settings": {
+            "name": "Naitik Jain",
+            "rating": 5,
+            "text": "Divine fragrance! Amazing product.",
+            "product": "vridavan-attar"
+          }
+        },
+        "r6": {
+          "type": "review",
+          "settings": {
+            "name": "Shivoham",
+            "rating": 5,
+            "text": "Bhuttt hi premium quality lgi product ki",
+            "product": "durghatna-nashak-yantra"
+          }
+        },
+        "r7": {
+          "type": "review",
+          "settings": {
+            "name": "Sanjay Arora",
+            "rating": 5,
+            "text": "Beautiful products, trusted quality and great customer service. DoshMukti is now my first choice for spiritual and devotional shopping.",
+            "product": "tiger-eye-bracelet"
+          }
+        },
+        "r8": {
+          "type": "review",
+          "settings": {
+            "name": "Kunal Jain",
+            "rating": 5,
+            "text": "DoshMukti offers one of the best collections of Rudraksha, crystal bracelets, dhoop sticks and spiritual products. I have ordered multiple times and have always been satisfied.",
+            "product": "green-aventurine-bracelet"
           }
         }
       },
       "block_order": [
         "r1",
         "r2",
-        "r3"
+        "r3",
+        "r4",
+        "r5",
+        "r6",
+        "r7",
+        "r8"
       ],
       "settings": {
-        "heading": "Loved by seekers",
-        "subtitle": "हमारे साधकों की बात"
+        "kicker": "Loved By 1,000+ Customers",
+        "heading": "What Our Customers Say"
       }
     },
     "rail-4": {
@@ -400,8 +442,7 @@
         "collection": "home-bracelets",
         "limit": 12,
         "tinted": true,
-        "show_view_all": true,
-        "subtitle": "ब्रेसलेट"
+        "show_view_all": false
       }
     }
   },

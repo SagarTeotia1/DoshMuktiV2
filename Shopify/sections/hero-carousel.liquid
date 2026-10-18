@@ -32,16 +32,14 @@
           </a>
         {%- else -%}
           <div class="hero__fallback">
-            <div class="container">
-              <div class="hero__copy">
-                {%- if block.settings.eyebrow != blank -%}<p class="hero__hi" lang="hi">{{ block.settings.eyebrow }}</p>{%- endif -%}
-                {%- if block.settings.heading != blank -%}<h1 class="hero__title">{{ block.settings.heading }}</h1>{%- endif -%}
-                {%- if block.settings.subheading != blank -%}<p class="hero__sub">{{ block.settings.subheading }}</p>{%- endif -%}
-                {%- if block.settings.button_label != blank -%}
-                  <a class="btn btn--kumkum" href="{{ block.settings.link | default: routes.all_products_collection_url }}">{{ block.settings.button_label }}</a>
-                {%- endif -%}
-              </div>
-              <div class="hero__niche" aria-hidden="true"><span class="hero__om" lang="hi">ॐ</span></div>
+            {% render 'mandala', class: 'hero__mandala' %}
+            <div class="container hero__copy">
+              {%- if block.settings.eyebrow != blank -%}<p class="eyebrow">{{ block.settings.eyebrow }}</p>{%- endif -%}
+              {%- if block.settings.heading != blank -%}<h1 class="hero__title">{{ block.settings.heading }}</h1>{%- endif -%}
+              {%- if block.settings.subheading != blank -%}<p class="hero__sub">{{ block.settings.subheading }}</p>{%- endif -%}
+              {%- if block.settings.button_label != blank -%}
+                <a class="btn btn--primary" href="{{ block.settings.link | default: routes.all_products_collection_url }}">{{ block.settings.button_label }}</a>
+              {%- endif -%}
             </div>
           </div>
         {%- endif -%}

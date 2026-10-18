@@ -313,7 +313,7 @@
         var pct = hasCompare ? Math.round((variant.compare_at_price - variant.price) * 100 / variant.compare_at_price) : 0;
         if (compareEl) { compareEl.hidden = !hasCompare; if (hasCompare) compareEl.textContent = money(variant.compare_at_price); }
         if (offEl) { offEl.hidden = !hasCompare; offEl.textContent = pct + '% off'; }
-        if (discountEl) { discountEl.hidden = !hasCompare; discountEl.firstChild.textContent = pct + '%'; }
+        if (discountEl) { discountEl.hidden = !hasCompare; discountEl.lastChild.textContent = pct + '% off'; }
         if (addBtn) addBtn.disabled = !variant.available;
         if (nowBtn) nowBtn.disabled = !variant.available;
         if (addLabel) addLabel.textContent = variant.available ? origLabel : 'Sold out';
@@ -427,6 +427,78 @@
     });
   }
 
+  /* ───────── Shop listing: sort, grid/list view, mobile purpose row ───────── */
+  function initShop() {
+    var grid = $('[data-shop-grid]');
+    var sort = $('[data-sort-select]');
+    if (sort) {
+      sort.addEventListener('change', function () {
+        var url = new URL(window.location.href);
+        url.searchParams.set('sort_by', sort.value);
+        url.searchParams.delete('page');
+        window.location.href = url.toString();
+      });
+    }
+    var buttons = $('[data-view]');
+    function setView(view) {
+      if (grid) grid.classList.toggle('is-list', view === 'list');
+      buttons.forEach(function (b) { b.classList.toggle('is-active', b.dataset.view === view); });
+    }
+    if (buttons.length) {
+      var saved = 'grid';
+      try { saved = localStorage.getItem('shop-view') || 'grid'; } catch (e) { /* ignore */ }
+      setView(saved);
+      buttons.forEach(function (b) {
+        b.addEventListener('click', function () {
+          setView(b.dataset.view);
+          try { localStorage.setItem('shop-view', b.dataset.view); } catch (e) { /* ignore */ }
+        });
+      });
+    }
+    var toggle = $('[data-purpose-toggle]');
+    var row = $('[data-purpose-row]');
+    if (toggle && row) {
+      toggle.addEventListener('click', function () {
+        var open = row.hidden;
+        row.hidden = !open;
+        toggle.setAttribute('aria-expanded', String(open));
+      });
+    }
+  }
+
+  /* ───────── Testimonials: 3 per page, arrows + dots ───────── */
+  function initTestimonials() {
+    $('[data-testimonials]').forEach(function (root) {
+      if (root.__t) return;
+      root.__t = true;
+      var size = parseInt(root.dataset.pageSize, 10) || 3;
+      var cards = $('[data-review]', root);
+      var pages = Math.ceil(cards.length / size);
+      if (pages < 1) return;
+      var page = 0;
+      var dots = $('[data-t-dots]', root);
+      function show(p) {
+        page = (p + pages) % pages;
+        cards.forEach(function (c, i) { c.hidden = Math.floor(i / size) !== page; });
+        if (dots) $('button', dots).forEach(function (d, i) { d.classList.toggle('is-active', i === page); });
+      }
+      if (pages > 1 && dots) {
+        for (var i = 0; i < pages; i++) {
+          (function (n) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.setAttribute('aria-label', 'Go to page ' + (n + 1));
+            b.addEventListener('click', function () { show(n); });
+            dots.appendChild(b);
+          })(i);
+        }
+      }
+      $('[data-t-prev]', root).forEach(function (b) { b.hidden = pages < 2; b.addEventListener('click', function () { show(page - 1); }); });
+      $('[data-t-next]', root).forEach(function (b) { b.hidden = pages < 2; b.addEventListener('click', function () { show(page + 1); }); });
+      show(0);
+    });
+  }
+
   /* ───────── Cart page ───────── */
   function initCartPage() {
     var wrap = $('#MainCartWrapper');
@@ -477,6 +549,8 @@
     initProduct();
     initRecommendations();
     initFacets();
+    initShop();
+    initTestimonials();
     initCartPage();
   }
 
@@ -490,5 +564,7 @@
     initProduct();
     initRecommendations();
     initFacets();
+    initShop();
+    initTestimonials();
   });
 })();

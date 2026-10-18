@@ -33,7 +33,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rozha+One&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&display=swap">
     <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap">
 
     {{ 'base.css' | asset_url | stylesheet_tag }}
@@ -53,7 +53,7 @@
     {{ content_for_header }}
   </head>
 
-  <body class="template-{{ template.name | handle }}{% if template.name == 'product' %} has-buybar{% endif %}">
+  <body class="template-{{ template.name | handle }}">
     <a class="skip-link" href="#MainContent">{{ 'accessibility.skip_to_content' | t }}</a>
 
     <div class="app-shell">
