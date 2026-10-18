@@ -1,0 +1,24 @@
+{
+  "name": "Header group",
+  "type": "header",
+  "sections": {
+    "announcement-bar": {
+      "type": "announcement-bar",
+      "blocks": {
+        "m1": { "type": "message", "settings": { "text": "Free Shipping Above ₹299" } },
+        "m2": { "type": "message", "settings": { "text": "Authentic & Energized Products" } },
+        "m3": { "type": "message", "settings": { "text": "7-Day Easy Returns on Orders Above ₹299" } },
+        "m4": { "type": "message", "settings": { "text": "Pay via UPI · Cards · EMI" } },
+        "m5": { "type": "message", "settings": { "text": "Pan-India Delivery" } },
+        "m6": { "type": "message", "settings": { "text": "Handpicked with Intention" } }
+      },
+      "block_order": ["m1", "m2", "m3", "m4", "m5", "m6"],
+      "settings": {}
+    },
+    "header": {
+      "type": "header",
+      "settings": { "menu": "main-menu" }
+    }
+  },
+  "order": ["announcement-bar", "header"]
+}

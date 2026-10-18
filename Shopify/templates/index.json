@@ -1,0 +1,75 @@
+{
+  "sections": {
+    "category-strip": { "type": "category-strip", "settings": {} },
+    "hero": {
+      "type": "hero-carousel",
+      "blocks": {
+        "slide-1": {
+          "type": "slide",
+          "settings": {
+            "eyebrow": "Authentic & Energized",
+            "heading": "Gemstones & Astrology Remedies",
+            "subheading": "For love, wealth, protection and peace — handpicked with intention.",
+            "button_label": "Shop now"
+          }
+        }
+      },
+      "block_order": ["slide-1"],
+      "settings": { "autoplay": true, "interval": 5 }
+    },
+    "purposes": {
+      "type": "purpose-grid",
+      "blocks": {
+        "p1": { "type": "purpose", "settings": { "label": "Love", "icon": "heart", "tone": "love", "tag": "love" } },
+        "p2": { "type": "purpose", "settings": { "label": "Wealth", "icon": "trending-up", "tone": "wealth", "tag": "wealth" } },
+        "p3": { "type": "purpose", "settings": { "label": "Health", "icon": "leaf", "tone": "health", "tag": "health" } },
+        "p4": { "type": "purpose", "settings": { "label": "Success", "icon": "trophy", "tone": "success", "tag": "success" } },
+        "p5": { "type": "purpose", "settings": { "label": "Protection", "icon": "shield", "tone": "protection", "tag": "protection" } },
+        "p6": { "type": "purpose", "settings": { "label": "Clarity", "icon": "sparkles", "tone": "clarity", "tag": "clarity" } },
+        "p7": { "type": "purpose", "settings": { "label": "Gifting", "icon": "gift", "tone": "gifting", "tag": "gifting", "hide_on_mobile": true } }
+      },
+      "block_order": ["p1", "p2", "p3", "p4", "p5", "p6", "p7"],
+      "settings": { "heading": "What Do You Seek?" }
+    },
+    "rail-1": { "type": "product-rail", "settings": { "heading": "Handpicked This Week", "limit": 10, "tinted": false, "show_view_all": true } },
+    "acharya": {
+      "type": "acharya-madhav",
+      "blocks": {
+        "t1": { "type": "topic", "settings": { "label": "Love & Relationships", "icon": "heart", "prompt": "Which stone will help me in love and relationships?", "question": "Which stone or ritual will help me in love and relationships?" } },
+        "t2": { "type": "topic", "settings": { "label": "Wealth & Career", "icon": "trending-up", "prompt": "Is this a good time to invest or change my career?", "question": "Based on my numerology, is this a good time to invest or change my career?" } },
+        "t3": { "type": "topic", "settings": { "label": "Health & Protection", "icon": "shield-check", "prompt": "How do I remove Shani dosh or negative energy?", "question": "How do I remove Shani dosh or protect myself from negative energy?" } }
+      },
+      "block_order": ["t1", "t2", "t3"],
+      "settings": {
+        "eyebrow": "Ancient Wisdom, On Demand",
+        "heading": "Acharya Madhav",
+        "text": "Tell him what is on your mind — love, money, career, health. He reads your birth details through Vedic astrology and numerology, and tells you exactly what to wear.",
+        "button_label": "Chat with Acharya Madhav"
+      }
+    },
+    "rail-2": { "type": "product-rail", "settings": { "heading": "Doshmukti Special", "limit": 10, "tinted": true, "show_view_all": true } },
+    "trust": {
+      "type": "trust-bar",
+      "blocks": {
+        "i1": { "type": "item", "settings": { "icon": "gem", "label": "Authentic & Energized", "sub": "Sourced directly from verified artisans" } },
+        "i2": { "type": "item", "settings": { "icon": "truck", "label": "Free Shipping Above ₹299", "sub": "Pan-India delivery" } },
+        "i3": { "type": "item", "settings": { "icon": "shield-check", "label": "Secure Payments", "sub": "UPI, cards, netbanking & EMI" } },
+        "i4": { "type": "item", "settings": { "icon": "rotate-ccw", "label": "7-Day Returns ₹299+", "sub": "On eligible orders, hassle-free" } }
+      },
+      "block_order": ["i1", "i2", "i3", "i4"],
+      "settings": {}
+    },
+    "rail-3": { "type": "product-rail", "settings": { "heading": "Rudraksha Collection", "limit": 10, "tinted": false, "show_view_all": true } },
+    "testimonials": {
+      "type": "testimonials",
+      "blocks": {
+        "r1": { "type": "review", "settings": { "name": "Priya S.", "rating": 5, "text": "Beautiful energized product, felt the difference within weeks." } },
+        "r2": { "type": "review", "settings": { "name": "Rahul M.", "rating": 5, "text": "Authentic stones and quick delivery. The guidance from Acharya Madhav was spot on." } },
+        "r3": { "type": "review", "settings": { "name": "Anita K.", "rating": 5, "text": "Packaging was lovely and the bracelet looks exactly like the photos." } }
+      },
+      "block_order": ["r1", "r2", "r3"],
+      "settings": { "heading": "Loved By Seekers" }
+    }
+  },
+  "order": ["category-strip", "hero", "purposes", "rail-1", "acharya", "rail-2", "trust", "rail-3", "testimonials"]
+}

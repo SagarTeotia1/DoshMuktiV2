@@ -1,0 +1,85 @@
+{
+  "accessibility": {
+    "skip_to_content": "Skip to content",
+    "close": "Close",
+    "menu": "Menu",
+    "search": "Search",
+    "cart": "Cart",
+    "account": "Account"
+  },
+  "general": {
+    "whatsapp": "Chat on WhatsApp",
+    "meta": {
+      "tagged": "Tagged \"{{ tags }}\"",
+      "page": "Page {{ page }}"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "search": {
+      "placeholder": "Search for rings, crystals, malas...",
+      "submit": "Search"
+    }
+  },
+  "products": {
+    "product": {
+      "add_to_cart": "Add to cart",
+      "buy_now": "Buy it now",
+      "sold_out": "Sold out",
+      "unavailable": "Unavailable",
+      "added_to_cart": "Added to cart",
+      "add_error": "Could not add to cart — try again",
+      "quantity": "Quantity",
+      "off": "{{ percent }}% off",
+      "no_image": "No image"
+    }
+  },
+  "cart": {
+    "title": "Your cart",
+    "empty": "Your cart is empty",
+    "continue_shopping": "Continue shopping",
+    "subtotal": "Subtotal",
+    "checkout": "Checkout",
+    "taxes_note": "Taxes included. Shipping calculated at checkout.",
+    "remove": "Remove",
+    "free_shipping_left": "Add {{ amount }} more for free shipping",
+    "free_shipping_unlocked": "You've unlocked free shipping 🎉"
+  },
+  "collection": {
+    "sort_by": "Sort by",
+    "filter": "Filter",
+    "clear_all": "Clear all",
+    "no_products": "No products found",
+    "products_count": {
+      "one": "{{ count }} product",
+      "other": "{{ count }} products"
+    }
+  },
+  "search": {
+    "title": "Search",
+    "results": {
+      "one": "{{ count }} result for \"{{ terms }}\"",
+      "other": "{{ count }} results for \"{{ terms }}\""
+    },
+    "no_results": "No results for \"{{ terms }}\""
+  },
+  "newsletter": {
+    "placeholder": "Your email address",
+    "submit": "Subscribe",
+    "success": "✓ You're on the list. Expect good energy."
+  },
+  "contact": {
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone (optional)",
+    "message": "How can we help?",
+    "send": "Send message",
+    "success": "Thanks! We'll get back to you soon."
+  },
+  "404": {
+    "title": "Page not found",
+    "text": "The page you were looking for doesn't exist.",
+    "cta": "Back to home"
+  }
+}

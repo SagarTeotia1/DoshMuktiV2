@@ -1,0 +1,22 @@
+{
+  "name": "Footer group",
+  "type": "footer",
+  "sections": {
+    "footer": {
+      "type": "footer",
+      "blocks": {
+        "shop": { "type": "menu", "settings": { "heading": "Shop", "menu": "footer" } },
+        "help": { "type": "menu", "settings": { "heading": "Help", "menu": "footer" } }
+      },
+      "block_order": ["shop", "help"],
+      "settings": {
+        "show_newsletter": true,
+        "newsletter_eyebrow": "Stay Connected",
+        "newsletter_heading": "Good Energy, Delivered Weekly",
+        "newsletter_note": "Exclusive deals + spiritual guidance, straight to your inbox.",
+        "tagline": "Authentic spiritual products curated with intention, for every seeker."
+      }
+    }
+  },
+  "order": ["footer"]
+}

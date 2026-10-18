@@ -1,0 +1,44 @@
+<div class="announcement" role="region" aria-label="Announcements">
+  <div class="announcement__track">
+    {%- for i in (1..2) -%}
+      {%- for block in section.blocks -%}
+        <span class="announcement__item" {{ block.shopify_attributes }} {% if i == 2 %}aria-hidden="true"{% endif %}>
+          <span class="announcement__text">
+            {%- if block.settings.link != blank -%}<a href="{{ block.settings.link }}">{{ block.settings.text }}</a>{%- else -%}{{ block.settings.text }}{%- endif -%}
+          </span>
+          <span class="announcement__star" aria-hidden="true">✦</span>
+        </span>
+      {%- endfor -%}
+    {%- endfor -%}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Announcement bar",
+  "max_blocks": 8,
+  "blocks": [
+    {
+      "type": "message",
+      "name": "Message",
+      "settings": [
+        { "type": "text", "id": "text", "label": "Text", "default": "Free Shipping Above ₹299" },
+        { "type": "url", "id": "link", "label": "Link (optional)" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Announcement bar",
+      "blocks": [
+        { "type": "message", "settings": { "text": "Free Shipping Above ₹299" } },
+        { "type": "message", "settings": { "text": "Authentic & Energized Products" } },
+        { "type": "message", "settings": { "text": "7-Day Easy Returns on Orders Above ₹299" } },
+        { "type": "message", "settings": { "text": "Pay via UPI · Cards · EMI" } },
+        { "type": "message", "settings": { "text": "Pan-India Delivery" } },
+        { "type": "message", "settings": { "text": "Handpicked with Intention" } }
+      ]
+    }
+  ]
+}
+{% endschema %}

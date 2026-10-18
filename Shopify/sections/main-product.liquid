@@ -1,0 +1,167 @@
+{%- liquid
+  assign current_variant = product.selected_or_first_available_variant
+  assign discount = 0
+  if current_variant.compare_at_price > current_variant.price
+    assign discount = current_variant.compare_at_price | minus: current_variant.price | times: 100.0 | divided_by: current_variant.compare_at_price | round
+  endif
+  assign return_ok = false
+  assign threshold = settings.return_eligible_above | times: 100
+  if current_variant.price >= threshold
+    assign return_ok = true
+  endif
+-%}
+<section class="pdp container" data-product-section data-product-id="{{ product.id }}">
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a href="{{ routes.root_url }}">Home</a><span>/</span>
+    <a href="{{ routes.all_products_collection_url }}">Shop</a><span>/</span>
+    <span aria-current="page">{{ product.title }}</span>
+  </nav>
+
+  <div class="pdp__grid">
+    <div class="pdp__gallery" data-gallery>
+      <div class="gallery__main">
+        {%- if product.media.size > 0 -%}
+          {%- for media in product.media -%}
+            {%- assign img_loading = 'lazy' -%}
+            {%- assign img_priority = 'auto' -%}
+            {%- if forloop.first -%}
+              {%- assign img_loading = 'eager' -%}
+              {%- assign img_priority = 'high' -%}
+            {%- endif -%}
+            <div class="gallery__slide{% if forloop.first %} is-active{% endif %}" data-media-id="{{ media.id }}" data-slide>
+              {%- if media.media_type == 'image' -%}
+                {{
+                  media
+                  | image_url: width: 1400
+                  | image_tag:
+                    widths: '600, 800, 1000, 1400',
+                    sizes: '(min-width: 1024px) 50vw, 100vw',
+                    loading: img_loading,
+                    fetchpriority: img_priority,
+                    alt: media.alt | default: product.title
+                }}
+              {%- else -%}
+                {{ media | media_tag: image_size: '1400x', controls: true }}
+              {%- endif -%}
+            </div>
+          {%- endfor -%}
+          {%- if discount > 0 -%}
+            <span class="sticker discount-sticker" data-discount-badge>{% render 'icon', icon: 'tag', size: 11 %}{{ 'products.product.off' | t: percent: discount }}</span>
+          {%- endif -%}
+        {%- else -%}
+          <div class="gallery__empty">{{ 'products.product.no_image' | t }}</div>
+        {%- endif -%}
+      </div>
+
+      {%- if product.media.size > 1 -%}
+        <div class="gallery__thumbs hide-scrollbar">
+          {%- for media in product.media -%}
+            <button type="button" class="gallery__thumb{% if forloop.first %} is-active{% endif %}" data-thumb="{{ media.id }}" aria-label="Image {{ forloop.index }}">
+              {{ media.preview_image | image_url: width: 160 | image_tag: loading: 'lazy', alt: '' }}
+            </button>
+          {%- endfor -%}
+        </div>
+      {%- endif -%}
+    </div>
+
+    <div class="pdp__info">
+      {%- if product.vendor != blank and section.settings.show_vendor -%}<p class="eyebrow">{{ product.vendor }}</p>{%- endif -%}
+      <h1 class="pdp__title">{{ product.title }}</h1>
+
+      <div class="pdp__price" data-price-wrap>
+        <span class="price price--lg" data-price>{{ current_variant.price | money }}</span>
+        <s class="price price--compare" data-compare {% unless current_variant.compare_at_price > current_variant.price %}hidden{% endunless %}>{{ current_variant.compare_at_price | money }}</s>
+        <span class="pdp__tax">Inclusive of all taxes</span>
+      </div>
+
+      {%- if product.metafields.custom.excerpt != blank -%}
+        <p class="pdp__excerpt">{{ product.metafields.custom.excerpt }}</p>
+      {%- endif -%}
+
+      {%- form 'product', product, id: 'ProductForm', class: 'pdp__form', data-product-form: '' -%}
+        <input type="hidden" name="id" value="{{ current_variant.id }}" data-variant-id>
+
+        {%- unless product.has_only_default_variant -%}
+          {%- for option in product.options_with_values -%}
+            <fieldset class="opt" data-option-index="{{ forloop.index0 }}">
+              <legend>{{ option.name }}</legend>
+              <div class="opt__values">
+                {%- for value in option.values -%}
+                  <input type="radio" id="opt-{{ forloop.parentloop.index0 }}-{{ forloop.index0 }}" name="options[{{ option.name | escape }}]" value="{{ value | escape }}" {% if option.selected_value == value %}checked{% endif %}>
+                  <label for="opt-{{ forloop.parentloop.index0 }}-{{ forloop.index0 }}">{{ value }}</label>
+                {%- endfor -%}
+              </div>
+            </fieldset>
+          {%- endfor -%}
+        {%- endunless -%}
+
+        <script type="application/json" data-variants>{{ product.variants | json }}</script>
+
+        <div class="pdp__buy">
+          <div class="qty" data-qty>
+            <button type="button" data-qty-minus aria-label="Decrease quantity">{% render 'icon', icon: 'minus', size: 14 %}</button>
+            <input type="number" name="quantity" value="1" min="1" max="10" inputmode="numeric" aria-label="{{ 'products.product.quantity' | t }}">
+            <button type="button" data-qty-plus aria-label="Increase quantity">{% render 'icon', icon: 'plus', size: 14 %}</button>
+          </div>
+          <button type="submit" name="add" class="btn btn--primary btn--lg pdp__add" data-add-btn {% unless current_variant.available %}disabled{% endunless %}>
+            <span data-add-label>{% if current_variant.available %}{{ 'products.product.add_to_cart' | t }}{% else %}{{ 'products.product.sold_out' | t }}{% endif %}</span>
+          </button>
+        </div>
+
+        {%- if section.settings.show_dynamic_checkout -%}
+          {{ form | payment_button }}
+        {%- endif -%}
+      {%- endform -%}
+
+      <ul class="pdp__trust">
+        <li>{% render 'icon', icon: 'gem', size: 14 %}<span>Authentic &amp; Energized</span></li>
+        <li>{% render 'icon', icon: 'truck', size: 14 %}<span>Free Shipping ₹{{ settings.free_shipping_above }}+</span></li>
+        <li>{% render 'icon', icon: 'shield-check', size: 14 %}<span>Secure Payments</span></li>
+        {%- if return_ok -%}
+          <li>{% render 'icon', icon: 'rotate-ccw', size: 14 %}<span>7-Day Returns</span></li>
+        {%- else -%}
+          <li>{% render 'icon', icon: 'ban', size: 14 %}<span>Non-Returnable</span></li>
+        {%- endif -%}
+      </ul>
+
+      <div class="accordion">
+        {%- if product.description != blank -%}
+          <details class="accordion__item" open>
+            <summary>Description {% render 'icon', icon: 'chevron-down', size: 16 %}</summary>
+            <div class="rte">{{ product.description }}</div>
+          </details>
+        {%- endif -%}
+        {%- for block in section.blocks -%}
+          <details class="accordion__item" {{ block.shopify_attributes }}>
+            <summary>{{ block.settings.title }} {% render 'icon', icon: 'chevron-down', size: 16 %}</summary>
+            <div class="rte">{{ block.settings.content }}</div>
+          </details>
+        {%- endfor -%}
+      </div>
+    </div>
+  </div>
+</section>
+
+{{ product | structured_data }}
+
+{% schema %}
+{
+  "name": "Product",
+  "tag": "section",
+  "settings": [
+    { "type": "checkbox", "id": "show_vendor", "label": "Show vendor", "default": false },
+    { "type": "checkbox", "id": "show_dynamic_checkout", "label": "Show dynamic checkout buttons", "default": true, "info": "Express buttons (Razorpay/UPI/GPay) depend on your payment settings." }
+  ],
+  "blocks": [
+    {
+      "type": "accordion",
+      "name": "Accordion",
+      "settings": [
+        { "type": "text", "id": "title", "label": "Title", "default": "Delivery & Shipping" },
+        { "type": "richtext", "id": "content", "label": "Content", "default": "<p>Orders are dispatched within 24–48 hours and typically arrive within 5–7 business days across India.</p>" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Product" }]
+}
+{% endschema %}

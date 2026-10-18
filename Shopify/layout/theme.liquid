@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="{{ request.locale.iso_code }}">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#E6D3AE">
+    <link rel="canonical" href="{{ canonical_url }}">
+
+    {%- if settings.favicon != blank -%}
+      <link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 64, height: 64 }}">
+    {%- else -%}
+      <link rel="icon" type="image/png" href="{{ 'favicon.png' | asset_url }}">
+    {%- endif -%}
+
+    <title>
+      {{ page_title }}
+      {%- if current_tags %} &ndash; {{ 'general.meta.tagged' | t: tags: current_tags.first }}{% endif -%}
+      {%- if current_page != 1 %} &ndash; {{ 'general.meta.page' | t: page: current_page }}{% endif -%}
+      {%- unless page_title contains shop.name %} &ndash; {{ shop.name }}{% endunless -%}
+    </title>
+
+    {% if page_description %}
+      <meta name="description" content="{{ page_description | escape }}">
+    {% endif %}
+
+    {% render 'meta-tags' %}
+
+    {%- comment -%}
+      Outfit (headings) from Google Fonts, Satoshi (body) from Fontshare — same pair the
+      Next.js storefront uses. Preconnect first so the font CSS fetch doesn't wait on DNS/TLS.
+    {%- endcomment -%}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&display=swap">
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap">
+
+    {{ 'base.css' | asset_url | stylesheet_tag }}
+
+    <style>
+      :root {
+        --c-bronze: {{ settings.color_accent }};
+        --c-ink: {{ settings.color_ink }};
+        --c-bg: {{ settings.color_background }};
+        --c-paper: {{ settings.color_paper }};
+      }
+    </style>
+
+    <script>document.documentElement.classList.add('js');</script>
+    <script src="{{ 'theme.js' | asset_url }}" defer="defer"></script>
+
+    {{ content_for_header }}
+  </head>
+
+  <body class="template-{{ template.name | handle }}">
+    <a class="skip-link" href="#MainContent">{{ 'accessibility.skip_to_content' | t }}</a>
+
+    <div class="app-shell">
+      {% sections 'header-group' %}
+
+      <main id="MainContent" class="main-content" role="main" tabindex="-1">
+        {{ content_for_layout }}
+      </main>
+
+      {% sections 'footer-group' %}
+    </div>
+
+    {%- if settings.acharya_api_url != blank -%}
+      {% render 'chat-widget' %}
+      <script src="{{ 'chat.js' | asset_url }}" defer="defer"></script>
+    {%- endif -%}
+
+    {%- if settings.whatsapp_number != blank -%}
+      <a
+        class="whatsapp-fab"
+        href="https://wa.me/{{ settings.whatsapp_number | remove: '+' | remove: ' ' }}?text={{ settings.whatsapp_message | url_encode }}"
+        target="_blank"
+        rel="noopener"
+        aria-label="{{ 'general.whatsapp' | t }}"
+      >
+        {% render 'icon', icon: 'whatsapp' %}
+      </a>
+    {%- endif -%}
+
+    <div class="toast" id="Toast" role="status" aria-live="polite" hidden></div>
+
+    <script>
+      window.theme = {
+        currency: {{ cart.currency.iso_code | json }},
+        routes: {
+          cart_add_url: {{ routes.cart_add_url | append: '.js' | json }},
+          cart_url: {{ routes.cart_url | json }},
+          cart_js_url: {{ routes.cart_url | append: '.js' | json }},
+          cart_change_url: {{ routes.cart_change_url | append: '.js' | json }}
+        },
+        strings: {
+          added: {{ 'products.product.added_to_cart' | t | json }},
+          error: {{ 'products.product.add_error' | t | json }}
+        }
+      };
+    </script>
+  </body>
+</html>

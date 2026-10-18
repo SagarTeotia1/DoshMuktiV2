@@ -1,0 +1,82 @@
+{%- comment -%}
+  Product card (port of ProductCard.tsx).
+  Params: product (required), list_name (optional)
+  A tag of the form "badge:Bestseller" renders as the ink-stamp seal on the photo.
+{%- endcomment -%}
+{%- liquid
+  assign badge = ''
+  for tag in product.tags
+    if tag contains 'badge:'
+      assign badge = tag | remove: 'badge:' | strip
+    endif
+  endfor
+
+  assign discount = 0
+  if product.compare_at_price > product.price
+    assign discount = product.compare_at_price | minus: product.price | times: 100.0 | divided_by: product.compare_at_price | round
+  endif
+
+  assign quick_variant = product.variants | where: 'available', true | first
+-%}
+<a href="{{ product.url }}" class="product-card neo-card" data-product-id="{{ product.id }}" data-list="{{ list_name | escape }}">
+  <div class="product-card__media product-image-container">
+    {%- if product.featured_image -%}
+      {%- assign second = product.images[1] -%}
+      {{
+        product.featured_image
+        | image_url: width: 600
+        | image_tag:
+          loading: 'lazy',
+          widths: '240, 360, 480, 600',
+          sizes: '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw',
+          alt: product.featured_image.alt,
+          class: 'product-card__img'
+      }}
+      {%- if second -%}
+        {{
+          second
+          | image_url: width: 600
+          | image_tag:
+            loading: 'lazy',
+            widths: '240, 360, 480, 600',
+            sizes: '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw',
+            alt: product.title,
+            class: 'product-card__img product-card__img--hover'
+        }}
+      {%- endif -%}
+    {%- else -%}
+      <div class="product-card__noimg"><span>{{ 'products.product.no_image' | t }}</span></div>
+    {%- endif -%}
+
+    {%- if discount > 0 and product.available -%}
+      <span class="sticker discount-sticker">{% render 'icon', icon: 'tag', size: 10 %}{{ 'products.product.off' | t: percent: discount }}</span>
+    {%- endif -%}
+
+    {%- unless product.available -%}
+      <div class="product-card__soldout"><span>{{ 'products.product.sold_out' | t }}</span></div>
+    {%- endunless -%}
+
+    {%- if badge != blank -%}
+      <span class="stamp"><span class="stamp__inner">{{ badge }}</span></span>
+    {%- endif -%}
+
+    <div class="product-card__actions">
+      <span class="icon-btn" aria-hidden="true">{% render 'icon', icon: 'eye', size: 16 %}</span>
+      {%- if quick_variant -%}
+        <button type="button" class="icon-btn icon-btn--bronze" data-quick-add data-variant-id="{{ quick_variant.id }}" aria-label="{{ 'products.product.add_to_cart' | t }}">
+          {% render 'icon', icon: 'shopping-bag', size: 16 %}
+        </button>
+      {%- endif -%}
+    </div>
+  </div>
+
+  <div class="product-card__body">
+    <h3 class="product-card__title">{{ product.title }}</h3>
+    <div class="product-card__price">
+      <span class="price">{{ product.price | money }}</span>
+      {%- if product.compare_at_price > product.price -%}
+        <s class="price price--compare">{{ product.compare_at_price | money }}</s>
+      {%- endif -%}
+    </div>
+  </div>
+</a>

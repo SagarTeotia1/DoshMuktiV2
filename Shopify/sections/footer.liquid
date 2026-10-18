@@ -1,0 +1,95 @@
+<footer class="site-footer">
+  {% render 'mandala', class: 'site-footer__mandala' %}
+
+  {%- if section.settings.show_newsletter -%}
+    <div class="site-footer__newsletter">
+      <div class="container site-footer__newsletter-grid">
+        <div>
+          <p class="eyebrow">{{ section.settings.newsletter_eyebrow }}</p>
+          <h3 class="site-footer__newsletter-title">{{ section.settings.newsletter_heading }}</h3>
+        </div>
+        <div>
+          {%- form 'customer', id: 'FooterNewsletter', class: 'newsletter-form' -%}
+            <input type="hidden" name="contact[tags]" value="newsletter">
+            {%- if form.posted_successfully? -%}
+              <p class="newsletter-success">{{ 'newsletter.success' | t }}</p>
+            {%- else -%}
+              <div class="newsletter-field">
+                <input type="email" name="contact[email]" required autocomplete="email" placeholder="{{ 'newsletter.placeholder' | t }}" aria-label="{{ 'newsletter.placeholder' | t }}">
+                <button type="submit">{{ 'newsletter.submit' | t }}</button>
+              </div>
+              {%- if form.errors -%}<p class="form-error">{{ form.errors | default_errors }}</p>{%- endif -%}
+            {%- endif -%}
+            <p class="newsletter-note">{{ section.settings.newsletter_note }}</p>
+          {%- endform -%}
+        </div>
+      </div>
+    </div>
+  {%- endif -%}
+
+  <div class="container site-footer__cols">
+    <div class="site-footer__brand">
+      {%- if settings.logo != blank -%}
+        {{ settings.logo | image_url: width: 300 | image_tag: height: 40, loading: 'lazy', alt: shop.name }}
+      {%- else -%}
+        <img src="{{ 'logo.png' | asset_url }}" alt="{{ shop.name }}" width="128" height="40" loading="lazy">
+      {%- endif -%}
+      <p>{{ section.settings.tagline }}</p>
+      <div class="social">
+        {%- if settings.social_instagram != blank -%}
+          <a href="{{ settings.social_instagram }}" target="_blank" rel="noopener noreferrer" aria-label="Instagram">{% render 'icon', icon: 'instagram', size: 14 %}</a>
+        {%- endif -%}
+        {%- if settings.social_youtube != blank -%}
+          <a href="{{ settings.social_youtube }}" target="_blank" rel="noopener noreferrer" aria-label="YouTube">{% render 'icon', icon: 'youtube', size: 14 %}</a>
+        {%- endif -%}
+      </div>
+    </div>
+
+    {%- for block in section.blocks -%}
+      <div class="site-footer__col" {{ block.shopify_attributes }}>
+        <h4>{{ block.settings.heading }}</h4>
+        <ul>
+          {%- for link in linklists[block.settings.menu].links -%}
+            <li><a href="{{ link.url }}">{{ link.title }}</a></li>
+          {%- endfor -%}
+        </ul>
+      </div>
+    {%- endfor -%}
+  </div>
+
+  <div class="site-footer__bottom">
+    <div class="container site-footer__bottom-inner">
+      <p>© {{ 'now' | date: '%Y' }} {{ settings.company_legal }}</p>
+      <p>Made with intention in India 🇮🇳</p>
+    </div>
+  </div>
+</footer>
+
+{% schema %}
+{
+  "name": "Footer",
+  "settings": [
+    { "type": "checkbox", "id": "show_newsletter", "label": "Show newsletter", "default": true },
+    { "type": "text", "id": "newsletter_eyebrow", "label": "Newsletter eyebrow", "default": "Stay Connected" },
+    { "type": "text", "id": "newsletter_heading", "label": "Newsletter heading", "default": "Good Energy, Delivered Weekly" },
+    { "type": "text", "id": "newsletter_note", "label": "Newsletter note", "default": "Exclusive deals + spiritual guidance, straight to your inbox." },
+    { "type": "text", "id": "tagline", "label": "Tagline", "default": "Authentic spiritual products curated with intention, for every seeker." }
+  ],
+  "blocks": [
+    {
+      "type": "menu",
+      "name": "Link column",
+      "limit": 4,
+      "settings": [
+        { "type": "text", "id": "heading", "label": "Heading", "default": "Shop" },
+        { "type": "link_list", "id": "menu", "label": "Menu", "default": "footer" }
+      ]
+    }
+  ],
+  "default": {
+    "blocks": [
+      { "type": "menu", "settings": { "heading": "Shop", "menu": "footer" } }
+    ]
+  }
+}
+{% endschema %}

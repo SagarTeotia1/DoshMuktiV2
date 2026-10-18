@@ -1,0 +1,67 @@
+{%- assign menu = linklists[section.settings.menu] -%}
+<header class="site-header" id="SiteHeader" data-sticky>
+  <div class="container site-header__bar">
+    <a href="{{ routes.root_url }}" class="site-header__logo" aria-label="{{ shop.name }}">
+      {%- if settings.logo != blank -%}
+        {{ settings.logo | image_url: width: 400 | image_tag: height: 56, class: 'site-header__logo-img', loading: 'eager', fetchpriority: 'high', alt: shop.name }}
+      {%- else -%}
+        <img class="site-header__logo-img" src="{{ 'logo.png' | asset_url }}" alt="{{ shop.name }}" width="179" height="56" loading="eager" fetchpriority="high">
+      {%- endif -%}
+    </a>
+
+    <nav class="site-nav" aria-label="Main">
+      {%- for link in menu.links -%}
+        <a href="{{ link.url }}" class="nav-pill{% if link.active or link.child_active %} is-active{% endif %}">{{ link.title }}</a>
+      {%- endfor -%}
+    </nav>
+
+    <div class="site-header__icons">
+      <button type="button" class="icon-btn icon-btn--ghost" data-search-toggle aria-expanded="false" aria-controls="SearchBar" aria-label="{{ 'accessibility.search' | t }}">
+        <span data-icon-open>{% render 'icon', icon: 'search', size: 20 %}</span>
+        <span data-icon-close hidden>{% render 'icon', icon: 'close', size: 20 %}</span>
+      </button>
+
+      {%- if shop.customer_accounts_enabled -%}
+        <a href="{{ routes.account_url }}" class="icon-btn icon-btn--ghost site-header__account" aria-label="{{ 'accessibility.account' | t }}">{% render 'icon', icon: 'user', size: 20 %}</a>
+      {%- endif -%}
+
+      <a href="{{ routes.cart_url }}" class="icon-btn icon-btn--ghost cart-link" aria-label="{{ 'accessibility.cart' | t }}">
+        {% render 'icon', icon: 'cart', size: 20 %}
+        <span class="cart-badge" data-cart-count {% if cart.item_count == 0 %}hidden{% endif %}>{% if cart.item_count > 9 %}9+{% else %}{{ cart.item_count }}{% endif %}</span>
+      </a>
+
+      <button type="button" class="icon-btn icon-btn--ghost site-header__burger" data-menu-toggle aria-expanded="false" aria-controls="MobileMenu" aria-label="{{ 'accessibility.menu' | t }}">
+        <span data-icon-open>{% render 'icon', icon: 'menu', size: 20 %}</span>
+        <span data-icon-close hidden>{% render 'icon', icon: 'close', size: 20 %}</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="search-bar" id="SearchBar" hidden>
+    <form class="container search-bar__form" action="{{ routes.search_url }}" method="get" role="search">
+      <input type="hidden" name="type" value="product">
+      <input type="search" name="q" class="input" placeholder="{{ 'general.search.placeholder' | t }}" value="{{ search.terms | escape }}" aria-label="{{ 'accessibility.search' | t }}">
+      <button type="submit" class="btn btn--primary btn--sm">{{ 'general.search.submit' | t }}</button>
+    </form>
+  </div>
+
+  <div class="mobile-menu" id="MobileMenu" hidden>
+    <nav aria-label="Mobile">
+      {%- for link in menu.links -%}
+        <a href="{{ link.url }}" class="mobile-menu__link{% if link.active or link.child_active %} is-active{% endif %}">{{ link.title }}</a>
+      {%- endfor -%}
+      {%- if shop.customer_accounts_enabled -%}
+        <a href="{{ routes.account_url }}" class="mobile-menu__link">{{ 'accessibility.account' | t }}</a>
+      {%- endif -%}
+    </nav>
+  </div>
+</header>
+
+{% schema %}
+{
+  "name": "Header",
+  "settings": [
+    { "type": "link_list", "id": "menu", "label": "Menu", "default": "main-menu" }
+  ]
+}
+{% endschema %}

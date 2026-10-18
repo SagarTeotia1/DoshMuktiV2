@@ -1,0 +1,29 @@
+{%- paginate blog.articles by 9 -%}
+<section class="container collection">
+  <header class="collection__head">
+    <p class="eyebrow">Journal</p>
+    <h1 class="collection__title">{{ blog.title }}</h1>
+  </header>
+  <ul class="product-grid product-grid--articles">
+    {%- for article in blog.articles -%}
+      <li>
+        <a href="{{ article.url }}" class="card article-card neo-card">
+          {%- if article.image -%}
+            <span class="article-card__img">{{ article.image | image_url: width: 700 | image_tag: loading: 'lazy', alt: article.image.alt | default: article.title, widths: '350, 700', sizes: '(max-width: 640px) 100vw, 33vw' }}</span>
+          {%- endif -%}
+          <span class="article-card__body">
+            <time datetime="{{ article.published_at | date: '%Y-%m-%d' }}">{{ article.published_at | date: '%b %d, %Y' }}</time>
+            <h3>{{ article.title }}</h3>
+            <p>{{ article.excerpt_or_content | strip_html | truncatewords: 24 }}</p>
+          </span>
+        </a>
+      </li>
+    {%- endfor -%}
+  </ul>
+  {% render 'pagination', paginate: paginate %}
+</section>
+{%- endpaginate -%}
+
+{% schema %}
+{ "name": "Blog" }
+{% endschema %}

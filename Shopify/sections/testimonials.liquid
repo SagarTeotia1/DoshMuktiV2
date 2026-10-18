@@ -1,0 +1,62 @@
+{%- if section.blocks.size > 0 -%}
+<section class="testimonials">
+  <div class="container">
+    <div class="rail__head" data-reveal>
+      <h2 class="section-title">
+        {%- assign words = section.settings.heading | split: ' ' -%}
+        <span class="section-title__strong">{{ words | first }}</span>
+        <span class="section-title__light">{{ words | slice: 1, 20 | join: ' ' }}</span>
+      </h2>
+    </div>
+    <div class="testimonials__track hide-scrollbar" data-reveal-group>
+      {%- for block in section.blocks -%}
+        <figure class="review-card" {{ block.shopify_attributes }}>
+          <div class="review-card__stars" aria-label="{{ block.settings.rating }} out of 5">
+            {%- for i in (1..5) -%}
+              <span class="{% if i <= block.settings.rating %}is-on{% endif %}">{% render 'icon', icon: 'star', size: 14 %}</span>
+            {%- endfor -%}
+          </div>
+          <blockquote>{{ block.settings.text }}</blockquote>
+          <figcaption>
+            <strong>{{ block.settings.name }}</strong>
+            {%- if block.settings.product != blank -%}
+              <a href="{{ block.settings.product.url }}">{{ block.settings.product.title }}</a>
+            {%- endif -%}
+          </figcaption>
+        </figure>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Testimonials",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Loved By Seekers" }
+  ],
+  "blocks": [
+    {
+      "type": "review",
+      "name": "Review",
+      "settings": [
+        { "type": "text", "id": "name", "label": "Customer name", "default": "Customer" },
+        { "type": "range", "id": "rating", "min": 1, "max": 5, "step": 1, "label": "Rating", "default": 5 },
+        { "type": "textarea", "id": "text", "label": "Review", "default": "Beautiful energized product, felt the difference within weeks." },
+        { "type": "product", "id": "product", "label": "Product (optional)" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Testimonials",
+      "blocks": [
+        { "type": "review", "settings": { "name": "Priya S.", "rating": 5, "text": "Beautiful energized product, felt the difference within weeks." } },
+        { "type": "review", "settings": { "name": "Rahul M.", "rating": 5, "text": "Authentic stones and quick delivery. Acharya Madhav's guidance was spot on." } },
+        { "type": "review", "settings": { "name": "Anita K.", "rating": 5, "text": "Packaging was lovely and the bracelet looks exactly like the photos." } }
+      ]
+    }
+  ]
+}
+{% endschema %}

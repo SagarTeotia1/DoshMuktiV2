@@ -1,0 +1,50 @@
+{%- liquid
+  if section.blocks.size == 0
+    assign use_auto = true
+  endif
+-%}
+<section class="category-strip">
+  <div class="category-strip__row hide-scrollbar">
+    {%- if use_auto -%}
+      {%- for c in collections limit: 12 -%}
+        {%- if c.image and c.handle != 'frontpage' -%}
+          <a href="{{ c.url }}" class="category-chip">
+            <span class="category-chip__img">{{ c.image | image_url: width: 120 | image_tag: loading: 'lazy', alt: c.title, width: 48, height: 48 }}</span>
+            <span class="category-chip__label">{{ c.title | split: ' ' | first }}</span>
+          </a>
+        {%- endif -%}
+      {%- endfor -%}
+    {%- else -%}
+      {%- for block in section.blocks -%}
+        {%- assign c = block.settings.collection -%}
+        {%- assign pic = block.settings.image | default: c.image | default: c.featured_image -%}
+        {%- if c -%}
+          <a href="{{ c.url }}" class="category-chip" {{ block.shopify_attributes }}>
+            <span class="category-chip__img">
+              {%- if pic -%}{{ pic | image_url: width: 120 | image_tag: loading: 'lazy', alt: c.title, width: 48, height: 48 }}{%- endif -%}
+            </span>
+            <span class="category-chip__label">{{ block.settings.label | default: c.title }}</span>
+          </a>
+        {%- endif -%}
+      {%- endfor -%}
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Category strip",
+  "blocks": [
+    {
+      "type": "category",
+      "name": "Category",
+      "settings": [
+        { "type": "collection", "id": "collection", "label": "Collection" },
+        { "type": "text", "id": "label", "label": "Short label (optional)" },
+        { "type": "image_picker", "id": "image", "label": "Image (defaults to collection image)" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Category strip" }]
+}
+{% endschema %}

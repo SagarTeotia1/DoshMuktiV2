@@ -1,0 +1,27 @@
+<section class="container collection">
+  <header class="collection__head">
+    <p class="eyebrow">Shop</p>
+    <h1 class="collection__title">{{ section.settings.title }}</h1>
+  </header>
+  <ul class="product-grid product-grid--collections">
+    {%- for c in collections -%}
+      <li>
+        <a href="{{ c.url }}" class="collection-tile neo-card">
+          <span class="collection-tile__img">
+            {%- if c.featured_image -%}{{ c.featured_image | image_url: width: 600 | image_tag: loading: 'lazy', alt: c.title, widths: '300, 600', sizes: '(max-width: 640px) 50vw, 25vw' }}{%- endif -%}
+          </span>
+          <span class="collection-tile__title">{{ c.title }}</span>
+        </a>
+      </li>
+    {%- endfor -%}
+  </ul>
+</section>
+
+{% schema %}
+{
+  "name": "Collections list",
+  "settings": [
+    { "type": "text", "id": "title", "label": "Heading", "default": "Collections" }
+  ]
+}
+{% endschema %}

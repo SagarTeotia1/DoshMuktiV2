@@ -1,0 +1,52 @@
+{%- comment -%}
+  Acharya Madhav floating chat. Markup is static; assets/chat.js wires it up and talks to
+  the Doshmukti Backend (POST {api}/api/chat/acharya).
+{%- endcomment -%}
+{%- assign avatar = 'acharya-icon.webp' | asset_url -%}
+{%- if settings.acharya_avatar != blank -%}
+  {%- assign avatar = settings.acharya_avatar | image_url: width: 120 -%}
+{%- endif -%}
+
+<div
+  class="acharya"
+  id="AcharyaChat"
+  data-api="{{ settings.acharya_api_url | remove_last: '/' }}"
+  data-avatar="{{ avatar }}"
+  data-shop-url="{{ shop.url }}"
+  hidden
+>
+  <section class="acharya__panel" id="AcharyaPanel" role="dialog" aria-label="Acharya Madhav" hidden>
+    <header class="acharya__head">
+      <span class="acharya__avatar"><img src="{{ avatar }}" alt="" width="40" height="40" loading="lazy"></span>
+      <span class="acharya__who">
+        <strong>Acharya Madhav</strong>
+        <small>Vedic Astrologer &amp; Numerologist · Online</small>
+      </span>
+      <button type="button" class="acharya__close" data-acharya-close aria-label="{{ 'accessibility.close' | t }}">{% render 'icon', icon: 'close', size: 20 %}</button>
+    </header>
+
+    <div class="acharya__messages" id="AcharyaMessages" aria-live="polite"></div>
+
+    <p class="acharya__disclaimer" id="AcharyaDisclaimer">
+      AI assistant — not a human or a licensed professional. Guidance is traditional, not medical, legal or financial advice.
+      Chats and details you share (e.g. DOB, phone) are stored and processed by our AI provider; by chatting you agree to our
+      <a href="{{ routes.root_url }}policies/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>.
+    </p>
+
+    <form class="acharya__form" id="AcharyaForm" autocomplete="off">
+      <button type="button" class="acharya__mic" id="AcharyaMic" aria-label="Speak instead of typing" hidden>{% render 'icon', icon: 'mic', size: 16 %}</button>
+      <input type="text" id="AcharyaInput" placeholder="Apna DOB dalein ya sawal puchein..." maxlength="1500" aria-label="Message">
+      <button type="submit" class="acharya__send" id="AcharyaSend" aria-label="Send" disabled>{% render 'icon', icon: 'send', size: 16 %}</button>
+    </form>
+  </section>
+
+  <div class="acharya__launcher">
+    <div class="acharya__pop" id="AcharyaPop" hidden>
+      <button type="button" class="acharya__pop-x" id="AcharyaPopClose" aria-label="{{ 'accessibility.close' | t }}">{% render 'icon', icon: 'close', size: 10 %}</button>
+      <button type="button" class="acharya__pop-text" data-acharya-open>{{ settings.acharya_popup }}</button>
+    </div>
+    <button type="button" class="acharya__fab" id="AcharyaFab" data-acharya-open aria-label="Chat with Acharya Madhav">
+      <img src="{{ avatar }}" alt="" width="56" height="56" loading="lazy">
+    </button>
+  </div>
+</div>

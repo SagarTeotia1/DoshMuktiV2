@@ -1,0 +1,16 @@
+{
+  "sections": {
+    "main": {
+      "type": "faq",
+      "blocks": {
+        "q1": { "type": "qa", "settings": { "question": "How long does delivery take?", "answer": "<p>Orders are dispatched within 24–48 hours and usually arrive in 5–7 business days across India.</p>" } },
+        "q2": { "type": "qa", "settings": { "question": "Are your products authentic and energized?", "answer": "<p>Yes. Every piece is sourced from verified artisans and ritually energized before dispatch.</p>" } },
+        "q3": { "type": "qa", "settings": { "question": "What is your returns policy?", "answer": "<p>Damaged or incorrect items can be reported within 48 hours of delivery for a free replacement. Eligible orders also qualify for a 7-day return.</p>" } },
+        "q4": { "type": "qa", "settings": { "question": "Which payment methods do you accept?", "answer": "<p>UPI, credit and debit cards, netbanking, wallets and EMI.</p>" } }
+      },
+      "block_order": ["q1", "q2", "q3", "q4"],
+      "settings": { "eyebrow": "Help" }
+    }
+  },
+  "order": ["main"]
+}

@@ -1,0 +1,20 @@
+{%- comment -%} Param: paginate (required) {%- endcomment -%}
+{%- if paginate.pages > 1 -%}
+  <nav class="pagination" aria-label="Pagination">
+    {%- if paginate.previous -%}
+      <a class="pagination__link pagination__link--arrow" href="{{ paginate.previous.url }}" aria-label="{{ 'general.pagination.previous' | t }}">{% render 'icon', icon: 'chevron-left', size: 16 %}</a>
+    {%- endif -%}
+    {%- for part in paginate.parts -%}
+      {%- if part.is_link -%}
+        <a class="pagination__link" href="{{ part.url }}">{{ part.title }}</a>
+      {%- elsif part.title == paginate.current_page -%}
+        <span class="pagination__link is-current" aria-current="page">{{ part.title }}</span>
+      {%- else -%}
+        <span class="pagination__gap">{{ part.title }}</span>
+      {%- endif -%}
+    {%- endfor -%}
+    {%- if paginate.next -%}
+      <a class="pagination__link pagination__link--arrow" href="{{ paginate.next.url }}" aria-label="{{ 'general.pagination.next' | t }}">{% render 'icon', icon: 'chevron-right', size: 16 %}</a>
+    {%- endif -%}
+  </nav>
+{%- endif -%}

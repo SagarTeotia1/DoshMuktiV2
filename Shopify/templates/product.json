@@ -1,0 +1,16 @@
+{
+  "sections": {
+    "main": {
+      "type": "main-product",
+      "blocks": {
+        "a1": { "type": "accordion", "settings": { "title": "Delivery & Shipping", "content": "<p>Orders are dispatched within 24–48 hours and typically arrive within 5–7 business days across India.</p>" } },
+        "a2": { "type": "accordion", "settings": { "title": "Returns & Replacement", "content": "<p>Damaged or incorrect items can be reported within 48 hours of delivery for a free replacement. Eligible orders also qualify for a 7-day change-of-mind return from the date of delivery.</p>" } },
+        "a3": { "type": "accordion", "settings": { "title": "Need Help?", "content": "<p>Chat with us Mon to Sat, 10 AM to 5 PM, via Acharya Madhav or WhatsApp.</p>" } }
+      },
+      "block_order": ["a1", "a2", "a3"],
+      "settings": { "show_vendor": false, "show_dynamic_checkout": true }
+    },
+    "recommendations": { "type": "product-recommendations", "settings": { "heading": "You May Also Like", "limit": 8 } }
+  },
+  "order": ["main", "recommendations"]
+}

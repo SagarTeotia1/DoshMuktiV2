@@ -1,0 +1,38 @@
+<section class="container page-content contact">
+  <header class="page-content__head">
+    <p class="eyebrow">{{ section.settings.eyebrow }}</p>
+    <h1 class="page-title">{{ page.title }}</h1>
+  </header>
+
+  <div class="contact__grid">
+    <div class="rte rte--page">{{ page.content }}</div>
+
+    <div class="card">
+      {%- form 'contact', id: 'ContactForm', class: 'form' -%}
+        {%- if form.posted_successfully? -%}
+          <p class="form-success">{{ 'contact.success' | t }}</p>
+        {%- else -%}
+          {%- if form.errors -%}<div class="form-error">{{ form.errors | default_errors }}</div>{%- endif -%}
+          <label class="field"><span>{{ 'contact.name' | t }}</span>
+            <input class="input" type="text" name="contact[name]" required value="{{ form.name }}" autocomplete="name"></label>
+          <label class="field"><span>{{ 'contact.email' | t }}</span>
+            <input class="input" type="email" name="contact[email]" required value="{{ form.email }}" autocomplete="email"></label>
+          <label class="field"><span>{{ 'contact.phone' | t }}</span>
+            <input class="input" type="tel" name="contact[phone]" value="{{ form.phone }}" autocomplete="tel"></label>
+          <label class="field"><span>{{ 'contact.message' | t }}</span>
+            <textarea class="input" name="contact[body]" rows="5" required>{{ form.body }}</textarea></label>
+          <button type="submit" class="btn btn--primary">{{ 'contact.send' | t }}</button>
+        {%- endif -%}
+      {%- endform -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Contact",
+  "settings": [
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "We're here to help" }
+  ]
+}
+{% endschema %}

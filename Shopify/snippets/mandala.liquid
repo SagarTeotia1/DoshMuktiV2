@@ -1,0 +1,18 @@
+{%- comment -%}
+  Decorative sacred-geometry mandala (port of MandalaMotif.tsx). Param: class.
+{%- endcomment -%}
+<svg viewBox="0 0 200 200" class="{{ class }}" aria-hidden="true" focusable="false">
+  <circle cx="100" cy="100" r="92" fill="none" stroke="currentColor" stroke-width="0.5"/>
+  <circle cx="100" cy="100" r="70" fill="none" stroke="currentColor" stroke-width="0.5"/>
+  <circle cx="100" cy="100" r="46" fill="none" stroke="currentColor" stroke-width="0.5"/>
+  <circle cx="100" cy="100" r="18" fill="none" stroke="currentColor" stroke-width="0.5"/>
+  {%- for i in (0..15) -%}
+    {%- assign angle = i | times: 22.5 -%}
+    <line x1="100" y1="100" x2="100" y2="8" stroke="currentColor" stroke-width="0.5" transform="rotate({{ angle }} 100 100)"/>
+  {%- endfor -%}
+  {%- assign dots = '100,146|123,140|140,123|146,100|140,77|123,60|100,54|77,60|60,77|54,100|60,123|77,140' | split: '|' -%}
+  {%- for d in dots -%}
+    {%- assign xy = d | split: ',' -%}
+    <circle cx="{{ xy[0] }}" cy="{{ xy[1] }}" r="2.5" fill="currentColor"/>
+  {%- endfor -%}
+</svg>

@@ -1,0 +1,49 @@
+<section class="trust-bar">
+  <div class="container">
+    <div class="trust-bar__grid" data-reveal-group>
+      {%- for block in section.blocks -%}
+        <div class="trust-item" {{ block.shopify_attributes }}>
+          <span class="trust-item__icon">{% render 'icon', icon: block.settings.icon, size: 20 %}</span>
+          <p class="trust-item__label">{{ block.settings.label }}</p>
+          <p class="trust-item__sub">{{ block.settings.sub }}</p>
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Trust bar",
+  "max_blocks": 4,
+  "blocks": [
+    {
+      "type": "item",
+      "name": "Item",
+      "settings": [
+        { "type": "select", "id": "icon", "label": "Icon", "default": "gem", "options": [
+          { "value": "gem", "label": "Gem" },
+          { "value": "truck", "label": "Truck" },
+          { "value": "shield-check", "label": "Shield" },
+          { "value": "rotate-ccw", "label": "Returns" },
+          { "value": "sparkles", "label": "Sparkles" },
+          { "value": "gift", "label": "Gift" }
+        ] },
+        { "type": "text", "id": "label", "label": "Label", "default": "Authentic & Energized" },
+        { "type": "text", "id": "sub", "label": "Sub-text", "default": "Sourced directly from verified artisans" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Trust bar",
+      "blocks": [
+        { "type": "item", "settings": { "icon": "gem", "label": "Authentic & Energized", "sub": "Sourced directly from verified artisans" } },
+        { "type": "item", "settings": { "icon": "truck", "label": "Free Shipping Above ₹299", "sub": "Pan-India delivery" } },
+        { "type": "item", "settings": { "icon": "shield-check", "label": "Secure Payments", "sub": "UPI, cards, netbanking & EMI" } },
+        { "type": "item", "settings": { "icon": "rotate-ccw", "label": "7-Day Returns ₹299+", "sub": "On eligible orders, hassle-free" } }
+      ]
+    }
+  ]
+}
+{% endschema %}

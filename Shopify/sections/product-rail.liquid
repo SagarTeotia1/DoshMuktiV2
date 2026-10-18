@@ -1,0 +1,52 @@
+{%- liquid
+  assign col = section.settings.collection
+  if col == blank
+    assign col = collections['all']
+  endif
+  assign products = col.products
+  assign words = section.settings.heading | split: ' '
+  assign first_word = words | first
+  assign rest_words = words | slice: 1, 20 | join: ' '
+-%}
+{%- if products.size > 0 -%}
+<section class="rail{% if section.settings.tinted %} rail--tinted{% endif %}">
+  {%- if section.settings.tinted -%}
+    <svg class="rail__blob" viewBox="0 0 200 200" aria-hidden="true"><path fill="currentColor" d="M44.7,-76.4C58.9,-69.2,72.8,-59.1,81.3,-45.3C89.8,-31.5,92.9,-14,90.9,2.4C88.9,18.8,81.8,34.1,72.1,47.2C62.4,60.3,50.1,71.2,36,77.8C21.9,84.4,6,86.7,-9.7,84.9C-25.4,83.1,-40.9,77.2,-53.6,67.5C-66.3,57.8,-76.2,44.3,-81.6,29.4C-87,14.5,-87.9,-1.8,-83.6,-16.4C-79.3,-31,-69.8,-43.9,-58,-52C-46.2,-60.1,-32.1,-63.4,-18.7,-71.2C-5.3,-79,7.4,-91.3,21.5,-90.7C35.6,-90.1,30.5,-83.6,44.7,-76.4Z" transform="translate(100 100)"/></svg>
+  {%- endif -%}
+
+  <div class="container">
+    <div class="rail__head" data-reveal>
+      <h2 class="section-title">
+        <span class="section-title__strong">{{ first_word }}</span>
+        {%- if rest_words != blank %} <span class="section-title__light">{{ rest_words }}</span>{% endif -%}
+      </h2>
+    </div>
+  </div>
+
+  <div class="rail__track hide-scrollbar" data-reveal-group>
+    {%- for product in products limit: section.settings.limit -%}
+      <div class="rail__item">{% render 'product-card', product: product, list_name: section.settings.heading %}</div>
+    {%- endfor -%}
+  </div>
+
+  {%- if section.settings.show_view_all and col.url != blank -%}
+    <div class="container rail__foot">
+      <a class="btn btn--secondary" href="{{ col.url }}">View all</a>
+    </div>
+  {%- endif -%}
+</section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Product rail",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Handpicked This Week" },
+    { "type": "collection", "id": "collection", "label": "Collection", "info": "Falls back to all products." },
+    { "type": "range", "id": "limit", "min": 4, "max": 16, "step": 1, "label": "Products to show", "default": 10 },
+    { "type": "checkbox", "id": "tinted", "label": "Tinted background", "default": false },
+    { "type": "checkbox", "id": "show_view_all", "label": "Show “View all” button", "default": true }
+  ],
+  "presets": [{ "name": "Product rail" }]
+}
+{% endschema %}
