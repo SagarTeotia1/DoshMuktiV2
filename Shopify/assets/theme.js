@@ -439,7 +439,7 @@
         window.location.href = url.toString();
       });
     }
-    var buttons = $('[data-view]');
+    var buttons = $$('[data-view]');
     function setView(view) {
       if (grid) grid.classList.toggle('is-list', view === 'list');
       buttons.forEach(function (b) { b.classList.toggle('is-active', b.dataset.view === view); });
