@@ -17,6 +17,13 @@
   endif
 
   assign quick_variant = product.variants | where: 'available', true | first
+
+  assign low_stock = 0
+  if quick_variant and quick_variant.inventory_management == 'shopify' and quick_variant.inventory_policy == 'deny'
+    if quick_variant.inventory_quantity > 0 and quick_variant.inventory_quantity <= 5
+      assign low_stock = quick_variant.inventory_quantity
+    endif
+  endif
 -%}
 <a href="{{ product.url }}" class="product-card neo-card" data-product-id="{{ product.id }}" data-list="{{ list_name | escape }}">
   <div class="product-card__media product-image-container">
@@ -50,6 +57,10 @@
 
     {%- if discount > 0 and product.available -%}
       <span class="sticker discount-sticker">{% render 'icon', icon: 'tag', size: 10 %}{{ 'products.product.off' | t: percent: discount }}</span>
+    {%- endif -%}
+
+    {%- if low_stock > 0 -%}
+      <span class="low-stock">Only {{ low_stock }} left</span>
     {%- endif -%}
 
     {%- unless product.available -%}

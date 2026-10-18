@@ -1,0 +1,57 @@
+<section class="mulank">
+  <div class="container">
+    <div class="rail__head" data-reveal>
+      <h2 class="section-title">
+        {%- assign words = section.settings.heading | split: ' ' -%}
+        <span class="section-title__strong">{{ words | first }}</span>
+        <span class="section-title__light">{{ words | slice: 1, 20 | join: ' ' }}</span>
+      </h2>
+      {%- if section.settings.subheading != blank -%}<p class="mulank__sub">{{ section.settings.subheading }}</p>{%- endif -%}
+    </div>
+
+    <div class="mulank__grid" data-reveal-group>
+      {%- for block in section.blocks -%}
+        {%- assign href = block.settings.link -%}
+        {%- if href == blank -%}
+          {%- assign href = routes.all_products_collection_url | append: '/' | append: block.settings.tag -%}
+        {%- endif -%}
+        <a href="{{ href }}" class="mulank__tile neo-card" {{ block.shopify_attributes }}>
+          <span class="mulank__num">{{ block.settings.number }}</span>
+          <span class="mulank__label">{{ block.settings.label }}</span>
+        </a>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Shop by number",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Shop by Mulank" },
+    { "type": "text", "id": "subheading", "label": "Subheading", "default": "Your birth number decides your lucky stone. Pick yours." }
+  ],
+  "blocks": [
+    {
+      "type": "number",
+      "name": "Number",
+      "settings": [
+        { "type": "text", "id": "number", "label": "Number", "default": "1" },
+        { "type": "text", "id": "label", "label": "Meaning", "default": "Success & Confidence" },
+        { "type": "text", "id": "tag", "label": "Product tag", "info": "Links to /collections/all/<tag>. Ignored if a link is set.", "default": "mulank-1" },
+        { "type": "url", "id": "link", "label": "Link (overrides tag)" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Shop by number",
+      "blocks": [
+        { "type": "number", "settings": { "number": "1", "label": "Success & Confidence", "tag": "mulank-1" } },
+        { "type": "number", "settings": { "number": "2", "label": "Love & Emotional Balance", "tag": "mulank-2" } },
+        { "type": "number", "settings": { "number": "3", "label": "Wealth & Growth", "tag": "mulank-3" } }
+      ]
+    }
+  ]
+}
+{% endschema %}

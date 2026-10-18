@@ -1,45 +1,278 @@
 {
   "sections": {
-    "category-strip": { "type": "category-strip", "settings": {} },
+    "category-strip": {
+      "type": "category-strip",
+      "blocks": {
+        "cat-1": {
+          "type": "category",
+          "settings": {
+            "collection": "rudraksha",
+            "label": "Rudraksha"
+          }
+        },
+        "cat-2": {
+          "type": "category",
+          "settings": {
+            "collection": "bracelets",
+            "label": "Bracelets"
+          }
+        },
+        "cat-3": {
+          "type": "category",
+          "settings": {
+            "collection": "doshmukti-special",
+            "label": "DoshMukti"
+          }
+        },
+        "cat-4": {
+          "type": "category",
+          "settings": {
+            "collection": "pyrite-items",
+            "label": "Pyrite"
+          }
+        },
+        "cat-5": {
+          "type": "category",
+          "settings": {
+            "collection": "attar",
+            "label": "Attar"
+          }
+        },
+        "cat-6": {
+          "type": "category",
+          "settings": {
+            "collection": "dhoop-sticks",
+            "label": "Dhoop"
+          }
+        },
+        "cat-7": {
+          "type": "category",
+          "settings": {
+            "collection": "spiritual-car-perfume",
+            "label": "Car Perfume"
+          }
+        },
+        "cat-8": {
+          "type": "category",
+          "settings": {
+            "collection": "mulank-bracelets",
+            "label": "Mulank"
+          }
+        }
+      },
+      "block_order": [
+        "cat-1",
+        "cat-2",
+        "cat-3",
+        "cat-4",
+        "cat-5",
+        "cat-6",
+        "cat-7",
+        "cat-8"
+      ],
+      "settings": {}
+    },
     "hero": {
       "type": "hero-carousel",
       "blocks": {
         "slide-1": {
           "type": "slide",
           "settings": {
-            "eyebrow": "Authentic & Energized",
-            "heading": "Gemstones & Astrology Remedies",
-            "subheading": "For love, wealth, protection and peace — handpicked with intention.",
-            "button_label": "Shop now"
+            "link": "/products/vrindavan-car-perfume",
+            "image": "shopify://shop_images/banner-1-desktop.webp",
+            "mobile_image": "shopify://shop_images/banner-1-mobile.webp"
+          }
+        },
+        "slide-2": {
+          "type": "slide",
+          "settings": {
+            "link": "/collections/mulank-bracelets",
+            "image": "shopify://shop_images/banner-2-desktop.webp",
+            "mobile_image": "shopify://shop_images/banner-2-mobile.webp"
+          }
+        },
+        "slide-3": {
+          "type": "slide",
+          "settings": {
+            "link": "/products/divya-hawan-powder",
+            "image": "shopify://shop_images/banner-3-desktop.webp",
+            "mobile_image": "shopify://shop_images/banner-3-mobile.webp"
+          }
+        },
+        "slide-4": {
+          "type": "slide",
+          "settings": {
+            "link": "/collections/pyrite-items",
+            "image": "shopify://shop_images/banner-4-desktop.webp",
+            "mobile_image": "shopify://shop_images/banner-4-mobile.webp"
+          }
+        },
+        "slide-5": {
+          "type": "slide",
+          "settings": {
+            "link": "/collections/attar",
+            "image": "shopify://shop_images/banner-5-desktop.webp",
+            "mobile_image": "shopify://shop_images/banner-5-mobile.webp"
+          }
+        },
+        "slide-6": {
+          "type": "slide",
+          "settings": {
+            "link": "/collections/rudraksha",
+            "image": "shopify://shop_images/banner-6-desktop.webp",
+            "mobile_image": "shopify://shop_images/banner-6-mobile.webp"
+          }
+        },
+        "slide-7": {
+          "type": "slide",
+          "settings": {
+            "link": "/collections/doshmukti-special",
+            "image": "shopify://shop_images/banner-7-desktop.webp",
+            "mobile_image": "shopify://shop_images/banner-7-mobile.webp"
           }
         }
       },
-      "block_order": ["slide-1"],
-      "settings": { "autoplay": true, "interval": 5 }
+      "block_order": [
+        "slide-1",
+        "slide-2",
+        "slide-3",
+        "slide-4",
+        "slide-5",
+        "slide-6",
+        "slide-7"
+      ],
+      "settings": {
+        "autoplay": true,
+        "interval": 5
+      }
     },
     "purposes": {
       "type": "purpose-grid",
       "blocks": {
-        "p1": { "type": "purpose", "settings": { "label": "Love", "icon": "heart", "tone": "love", "tag": "love" } },
-        "p2": { "type": "purpose", "settings": { "label": "Wealth", "icon": "trending-up", "tone": "wealth", "tag": "wealth" } },
-        "p3": { "type": "purpose", "settings": { "label": "Health", "icon": "leaf", "tone": "health", "tag": "health" } },
-        "p4": { "type": "purpose", "settings": { "label": "Success", "icon": "trophy", "tone": "success", "tag": "success" } },
-        "p5": { "type": "purpose", "settings": { "label": "Protection", "icon": "shield", "tone": "protection", "tag": "protection" } },
-        "p6": { "type": "purpose", "settings": { "label": "Clarity", "icon": "sparkles", "tone": "clarity", "tag": "clarity" } },
-        "p7": { "type": "purpose", "settings": { "label": "Gifting", "icon": "gift", "tone": "gifting", "tag": "gifting", "hide_on_mobile": true } }
+        "p1": {
+          "type": "purpose",
+          "settings": {
+            "label": "Love",
+            "icon": "heart",
+            "tone": "love",
+            "tag": "love"
+          }
+        },
+        "p2": {
+          "type": "purpose",
+          "settings": {
+            "label": "Wealth",
+            "icon": "trending-up",
+            "tone": "wealth",
+            "tag": "wealth"
+          }
+        },
+        "p3": {
+          "type": "purpose",
+          "settings": {
+            "label": "Health",
+            "icon": "leaf",
+            "tone": "health",
+            "tag": "health"
+          }
+        },
+        "p4": {
+          "type": "purpose",
+          "settings": {
+            "label": "Success",
+            "icon": "trophy",
+            "tone": "success",
+            "tag": "success"
+          }
+        },
+        "p5": {
+          "type": "purpose",
+          "settings": {
+            "label": "Protection",
+            "icon": "shield",
+            "tone": "protection",
+            "tag": "protection"
+          }
+        },
+        "p6": {
+          "type": "purpose",
+          "settings": {
+            "label": "Clarity",
+            "icon": "sparkles",
+            "tone": "clarity",
+            "tag": "clarity"
+          }
+        },
+        "p7": {
+          "type": "purpose",
+          "settings": {
+            "label": "Gifting",
+            "icon": "gift",
+            "tone": "gifting",
+            "tag": "gifting",
+            "hide_on_mobile": true
+          }
+        }
       },
-      "block_order": ["p1", "p2", "p3", "p4", "p5", "p6", "p7"],
-      "settings": { "heading": "What Do You Seek?" }
+      "block_order": [
+        "p1",
+        "p2",
+        "p3",
+        "p4",
+        "p5",
+        "p6",
+        "p7"
+      ],
+      "settings": {
+        "heading": "What Do You Seek?"
+      }
     },
-    "rail-1": { "type": "product-rail", "settings": { "heading": "Handpicked This Week", "limit": 10, "tinted": false, "show_view_all": true } },
+    "rail-1": {
+      "type": "product-rail",
+      "settings": {
+        "heading": "This Week's Blessings",
+        "collection": "home-this-weeks-blessings",
+        "limit": 12,
+        "tinted": false,
+        "show_view_all": false
+      }
+    },
     "acharya": {
       "type": "acharya-madhav",
       "blocks": {
-        "t1": { "type": "topic", "settings": { "label": "Love & Relationships", "icon": "heart", "prompt": "Which stone will help me in love and relationships?", "question": "Which stone or ritual will help me in love and relationships?" } },
-        "t2": { "type": "topic", "settings": { "label": "Wealth & Career", "icon": "trending-up", "prompt": "Is this a good time to invest or change my career?", "question": "Based on my numerology, is this a good time to invest or change my career?" } },
-        "t3": { "type": "topic", "settings": { "label": "Health & Protection", "icon": "shield-check", "prompt": "How do I remove Shani dosh or negative energy?", "question": "How do I remove Shani dosh or protect myself from negative energy?" } }
+        "t1": {
+          "type": "topic",
+          "settings": {
+            "label": "Love & Relationships",
+            "icon": "heart",
+            "prompt": "Which stone will help me in love and relationships?",
+            "question": "Which stone or ritual will help me in love and relationships?"
+          }
+        },
+        "t2": {
+          "type": "topic",
+          "settings": {
+            "label": "Wealth & Career",
+            "icon": "trending-up",
+            "prompt": "Is this a good time to invest or change my career?",
+            "question": "Based on my numerology, is this a good time to invest or change my career?"
+          }
+        },
+        "t3": {
+          "type": "topic",
+          "settings": {
+            "label": "Health & Protection",
+            "icon": "shield-check",
+            "prompt": "How do I remove Shani dosh or negative energy?",
+            "question": "How do I remove Shani dosh or protect myself from negative energy?"
+          }
+        }
       },
-      "block_order": ["t1", "t2", "t3"],
+      "block_order": [
+        "t1",
+        "t2",
+        "t3"
+      ],
       "settings": {
         "eyebrow": "Ancient Wisdom, On Demand",
         "heading": "Acharya Madhav",
@@ -47,29 +280,221 @@
         "button_label": "Chat with Acharya Madhav"
       }
     },
-    "rail-2": { "type": "product-rail", "settings": { "heading": "Doshmukti Special", "limit": 10, "tinted": true, "show_view_all": true } },
+    "rail-2": {
+      "type": "product-rail",
+      "settings": {
+        "heading": "Doshmukti Special",
+        "collection": "home-doshmukti-special",
+        "limit": 12,
+        "tinted": true,
+        "show_view_all": false
+      }
+    },
     "trust": {
       "type": "trust-bar",
       "blocks": {
-        "i1": { "type": "item", "settings": { "icon": "gem", "label": "Authentic & Energized", "sub": "Sourced directly from verified artisans" } },
-        "i2": { "type": "item", "settings": { "icon": "truck", "label": "Free Shipping Above ₹299", "sub": "Pan-India delivery" } },
-        "i3": { "type": "item", "settings": { "icon": "shield-check", "label": "Secure Payments", "sub": "UPI, cards, netbanking & EMI" } },
-        "i4": { "type": "item", "settings": { "icon": "rotate-ccw", "label": "7-Day Returns ₹299+", "sub": "On eligible orders, hassle-free" } }
+        "i1": {
+          "type": "item",
+          "settings": {
+            "icon": "gem",
+            "label": "Authentic & Energized",
+            "sub": "Sourced directly from verified artisans"
+          }
+        },
+        "i2": {
+          "type": "item",
+          "settings": {
+            "icon": "truck",
+            "label": "Free Shipping Above ₹299",
+            "sub": "Pan-India delivery"
+          }
+        },
+        "i3": {
+          "type": "item",
+          "settings": {
+            "icon": "shield-check",
+            "label": "Secure Payments",
+            "sub": "UPI, cards, netbanking & EMI"
+          }
+        },
+        "i4": {
+          "type": "item",
+          "settings": {
+            "icon": "rotate-ccw",
+            "label": "7-Day Returns ₹299+",
+            "sub": "On eligible orders, hassle-free"
+          }
+        }
       },
-      "block_order": ["i1", "i2", "i3", "i4"],
+      "block_order": [
+        "i1",
+        "i2",
+        "i3",
+        "i4"
+      ],
       "settings": {}
     },
-    "rail-3": { "type": "product-rail", "settings": { "heading": "Rudraksha Collection", "limit": 10, "tinted": false, "show_view_all": true } },
+    "rail-3": {
+      "type": "product-rail",
+      "settings": {
+        "heading": "Rudraksha",
+        "collection": "home-rudraksha",
+        "limit": 12,
+        "tinted": false,
+        "show_view_all": false
+      }
+    },
     "testimonials": {
       "type": "testimonials",
       "blocks": {
-        "r1": { "type": "review", "settings": { "name": "Priya S.", "rating": 5, "text": "Beautiful energized product, felt the difference within weeks." } },
-        "r2": { "type": "review", "settings": { "name": "Rahul M.", "rating": 5, "text": "Authentic stones and quick delivery. The guidance from Acharya Madhav was spot on." } },
-        "r3": { "type": "review", "settings": { "name": "Anita K.", "rating": 5, "text": "Packaging was lovely and the bracelet looks exactly like the photos." } }
+        "r1": {
+          "type": "review",
+          "settings": {
+            "name": "Priya S.",
+            "rating": 5,
+            "text": "Beautiful energized product, felt the difference within weeks."
+          }
+        },
+        "r2": {
+          "type": "review",
+          "settings": {
+            "name": "Rahul M.",
+            "rating": 5,
+            "text": "Authentic stones and quick delivery. The guidance from Acharya Madhav was spot on."
+          }
+        },
+        "r3": {
+          "type": "review",
+          "settings": {
+            "name": "Anita K.",
+            "rating": 5,
+            "text": "Packaging was lovely and the bracelet looks exactly like the photos."
+          }
+        }
       },
-      "block_order": ["r1", "r2", "r3"],
-      "settings": { "heading": "Loved By Seekers" }
+      "block_order": [
+        "r1",
+        "r2",
+        "r3"
+      ],
+      "settings": {
+        "heading": "Loved By Seekers"
+      }
+    },
+    "mulank": {
+      "type": "shop-by-number",
+      "blocks": {
+        "m1": {
+          "type": "number",
+          "settings": {
+            "number": "1",
+            "label": "Success & Confidence",
+            "tag": "mulank-1"
+          }
+        },
+        "m2": {
+          "type": "number",
+          "settings": {
+            "number": "2",
+            "label": "Love & Emotional Balance",
+            "tag": "mulank-2"
+          }
+        },
+        "m3": {
+          "type": "number",
+          "settings": {
+            "number": "3",
+            "label": "Wealth & Growth",
+            "tag": "mulank-3"
+          }
+        },
+        "m4": {
+          "type": "number",
+          "settings": {
+            "number": "4",
+            "label": "Protection & Stability",
+            "tag": "mulank-4"
+          }
+        },
+        "m5": {
+          "type": "number",
+          "settings": {
+            "number": "5",
+            "label": "Communication & Success",
+            "tag": "mulank-5"
+          }
+        },
+        "m6": {
+          "type": "number",
+          "settings": {
+            "number": "6",
+            "label": "Love & Harmony",
+            "tag": "mulank-6"
+          }
+        },
+        "m7": {
+          "type": "number",
+          "settings": {
+            "number": "7",
+            "label": "Intuition & Spirituality",
+            "tag": "mulank-7"
+          }
+        },
+        "m8": {
+          "type": "number",
+          "settings": {
+            "number": "8",
+            "label": "Protection & Prosperity",
+            "tag": "mulank-8"
+          }
+        },
+        "m9": {
+          "type": "number",
+          "settings": {
+            "number": "9",
+            "label": "Courage & Power",
+            "tag": "mulank-9"
+          }
+        }
+      },
+      "block_order": [
+        "m1",
+        "m2",
+        "m3",
+        "m4",
+        "m5",
+        "m6",
+        "m7",
+        "m8",
+        "m9"
+      ],
+      "settings": {
+        "heading": "Shop by Mulank",
+        "subheading": "Your birth number decides your lucky stone. Pick yours."
+      }
+    },
+    "rail-4": {
+      "type": "product-rail",
+      "settings": {
+        "heading": "Bracelets",
+        "collection": "home-bracelets",
+        "limit": 12,
+        "tinted": true,
+        "show_view_all": false
+      }
     }
   },
-  "order": ["category-strip", "hero", "purposes", "rail-1", "acharya", "rail-2", "trust", "rail-3", "testimonials"]
+  "order": [
+    "category-strip",
+    "hero",
+    "purposes",
+    "rail-1",
+    "mulank",
+    "acharya",
+    "rail-2",
+    "trust",
+    "rail-3",
+    "rail-4",
+    "testimonials"
+  ]
 }
