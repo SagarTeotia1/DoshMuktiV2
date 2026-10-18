@@ -466,36 +466,99 @@
     }
   }
 
-  /* ───────── Testimonials: 3 per page, arrows + dots ───────── */
+  /* ───────── Testimonials: 3 per screen on desktop, 2 on tablet, 1 on phones ───────── */
   function initTestimonials() {
-    $('[data-testimonials]').forEach(function (root) {
+    $$('[data-testimonials]').forEach(function (root) {
       if (root.__t) return;
       root.__t = true;
-      var size = parseInt(root.dataset.pageSize, 10) || 3;
-      var cards = $('[data-review]', root);
-      var pages = Math.ceil(cards.length / size);
-      if (pages < 1) return;
-      var page = 0;
+      var cards = $$('[data-review]', root);
+      var grid = $('[data-t-grid]', root);
       var dots = $('[data-t-dots]', root);
-      function show(p) {
-        page = (p + pages) % pages;
-        cards.forEach(function (c, i) { c.hidden = Math.floor(i / size) !== page; });
-        if (dots) $('button', dots).forEach(function (d, i) { d.classList.toggle('is-active', i === page); });
+      if (!cards.length || !grid) return;
+
+      var size = 3;
+      var page = 0;
+      var timer = null;
+      var autoplay = root.dataset.autoplay === 'true' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function perPage() {
+        if (window.matchMedia('(min-width: 1024px)').matches) return 3;
+        if (window.matchMedia('(min-width: 640px)').matches) return 2;
+        return 1;
       }
-      if (pages > 1 && dots) {
-        for (var i = 0; i < pages; i++) {
+      function pageCount() { return Math.max(1, Math.ceil(cards.length / size)); }
+
+      function buildDots() {
+        if (!dots) return;
+        dots.textContent = '';
+        for (var i = 0; i < pageCount(); i++) {
           (function (n) {
             var b = document.createElement('button');
             b.type = 'button';
             b.setAttribute('aria-label', 'Go to page ' + (n + 1));
-            b.addEventListener('click', function () { show(n); });
+            b.addEventListener('click', function () { show(n, true); });
             dots.appendChild(b);
           })(i);
         }
       }
-      $('[data-t-prev]', root).forEach(function (b) { b.hidden = pages < 2; b.addEventListener('click', function () { show(page - 1); }); });
-      $('[data-t-next]', root).forEach(function (b) { b.hidden = pages < 2; b.addEventListener('click', function () { show(page + 1); }); });
+
+      function show(p, user) {
+        var count = pageCount();
+        page = ((p % count) + count) % count;
+        cards.forEach(function (c, i) {
+          var on = Math.floor(i / size) === page;
+          c.hidden = !on;
+          if (on) { c.classList.remove('is-entering'); void c.offsetWidth; c.classList.add('is-entering'); }
+        });
+        if (dots) $$('button', dots).forEach(function (d, i) { d.classList.toggle('is-active', i === page); });
+        root.classList.toggle('is-single', count < 2);
+        if (user) restart();
+      }
+
+      function stop() { if (timer) { clearInterval(timer); timer = null; } }
+      function start() {
+        stop();
+        if (autoplay && pageCount() > 1) timer = setInterval(function () { show(page + 1); }, 7000);
+      }
+      function restart() { start(); }
+
+      function layout() {
+        var next = perPage();
+        if (next !== size) {
+          var first = page * size;
+          size = next;
+          buildDots();
+          show(Math.floor(first / size));
+        }
+      }
+
+      $$('[data-t-prev]', root).forEach(function (b) { b.addEventListener('click', function () { show(page - 1, true); }); });
+      $$('[data-t-next]', root).forEach(function (b) { b.addEventListener('click', function () { show(page + 1, true); }); });
+
+      /* swipe on touch screens */
+      var sx = null;
+      grid.addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; stop(); }, { passive: true });
+      grid.addEventListener('touchend', function (e) {
+        if (sx !== null) {
+          var dx = e.changedTouches[0].clientX - sx;
+          if (Math.abs(dx) > 45) show(page + (dx < 0 ? 1 : -1), true);
+          else start();
+        }
+        sx = null;
+      }, { passive: true });
+
+      root.addEventListener('mouseenter', stop);
+      root.addEventListener('mouseleave', start);
+      root.addEventListener('focusin', stop);
+      root.addEventListener('focusout', start);
+
+      var resizeTimer;
+      window.addEventListener('resize', function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(layout, 150); });
+
+      size = perPage();
+      buildDots();
       show(0);
+      start();
     });
   }
 
