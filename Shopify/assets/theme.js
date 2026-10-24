@@ -308,6 +308,13 @@
         if (idInput) idInput.value = variant.id;
         if (priceEl) priceEl.textContent = money(variant.price);
         if (barPrice) barPrice.textContent = money(variant.price);
+        if (bar) {
+          var bc = $('[data-bar-compare]', bar), bo = $('[data-bar-off]', bar);
+          var bHas = variant.compare_at_price && variant.compare_at_price > variant.price;
+          var bPct = bHas ? Math.round((variant.compare_at_price - variant.price) * 100 / variant.compare_at_price) : 0;
+          if (bc) { bc.hidden = !bHas; if (bHas) bc.textContent = money(variant.compare_at_price); }
+          if (bo) { bo.hidden = !bHas; bo.textContent = bPct + '% OFF'; }
+        }
         if (ship) { ship.dataset.price = variant.price; updateShip(); }
         var hasCompare = variant.compare_at_price && variant.compare_at_price > variant.price;
         var pct = hasCompare ? Math.round((variant.compare_at_price - variant.price) * 100 / variant.compare_at_price) : 0;
@@ -351,16 +358,35 @@
       });
 
       /* Sticky mobile buy bar — shown once the main buttons scroll out of view */
-      if (bar && nowBtn && 'IntersectionObserver' in window) {
+      if (bar && nowBtn) {
         bar.hidden = false;
-        var io = new IntersectionObserver(function (entries) {
-          entries.forEach(function (en) {
-            bar.classList.toggle('is-visible', !en.isIntersecting && en.boundingClientRect.top < 0);
-          });
-        }, { threshold: 0 });
-        io.observe(nowBtn);
-        var barBtn = $('[data-buybar-order]', bar);
-        if (barBtn) barBtn.addEventListener('click', function () { nowBtn.click(); });
+        // Show once the main buttons leave the viewport (scrolled past, or below the fold on phones)
+        if ('IntersectionObserver' in window) {
+          new IntersectionObserver(function (entries) {
+            var show = !entries[0].isIntersecting;
+            bar.classList.toggle('is-visible', show);
+            document.body.classList.toggle('has-buybar', show);
+          }, { threshold: 0 }).observe(nowBtn);
+        } else {
+          bar.classList.add('is-visible');
+          document.body.classList.add('has-buybar');
+        }
+        var barAdd = $('[data-buybar-add]', bar);
+        var barOrder = $('[data-buybar-order]', bar);
+        if (barAdd) barAdd.addEventListener('click', function () { addBtn.click(); });
+        if (barOrder) barOrder.addEventListener('click', function () { nowBtn.click(); });
+        // Mirror main button state (variant change, in-flight request) onto the bar
+        var syncBar = function () {
+          if (barAdd) barAdd.disabled = addBtn.disabled;
+          if (barOrder) barOrder.disabled = nowBtn.disabled;
+        };
+        new MutationObserver(syncBar).observe(addBtn, { attributes: true, attributeFilter: ['disabled'] });
+        new MutationObserver(syncBar).observe(nowBtn, { attributes: true, attributeFilter: ['disabled'] });
+        if (addLabel) {
+          var barAddLabel = $('[data-bar-add-label]', bar);
+          new MutationObserver(function () { if (barAddLabel) barAddLabel.textContent = addLabel.textContent; })
+            .observe(addLabel, { childList: true, characterData: true, subtree: true });
+        }
       }
 
       /* Description: group consecutive images into a swipeable carousel */

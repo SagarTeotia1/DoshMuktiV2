@@ -224,6 +224,29 @@
   </div>
 </section>
 
+<div class="buybar" data-buybar hidden>
+  <p class="buybar__promo">✓ 100% Authentic &amp; Verified Products</p>
+  <div class="buybar__row">
+  {%- if product.featured_image -%}
+    <div class="buybar__thumb">{{ product.featured_image | image_url: width: 128 | image_tag: loading: 'lazy', alt: '' }}</div>
+  {%- endif -%}
+  <div class="buybar__main">
+  <div class="buybar__price">
+    <span class="buybar__now" data-bar-price>{% render 'price', amount: current_variant.price %}</span>
+    <s class="buybar__was" data-bar-compare {% unless current_variant.compare_at_price > current_variant.price %}hidden{% endunless %}>{% render 'price', amount: current_variant.compare_at_price %}</s>
+    <span class="buybar__off" data-bar-off {% unless discount > 0 %}hidden{% endunless %}>{{ discount }}% OFF</span>
+  </div>
+  <div class="buybar__actions">
+    <button type="button" class="btn btn--secondary buybar__btn" data-buybar-add {% unless current_variant.available %}disabled{% endunless %}>
+      {% render 'icon', icon: 'shopping-bag', size: 16 %}
+      <span data-bar-add-label>{% if current_variant.available %}{{ 'products.product.add_to_cart' | t }}{% else %}{{ 'products.product.sold_out' | t }}{% endif %}</span>
+    </button>
+    <button type="button" class="btn btn--primary buybar__btn" data-buybar-order {% unless current_variant.available %}disabled{% endunless %}>Buy now</button>
+  </div>
+  </div>
+  </div>
+</div>
+
 {%- assign ld_reviews = product.metafields.custom.reviews.value -%}
 {%- capture ld_desc -%}{{ product.description | strip_html | strip_newlines | truncate: 500 }}{%- endcapture -%}
 <script type="application/ld+json">

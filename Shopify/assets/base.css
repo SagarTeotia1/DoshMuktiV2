@@ -451,6 +451,34 @@ fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 .qty input::-webkit-outer-spin-button, .qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .qty--sm button { width: 2rem; height: 2rem; }
 .qty--sm input { width: 2rem; font-size: .85rem; }
+/* Sticky buy bar — full-width on phones, floating card bottom-right on laptops. Shown on scroll. */
+.buybar { display: block; position: fixed; left: .5rem; right: .5rem; bottom: calc(.5rem + env(safe-area-inset-bottom)); z-index: 50; background: var(--paper); border: 1px solid var(--ink); border-radius: 1rem; overflow: hidden; box-shadow: 0 -6px 18px rgba(107, 61, 25, .18); padding: 0; transform: translateY(110%); opacity: 0; pointer-events: none; transition: transform .3s ease, opacity .3s ease; }
+.buybar[hidden] { display: none; }
+.buybar.is-visible { transform: none; opacity: 1; pointer-events: auto; }
+.buybar [hidden] { display: none; }
+.buybar__thumb { display: none; }
+.buybar__promo { margin: 0; background: linear-gradient(90deg, var(--ink), var(--red)); color: #fff; text-align: center; font-size: .75rem; font-weight: 700; padding: .4rem .75rem; }
+.buybar__row { display: flex; align-items: center; gap: .75rem; padding: .6rem .75rem; }
+.buybar__main { flex: 1; min-width: 0; }
+.buybar__price { display: flex; align-items: baseline; flex-wrap: wrap; gap: .1rem .5rem; margin-bottom: .5rem; }
+.buybar__now { font-family: var(--font-heading); font-weight: 800; font-size: 1.15rem; color: var(--ink); line-height: 1.1; }
+.buybar__was { font-size: .75rem; color: var(--muted); }
+.buybar__off { font-size: .75rem; font-weight: 700; color: var(--green); }
+.buybar__actions { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.buybar__btn { padding: .85rem .5rem; font-size: .72rem; }
+.buybar__btn:disabled { opacity: .5; }
+.has-buybar { padding-bottom: calc(8.5rem + env(safe-area-inset-bottom)); }
+.has-buybar .acharya__launcher, .has-buybar .whatsapp-fab { bottom: calc(9rem + env(safe-area-inset-bottom)); }
+.has-buybar .toast { bottom: calc(9.5rem + env(safe-area-inset-bottom)); }
+@media (min-width: 1024px) {
+  .buybar { left: auto; right: 1.5rem; bottom: 1.5rem; width: 400px; box-shadow: var(--shadow-gold-md); }
+  .buybar__row { padding: .75rem; }
+  .buybar__thumb { display: block; flex: 0 0 4rem; width: 4rem; height: 4rem; border-radius: .6rem; overflow: hidden; border: 1px solid rgba(43, 27, 12, .15); background: var(--cream); }
+  .buybar__thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .has-buybar { padding-bottom: 0; }
+  .has-buybar .acharya__launcher, .has-buybar .whatsapp-fab { bottom: 11rem; }
+  .has-buybar .toast { bottom: 11rem; }
+}
 .pdp__trust { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
 .pdp__trust li { display: flex; align-items: center; gap: .5rem; font-size: 11px; font-weight: 700; color: var(--gray); }
 .pdp__trust .icon { color: var(--bronze); }
