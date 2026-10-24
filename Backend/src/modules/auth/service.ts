@@ -42,27 +42,24 @@ export async function sendCustomerOtp(rawPhone: string): Promise<void> {
 export async function verifyCustomerOtp(rawPhone: string, otp: string): Promise<{ user: User; isNewUser: boolean }> {
   const phone = normalizePhone(rawPhone);
 
-  // The profile step (name) resubmits the same phone+otp after the OTP was already
-  // verified and consumed on the first call — 2Factor OTPs are single-use, so re-checking
-  // with the provider here would always fail. If this phone already has a verified,
-  // unexpired record, treat it as still-authenticated instead of re-verifying.
-  const alreadyVerified = await db.otpVerification.findFirst({
-    where: { phone, verified: true, expiresAt: { gt: new Date() } },
+  // Every login checks a real OTP, and each OTP logs in exactly once. (This used to accept
+  // ANY otp for 10 minutes after a phone's last successful verify — anyone knowing a
+  // customer's number could log in as them in that window.)
+  const record = await db.otpVerification.findFirst({
+    where: { phone, verified: false, expiresAt: { gt: new Date() } },
     orderBy: { createdAt: 'desc' },
   });
+  if (!record) throw new InvalidOtpError();
 
-  if (!alreadyVerified) {
-    const record = await db.otpVerification.findFirst({
-      where: { phone, verified: false, expiresAt: { gt: new Date() } },
-      orderBy: { createdAt: 'desc' },
-    });
-    if (!record) throw new InvalidOtpError();
+  const ok = await verifyOtp(record.requestId, otp);
+  if (!ok) throw new InvalidOtpError();
 
-    const ok = await verifyOtp(record.requestId, otp);
-    if (!ok) throw new InvalidOtpError();
-
-    await db.otpVerification.update({ where: { id: record.id }, data: { verified: true } });
-  }
+  // Consume atomically — of two concurrent verifies with the same OTP, only one wins.
+  const consumed = await db.otpVerification.updateMany({
+    where: { id: record.id, verified: false },
+    data: { verified: true },
+  });
+  if (consumed.count === 0) throw new InvalidOtpError();
 
   const existing = await db.user.findUnique({ where: { phone } });
   if (existing) return { user: existing, isNewUser: false };
