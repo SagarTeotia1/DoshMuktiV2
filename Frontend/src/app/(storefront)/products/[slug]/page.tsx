@@ -220,8 +220,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   // the code + copy button, which doesn't fit this compact badge), so this row only carries
   // AUTO_APPLIED (applies with no action needed) and DISPLAY_ONLY (pure marketing tag) —
   // keeping every offer in exactly one place on the page.
-  // Free-gift offers are never advertised on the storefront (they still apply at checkout).
-  const displayOffers = product.offers.filter((o) => o.behavior !== 'COUPON_BASED' && o.reward !== 'FREE_GIFT');
+  const displayOffers = product.offers.filter((o) => o.behavior !== 'COUPON_BASED');
 
   type DetailSection = { title: string; content: React.ReactNode };
   const rawDetailSections: Array<DetailSection | false | '' | null> = [

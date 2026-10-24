@@ -119,8 +119,7 @@ export function ExclusiveOffers({ offers }: { offers: Product['offers'] }) {
   // lightweight marketing tag, AUTO_APPLIED needs no customer action) — this section is
   // exclusively for offers a customer must actively redeem via a coupon code, and every offer
   // shown here is one not already shown up top, so nothing repeats on the page.
-  // Free-gift offers are never advertised on the storefront (they still apply at checkout).
-  const shownOffers = offers.filter((o) => o.behavior === 'COUPON_BASED' && o.reward !== 'FREE_GIFT');
+  const shownOffers = offers.filter((o) => o.behavior === 'COUPON_BASED');
   if (shownOffers.length === 0) return null;
 
   return (

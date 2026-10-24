@@ -1,6 +1,7 @@
 import type { Coupon, OfferReward, Offer, Prisma } from "@prisma/client";
 import { db } from "../../shared/db/client";
 import { attachApplicableOffers } from "../offers/service";
+import { invalidateProductCaches } from "../products/service";
 import { processReward } from "../offers/rewards/registry";
 import type { CheckoutLineItem } from "../offers/service";
 import type {
@@ -224,6 +225,10 @@ export async function updateCoupon(id: string, input: UpdateCouponInput) {
       },
       include: withCountInclude,
     });
+    // Storefront product responses hide coupon offers whose coupon is disabled, expired or
+    // used up (see products/service.ts's withOffers) — drop the cached copies so a change
+    // here shows up right away.
+    await invalidateProductCaches();
     return withOfferCount(updated);
   } catch (err) {
     if (isUniqueConstraintError(err))

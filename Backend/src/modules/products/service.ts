@@ -48,10 +48,35 @@ function withExcerpt<T extends { description: unknown }>(products: T[]): Array<T
 // attachApplicableOffers on top, keyed by product id. Response shape is unchanged —
 // callers still see `product.offers: Offer[]`, now widened to OfferWithCoupon[] so a
 // COUPON_BASED offer's `coupon.code` and any set `minOrderValue` reach the storefront.
+//
+// Only offers a customer can actually get are shown: a COUPON_BASED offer whose coupon is
+// disabled, expired or used up is dropped, and so is a DISPLAY_ONLY free gift (a teaser
+// with no gift behind it at checkout).
 export async function withOffers<T extends { id: string; categories: string[] }>(products: T[]): Promise<Array<T & { offers: OfferWithCoupon[] }>> {
   if (products.length === 0) return [];
   const byProduct = await attachApplicableOffers(products);
-  return products.map((p) => ({ ...p, offers: byProduct.get(p.id) ?? [] }));
+
+  const couponIds = [...new Set([...byProduct.values()].flat().flatMap((o) => (o.couponId ? [o.couponId] : [])))];
+  const now = new Date();
+  const liveCouponIds = new Set(
+    couponIds.length === 0
+      ? []
+      : (
+          await db.coupon.findMany({
+            where: { id: { in: couponIds }, isActive: true, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+            select: { id: true, maxUses: true, usedCount: true },
+          })
+        )
+          .filter((c) => c.maxUses === null || c.usedCount < c.maxUses)
+          .map((c) => c.id),
+  );
+  const isShowable = (o: OfferWithCoupon) => {
+    if (o.behavior === 'COUPON_BASED') return !!o.couponId && liveCouponIds.has(o.couponId);
+    if (o.behavior === 'DISPLAY_ONLY' && o.reward === 'FREE_GIFT') return false;
+    return true;
+  };
+
+  return products.map((p) => ({ ...p, offers: (byProduct.get(p.id) ?? []).filter(isShowable) }));
 }
 
 type ProductWithVariants = Prisma.ProductGetPayload<{ include: { variants: { where: { isActive: true } } } }>;
