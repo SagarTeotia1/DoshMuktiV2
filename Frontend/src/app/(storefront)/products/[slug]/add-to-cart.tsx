@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Minus, Plus, ShoppingBag } from 'lucide-react';
+import { Minus, Plus, ShoppingBag, Truck } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { useActiveCartScope } from '@/hooks/use-active-cart-scope';
 import { useAuth } from '@/providers/auth-provider';
@@ -32,12 +32,16 @@ export function AddToCart({ product }: { product: Product }) {
   const thumb = product.images[0]?.thumb;
   const shipping = useShippingEstimate(unitPrice * quantity, (selected?.weight ?? 500) * quantity);
 
-  // Sticky buy bar: shown once the main "Order Now" button leaves the viewport (scrolled past
-  // on desktop, still below the fold on phones), hidden again when it comes back into view.
+  // Sticky buy bar: shown only once the customer has scrolled PAST the main "Order Now"
+  // button (it's out of view above the top edge), hidden again when they scroll back up to
+  // it. Not shown while the button is still below the fold on first load.
   useEffect(() => {
     const el = ctaRef.current;
     if (!el || typeof IntersectionObserver === 'undefined') return;
-    const io = new IntersectionObserver((entries) => setShowSticky(!entries[0]?.isIntersecting), { threshold: 0 });
+    const io = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      if (entry) setShowSticky(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+    }, { threshold: 0 });
     io.observe(el);
     return () => io.disconnect();
   }, []);
@@ -130,18 +134,20 @@ export function AddToCart({ product }: { product: Product }) {
           checkout), same math the cart preview uses. Struck-through once the free-shipping
           threshold is met, so the customer sees what they're saving, not just "Free". */}
       {shipping.data && (
-        <p className="font-body text-xs text-[#6B5539]">
-          {shipping.data.fee > 0 ? (
-            <>Shipping: <span className="font-semibold text-[#2B1B0C]">{formatCurrency(shipping.data.fee)}</span> (estimated)</>
-          ) : shipping.data.originalFee > 0 ? (
-            <>
-              Shipping: <span className="line-through text-[#8A7A63]">{formatCurrency(shipping.data.originalFee)}</span>{' '}
-              <span className="font-semibold text-brand-success">FREE</span>
-            </>
-          ) : (
-            <>Shipping: <span className="font-semibold text-brand-success">FREE</span></>
-          )}
-        </p>
+        shipping.data.fee > 0 ? (
+          <p className="flex items-center gap-1.5 font-body text-xs text-[#6B5539]">
+            <Truck className="w-4 h-4 text-[#9C5A26]" />
+            Shipping: <span className="font-semibold text-[#2B1B0C]">{formatCurrency(shipping.data.fee)}</span> (estimated)
+          </p>
+        ) : (
+          <p className="inline-flex items-center gap-2 self-start rounded-lg border border-brand-success/30 bg-brand-success/10 px-3 py-1.5 font-body text-xs text-[#2B1B0C]">
+            <Truck className="w-4 h-4 text-brand-success" />
+            {shipping.data.originalFee > 0 && (
+              <span className="line-through text-[#8A7A63]">{formatCurrency(shipping.data.originalFee)}</span>
+            )}
+            <span className="font-extrabold uppercase tracking-wide text-brand-success">Free Delivery</span>
+          </p>
+        )
       )}
 
       {/* Quantity + secondary "add to cart" — small, quiet, not competing with the primary CTA */}

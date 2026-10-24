@@ -379,14 +379,27 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           )}
 
           {/* Price — the single largest figure on the page, outranks the headline */}
-          <div className="flex items-baseline gap-2.5 mb-3">
-            <p className="font-heading text-3xl sm:text-4xl font-black text-[#2B1B0C] tabular-nums">{formatCurrency(price)}</p>
-            {mrp && (
-              <>
-                <p className="font-body text-base text-[#8A7A63] line-through">{formatCurrency(mrp)}</p>
-                <span className="font-body text-sm font-bold text-[#B23A2E]">{discountPct}% off</span>
-              </>
-            )}
+          <div className="mb-3">
+            <div className="flex items-center flex-wrap gap-x-2.5 gap-y-1">
+              <p className="font-heading text-3xl sm:text-4xl font-black text-[#2B1B0C] tabular-nums">{formatCurrency(price)}</p>
+              {mrp && (
+                <>
+                  <p className="font-body text-base text-[#8A7A63]">
+                    MRP <span className="line-through decoration-[#B23A2E]/70">{formatCurrency(mrp)}</span>
+                  </p>
+                  <span className="font-body text-xs font-extrabold uppercase tracking-wide text-white bg-[#B23A2E] rounded-md px-2 py-1 shadow-[2px_2px_0_0_#2B1B0C]">
+                    {discountPct}% OFF
+                  </span>
+                </>
+              )}
+            </div>
+            <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mt-1.5">
+              {mrp && (
+                <span className="font-body text-sm font-bold text-brand-success">You save {formatCurrency(mrp - price)}</span>
+              )}
+              {mrp && <span className="text-[#8A7A63]/60" aria-hidden>·</span>}
+              <span className="font-body text-xs text-[#8A7A63]">Inclusive of all taxes</span>
+            </div>
           </div>
 
           {/* Offer badges — every offer rendered the same way, wrapping to as many rows as needed.
