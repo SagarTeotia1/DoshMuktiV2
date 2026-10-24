@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Minus, Plus, ShoppingBag } from 'lucide-react';
@@ -24,7 +25,28 @@ export function AddToCart({ product }: { product: Product }) {
   const [isOrdering, setIsOrdering] = useState(false);
   const maxQty = Math.min(selected?.stockQuantity ?? 1, 99);
   const unitPrice = selected?.priceOverride ?? product.basePrice;
+  const ctaRef = useRef<HTMLButtonElement>(null);
+  const [showSticky, setShowSticky] = useState(false);
+  const mrp = product.compareAtPrice && product.compareAtPrice > unitPrice ? product.compareAtPrice : null;
+  const discountPct = mrp ? Math.round(((mrp - unitPrice) / mrp) * 100) : null;
+  const thumb = product.images[0]?.thumb;
   const shipping = useShippingEstimate(unitPrice * quantity, (selected?.weight ?? 500) * quantity);
+
+  // Sticky buy bar: shown once the main "Order Now" button leaves the viewport (scrolled past
+  // on desktop, still below the fold on phones), hidden again when it comes back into view.
+  useEffect(() => {
+    const el = ctaRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver((entries) => setShowSticky(!entries[0]?.isIntersecting), { threshold: 0 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // Lets other fixed widgets (chat launcher) lift clear of the bar.
+  useEffect(() => {
+    document.body.classList.toggle('has-buybar', showSticky);
+    return () => document.body.classList.remove('has-buybar');
+  }, [showSticky]);
 
   function changeVariant(id: string) {
     setVariantId(id);
@@ -159,12 +181,56 @@ export function AddToCart({ product }: { product: Product }) {
 
       {/* Primary CTA — the one decisive action on this page */}
       <button
+        ref={ctaRef}
         onClick={handleOrderNow}
         disabled={isOrdering || !selected || soldOut}
         className="border border-[#2B1B0C] bg-[#B23A2E] text-white rounded-lg px-8 py-4 font-body font-bold uppercase tracking-widest text-base hover:bg-[#2B1B0C] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed w-full shadow-neo-gold-md active:scale-[0.98]"
       >
         {soldOut ? 'Sold Out' : isOrdering ? 'Placing Order...' : 'Order Now'}
       </button>
+
+      {/* Sticky buy bar — full-width on phones, floating card (bottom-right) on laptops */}
+      <div
+        inert={!showSticky}
+        className={`fixed z-50 inset-x-2 bottom-2 lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[400px] bg-[#FFFDF8] border border-[#9C5A26] rounded-2xl shadow-[0_-6px_18px_rgba(107,61,25,0.18)] lg:shadow-neo-gold-md overflow-hidden mb-[env(safe-area-inset-bottom)] transition-all duration-300 ${
+          showSticky ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'
+        }`}
+      >
+        <p className="bg-gradient-to-r from-[#6B3D19] via-[#9C5A26] to-[#C9863F] text-[#FFFDF8] text-center text-xs font-bold font-body tracking-wide py-1.5 px-3">
+          ✓ 100% Authentic &amp; Verified Products
+        </p>
+        <div className="flex items-center gap-3 p-3">
+          {thumb && (
+            <Image src={thumb} alt="" width={64} height={64} className="hidden lg:block w-16 h-16 rounded-lg object-cover border border-[#2B1B0C]/15 flex-shrink-0" />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline flex-wrap gap-x-2 gap-y-0.5 mb-2">
+              <span className="font-heading font-extrabold text-lg text-[#2B1B0C] leading-none">{formatCurrency(unitPrice * quantity)}</span>
+              {mrp && <span className="font-body text-xs text-[#8A7A63] line-through">{formatCurrency(mrp * quantity)}</span>}
+              {discountPct && (
+                <span className="font-body text-xs font-bold text-brand-success">{discountPct}% OFF</span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={handleAdd}
+                disabled={isAdding || !selected || soldOut}
+                className="flex items-center justify-center gap-1.5 border border-[#2B1B0C] bg-white text-[#2B1B0C] rounded-lg py-2.5 font-body font-bold text-xs uppercase tracking-wider hover:bg-[#F6E4C2] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                {isAdding ? 'Adding...' : 'Add to Cart'}
+              </button>
+              <button
+                onClick={handleOrderNow}
+                disabled={isOrdering || !selected || soldOut}
+                className="border border-[#2B1B0C] bg-[#B23A2E] text-white rounded-lg py-2.5 font-body font-bold text-xs uppercase tracking-wider hover:bg-[#2B1B0C] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {soldOut ? 'Sold Out' : isOrdering ? 'Placing...' : 'Buy Now'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -57,6 +57,14 @@
     scroll-behavior: smooth;
   }
 
+  /* Sticky buy bar is showing (product page) — keep the footer clear of it on phones */
+  body.has-buybar {
+    padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
+  }
+  @media (min-width: 1024px) {
+    body.has-buybar { padding-bottom: 0; }
+  }
+
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-outfit), 'Outfit', sans-serif;
   }

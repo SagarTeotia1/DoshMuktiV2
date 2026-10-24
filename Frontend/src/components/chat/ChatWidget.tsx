@@ -267,7 +267,7 @@ export function ChatWidget() {
       )}
 
       {/* Floating launcher */}
-      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 flex flex-col items-end gap-3">
+      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 flex flex-col items-end gap-3 transition-all [body.has-buybar_&]:bottom-40 lg:[body.has-buybar_&]:bottom-48">
         {showPop && !open && (
           <div className="relative animate-fade-in-up">
             <button

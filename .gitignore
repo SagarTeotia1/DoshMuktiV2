@@ -61,3 +61,6 @@ Backend/scripts/tmp/
 
 # Deploy runbook — contains real infra details, kept local only
 DEPLOY.md
+
+# Shopify theme — managed/deployed separately via Shopify, never part of the app deploy
+Shopify/
