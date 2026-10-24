@@ -32,16 +32,12 @@ export function AddToCart({ product }: { product: Product }) {
   const thumb = product.images[0]?.thumb;
   const shipping = useShippingEstimate(unitPrice * quantity, (selected?.weight ?? 500) * quantity);
 
-  // Sticky buy bar: shown only once the customer has scrolled PAST the main "Order Now"
-  // button (it's out of view above the top edge), hidden again when they scroll back up to
-  // it. Not shown while the button is still below the fold on first load.
+  // Sticky buy bar: shown once the main "Order Now" button leaves the viewport (scrolled past
+  // on desktop, still below the fold on phones), hidden again when it comes back into view.
   useEffect(() => {
     const el = ctaRef.current;
     if (!el || typeof IntersectionObserver === 'undefined') return;
-    const io = new IntersectionObserver((entries) => {
-      const entry = entries[0];
-      if (entry) setShowSticky(!entry.isIntersecting && entry.boundingClientRect.top < 0);
-    }, { threshold: 0 });
+    const io = new IntersectionObserver((entries) => setShowSticky(!entries[0]?.isIntersecting), { threshold: 0 });
     io.observe(el);
     return () => io.disconnect();
   }, []);
