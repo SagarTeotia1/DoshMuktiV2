@@ -6,7 +6,7 @@ import { resolveAutoAppliedRewardsForCheckout, isActiveFreeGiftTarget } from "..
 import type { CheckoutLineItem } from "../offers/service";
 import { calculateShippingFee } from "../checkout/service";
 import { PACKAGING_WEIGHT_GRAMS } from "../../shared/constants/purposes";
-import { computePaymentBreakdown } from "../../shared/shipping/carrier";
+import { computeCodFee, computePaymentBreakdown } from "../../shared/shipping/carrier";
 import type { Cart, CartItem } from "./schema";
 
 export class VariantNotFoundError extends Error {
@@ -233,13 +233,16 @@ export interface CartPricing {
   // set above its actual price — the "MRP savings" shown on cart/checkout, computed once
   // here so the number can never drift between the two pages.
   savings: number;
-  // Cash the courier collects if the customer picks COD (full order total — nothing is
-  // charged online). Same computePaymentBreakdown checkout uses, so preview == charge.
+  // If the customer picks COD: the handling charge it adds (COD_FEE when delivery is free,
+  // see computeCodFee) and the cash the courier collects (full total incl. that charge —
+  // nothing is charged online). Same helpers checkout uses, so preview == charge.
+  codFee: number;
   codAmountDue: number;
 }
 
-function codSplit(total: number): { codAmountDue: number } {
-  return { codAmountDue: computePaymentBreakdown('COD', total).codAmountDue };
+function codSplit(total: number, shippingFee: number): { codFee: number; codAmountDue: number } {
+  const codFee = computeCodFee('COD', shippingFee);
+  return { codFee, codAmountDue: computePaymentBreakdown('COD', total + codFee).codAmountDue };
 }
 
 function computeCartSavings(cart: Cart): number {
@@ -301,7 +304,7 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
       taxableValue: 0,
       gstAmount: 0,
       savings: 0,
-      ...codSplit(subtotal + shippingFee),
+      ...codSplit(subtotal + shippingFee, shippingFee),
     };
   }
 
@@ -382,6 +385,6 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
     taxableValue,
     gstAmount,
     savings: computeCartSavings(cart),
-    ...codSplit(Math.max(subtotal + shippingFee - totalDiscount, 0)),
+    ...codSplit(Math.max(subtotal + shippingFee - totalDiscount, 0), shippingFee),
   };
 }

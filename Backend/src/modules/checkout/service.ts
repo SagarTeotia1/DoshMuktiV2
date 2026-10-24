@@ -22,7 +22,7 @@ import {
   reserveCouponUsageTx,
   CouponExhaustedError,
 } from "../coupons/service";
-import { chooseCarrier, computePaymentBreakdown, type PaymentMethodId } from "../../shared/shipping/carrier";
+import { chooseCarrier, computeCodFee, computePaymentBreakdown, type PaymentMethodId } from "../../shared/shipping/carrier";
 import { onOrderConfirmed } from "../webhooks/service";
 import type { CheckoutInput } from "./schema";
 
@@ -309,7 +309,8 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
   // confirmed (and its stock deducted for good) the moment it's placed.
   const reservedUntil = isCod ? null : new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
-  const orderTotal = subtotal + shippingFee - totalDiscount;
+  const codFee = computeCodFee(paymentMethod, shippingFee);
+  const orderTotal = subtotal + shippingFee + codFee - totalDiscount;
   if (orderTotal < MIN_ONLINE_ORDER_TOTAL) throw new InvalidOrderTotalError(orderTotal);
 
   if (isCod) {
@@ -356,6 +357,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
             total: orderTotal,
             paymentMethod,
             codAmountDue: breakdown.codAmountDue,
+            codFee,
             ...(isCod
               ? {
                   status: "PAID" as const,

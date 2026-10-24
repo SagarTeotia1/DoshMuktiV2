@@ -248,6 +248,7 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
         { label: 'Subtotal', value: formatCurrency(order.subtotal) },
         { label: 'Shipping & Packaging', value: formatCurrency(order.shippingFee) },
       ];
+      if (Number(order.codFee) > 0) totalsRows.push({ label: 'COD Charges', value: formatCurrency(order.codFee) });
       if (discount > 0) totalsRows.push({ label: 'Discount', value: `- ${formatCurrency(order.discountAmount)}`, accent: true });
       if (showGst) {
         totalsRows.push({ label: 'Taxable Value', value: formatCurrency(totalTaxableValue) });

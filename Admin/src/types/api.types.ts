@@ -312,6 +312,8 @@ export interface Order {
   paymentMethod: 'PREPAID' | 'COD';
   codAdvanceAmount: number;
   codAmountDue: number;
+  // COD handling charge, already inside `total`. 0 for prepaid and older orders.
+  codFee: number;
   couponId: string | null;
   coupon: { id: string; code: string; type: CouponType; value: number } | null;
   // Grams — admin override for this order's real packed parcel weight. Null means "use

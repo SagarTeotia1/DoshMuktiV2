@@ -1,6 +1,8 @@
 // Mirrors Backend/src/shared/constants/purposes.ts — update both when this changes.
 export const SHIPPING_FEE = 90; // flat shipping & packaging fee — mirrors Backend
 export const FREE_SHIPPING_ABOVE = 299;
+// COD handling charge on orders that get free delivery — mirrors Backend's COD_FEE.
+export const COD_FEE = 50;
 // Items priced below this are final sale — too low-value to make a reverse-pickup
 // return economical. Mirrors the same threshold in Terms & Conditions § 9.
 export const RETURN_ELIGIBLE_ABOVE = 299;

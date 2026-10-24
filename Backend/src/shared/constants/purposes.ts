@@ -26,5 +26,9 @@ export const PRODUCTS_PER_PAGE = 12;
 export const PACKAGING_WEIGHT_GRAMS = 60;
 
 export const PAYMENT_METHODS = ['PREPAID', 'COD'] as const;
+// COD handling charge on orders that get free delivery, so COD always costs a little more
+// than paying online (below the free-delivery threshold COD's higher Ekart shipping rate
+// already does that). Mirrored in Frontend/src/lib/constants.ts.
+export const COD_FEE = 50;
 // Parcels heavier than this ship via Ekart even when prepaid.
 export const EKART_MIN_WEIGHT_GRAMS = 500;

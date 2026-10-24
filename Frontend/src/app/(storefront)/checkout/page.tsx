@@ -15,7 +15,7 @@ import { api, ApiError } from '@/lib/api-client';
 import { getSessionId, getBuyNowSessionId } from '@/lib/session';
 import { getToken } from '@/lib/auth';
 import { formatCurrency, formatDeliveryEstimate } from '@/lib/formatters';
-import { SHIPPING_FEE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
+import { SHIPPING_FEE, FREE_SHIPPING_ABOVE, COD_FEE } from '@/lib/constants';
 import { trackBeginCheckout, trackAddPaymentInfo } from '@/lib/analytics';
 import type { Address, CheckoutInput, PaymentMethod, CheckoutResponse, CouponPreviewResponse, SuggestedCoupon } from '@/types/api.types';
 import type { RazorpayResponse } from '@/hooks/use-razorpay';
@@ -413,13 +413,17 @@ function CheckoutPageContent() {
   const autoAppliedDiscount = cart?.autoAppliedDiscount ?? 0;
   const preDiscountTotal = subtotal + shippingFee - autoAppliedDiscount;
   const couponDiscount = appliedCoupon?.discountAmount ?? 0;
-  const total = Math.max(preDiscountTotal - couponDiscount, 0);
   // COD is full cash on delivery — nothing charged online, the courier collects `total`.
+  // Display-only; Backend's computeCodFee is authoritative: COD_FEE when delivery is free.
   const isCod = paymentMethod === 'COD';
+  const codFeeFor = (fee: number) => (fee === 0 ? COD_FEE : 0);
+  const codFee = isCod ? codFeeFor(shippingFee) : 0;
+  const total = Math.max(preDiscountTotal + codFee - couponDiscount, 0);
   // Per-option totals for the payment radio labels (independent of the selected method).
   const totalWithFee = (fee: number) => Math.max(subtotal + fee - autoAppliedDiscount - couponDiscount, 0);
   const prepaidOptionTotal = totalWithFee(prepaidShipping.data?.fee ?? shippingFee);
-  const codOptionTotal = totalWithFee(codShipping.data?.fee ?? shippingFee);
+  const codOptionFee = codFeeFor(codShipping.data?.fee ?? shippingFee);
+  const codOptionTotal = totalWithFee(codShipping.data?.fee ?? shippingFee) + codOptionFee;
   // Inclusive breakup of subtotal (product price already includes GST — never an added
   // charge), same math the invoice PDF uses. 0 when nothing in the cart carries a GST rate.
   const gstAmount = cart?.gstAmount ?? 0;
@@ -677,6 +681,12 @@ function CheckoutPageContent() {
           formatCurrency(shippingFee)
         )}
       </div>
+      {codFee > 0 && (
+        <div className="flex justify-between font-body text-sm text-[#6B5539]">
+          <span>COD Charges</span>
+          <span>{formatCurrency(codFee)}</span>
+        </div>
+      )}
       {autoAppliedDiscount > 0 && (
         <div className="flex justify-between font-body text-sm text-[#9C5A26] font-semibold">
           <span>Offer Discount</span>
@@ -793,13 +803,15 @@ function CheckoutPageContent() {
           {
             id: 'PREPAID',
             title: 'Pay online',
-            sub: 'UPI · Cards · Netbanking',
+            sub: codOptionFee > 0 ? `UPI · Cards · Netbanking · Save ${formatCurrency(codOptionFee)}` : 'UPI · Cards · Netbanking',
             badge: optionResolved(prepaidShipping) ? formatCurrency(prepaidOptionTotal) : null,
           },
           {
             id: 'COD',
             title: 'Cash on Delivery',
-            sub: 'Pay in cash or UPI when your order arrives',
+            sub: codOptionFee > 0
+              ? `Pay when your order arrives · includes ${formatCurrency(codOptionFee)} COD charges`
+              : 'Pay in cash or UPI when your order arrives',
             badge: optionResolved(codShipping) ? formatCurrency(codOptionTotal) : null,
           },
         ] as const).map((opt) => (

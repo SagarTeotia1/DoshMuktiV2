@@ -1,4 +1,4 @@
-import { EKART_MIN_WEIGHT_GRAMS } from '../constants/purposes';
+import { COD_FEE, EKART_MIN_WEIGHT_GRAMS } from '../constants/purposes';
 
 export type PaymentMethodId = 'PREPAID' | 'COD';
 export type CarrierId = 'DELHIVERY' | 'EKART';
@@ -8,6 +8,11 @@ export type CarrierId = 'DELHIVERY' | 'EKART';
 export function chooseCarrier(paymentMethod: PaymentMethodId, weightGrams: number): CarrierId {
   if (paymentMethod === 'COD') return 'EKART';
   return weightGrams > EKART_MIN_WEIGHT_GRAMS ? 'EKART' : 'DELHIVERY';
+}
+
+// COD handling charge: COD_FEE when a COD order's delivery is free (shippingFee 0), else 0.
+export function computeCodFee(paymentMethod: PaymentMethodId, shippingFee: number): number {
+  return paymentMethod === 'COD' && shippingFee === 0 ? COD_FEE : 0;
 }
 
 export interface PaymentBreakdown {

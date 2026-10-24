@@ -152,6 +152,12 @@ export default function OrderDetailPage() {
                 <span>Shipping (charged to customer)</span>
                 <span>{order.shippingFee === 0 ? 'Free' : formatCurrency(order.shippingFee)}</span>
               </div>
+              {Number(order.codFee) > 0 && (
+                <div className="flex justify-between text-sm text-slate-500">
+                  <span>COD charges</span>
+                  <span>{formatCurrency(order.codFee)}</span>
+                </div>
+              )}
               {order.actualShippingCost !== null && (
                 <div className="flex justify-between text-sm text-slate-500">
                   <span>Delhivery cost (estimate at checkout)</span>

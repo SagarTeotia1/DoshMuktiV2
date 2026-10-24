@@ -268,6 +268,12 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ tok
               <span>Shipping & Packaging</span>
               <span>{order.shippingFee === 0 ? 'Free' : formatCurrency(order.shippingFee)}</span>
             </div>
+            {Number(order.codFee) > 0 && (
+              <div className="flex justify-between font-body text-sm text-[#6B5539]">
+                <span>COD Charges</span>
+                <span>{formatCurrency(Number(order.codFee))}</span>
+              </div>
+            )}
             {order.discountAmount > 0 && (
               <div className="flex justify-between font-body text-sm text-[#9C5A26] font-semibold">
                 <span>Discount</span>

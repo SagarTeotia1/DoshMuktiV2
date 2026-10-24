@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { Reveal } from '@/components/motion/Reveal';
-import { RETURN_ELIGIBLE_ABOVE, SHIPPING_FEE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
+import { RETURN_ELIGIBLE_ABOVE, SHIPPING_FEE, FREE_SHIPPING_ABOVE, COD_FEE } from '@/lib/constants';
 
 export const metadata = {
   title: 'Terms & Conditions — Doshmukti',
@@ -164,7 +164,9 @@ export default function TermsPage() {
                 <strong className="text-[#2B1B0C]">Cash on Delivery (COD).</strong> Where offered at checkout, you
                 can choose COD and pay nothing online. The full order amount, including any shipping charge, is
                 payable to the courier at the time of delivery, in cash or as otherwise accepted by the courier. A
-                COD order is confirmed as soon as it is placed.
+                COD order is confirmed as soon as it is placed. On orders that qualify for free delivery (above
+                ₹{FREE_SHIPPING_ABOVE}), a COD handling charge of ₹{COD_FEE} applies; it is shown at checkout before
+                you place the order and listed separately on your invoice. Paying online avoids this charge.
               </p>
               <p>
                 <strong className="text-[#2B1B0C]">Refusing a COD parcel.</strong> Shipping and courier charges are

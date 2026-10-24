@@ -187,6 +187,8 @@ export interface CartResponse {
   // Sum of (compareAtPrice - price) × quantity across every line with an MRP above its
   // actual price — server-computed so cart and checkout never show different numbers.
   savings: number;
+  // COD handling charge if the customer picks COD (COD_FEE when delivery is free, else 0).
+  codFee: number;
   codAmountDue: number;
   updatedAt: string;
 }
@@ -268,6 +270,8 @@ export interface OrderTrackingResponse {
   paymentMethod: PaymentMethod;
   codAdvanceAmount: number | string;
   codAmountDue: number | string;
+  // COD handling charge, already inside `total`. 0 for prepaid and older orders.
+  codFee: number | string;
   // Inclusive GST breakup of the items' line totals — same formula as the invoice PDF.
   // gstAmount is 0 when no item on the order carries a gstRate.
   taxableValue: number;

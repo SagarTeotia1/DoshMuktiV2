@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { COD_FEE } from '@/lib/constants';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { Reveal } from '@/components/motion/Reveal';
 
@@ -212,6 +213,11 @@ export default function PrivacyPage() {
                 UPI, or net-banking details are entered directly into Razorpay&rsquo;s secure interface and never
                 pass through or get stored on Doshmukti&rsquo;s servers. We only receive a payment confirmation
                 and a reference ID from Razorpay to reconcile your order.
+              </p>
+              <p>
+                For Cash on Delivery orders, no payment details are collected online. The amount due (including
+                the ₹{COD_FEE} COD handling charge on orders that qualify for free delivery) is collected by our
+                courier partner at your door, and we only record that the order was paid on delivery.
               </p>
             </Section>
 
