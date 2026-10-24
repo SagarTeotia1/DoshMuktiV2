@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { api, ApiError } from '@/lib/api-client';
 import { getToken, setToken, clearToken } from '@/lib/auth';
 import { trackCompleteRegistration } from '@/lib/analytics';
@@ -72,12 +72,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.post('/api/auth/otp/send', { phone });
   }
 
-  async function verifyOtp(phone: string, otp: string) {
-    const result = await api.post<VerifyOtpResponse>('/api/auth/otp/verify', { phone, otp });
-    setToken(result.token);
-    setUser(result.user);
-    if (result.isNewUser) trackCompleteRegistration();
-    return result.user;
+  // Each OTP is single-use on the Backend, so a double-submit (double tap, Enter + click)
+  // would make the second request fail with "Invalid OTP" right after the first logged in.
+  // Share the in-flight request instead of sending it twice.
+  const verifyInFlight = useRef<{ key: string; promise: Promise<CustomerUser> } | null>(null);
+
+  function verifyOtp(phone: string, otp: string) {
+    const key = `${phone}:${otp}`;
+    if (verifyInFlight.current?.key === key) return verifyInFlight.current.promise;
+
+    const promise = (async () => {
+      const result = await api.post<VerifyOtpResponse>('/api/auth/otp/verify', { phone, otp });
+      setToken(result.token);
+      setUser(result.user);
+      if (result.isNewUser) trackCompleteRegistration();
+      return result.user;
+    })().finally(() => {
+      if (verifyInFlight.current?.key === key) verifyInFlight.current = null;
+    });
+    verifyInFlight.current = { key, promise };
+    return promise;
   }
 
   function logout() {
