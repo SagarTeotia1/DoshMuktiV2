@@ -15,7 +15,7 @@ import { api, ApiError } from '@/lib/api-client';
 import { getSessionId, getBuyNowSessionId } from '@/lib/session';
 import { getToken } from '@/lib/auth';
 import { formatCurrency, formatDeliveryEstimate } from '@/lib/formatters';
-import { SHIPPING_FEE, FREE_SHIPPING_ABOVE, COD_FEE } from '@/lib/constants';
+import { SHIPPING_FEE, FREE_SHIPPING_ABOVE, COD_FEE, MAX_COD_ORDER_TOTAL } from '@/lib/constants';
 import { trackBeginCheckout, trackAddPaymentInfo } from '@/lib/analytics';
 import type { Address, CheckoutInput, PaymentMethod, CheckoutResponse, CouponPreviewResponse, SuggestedCoupon } from '@/types/api.types';
 import type { RazorpayResponse } from '@/hooks/use-razorpay';
@@ -424,6 +424,12 @@ function CheckoutPageContent() {
   const prepaidOptionTotal = totalWithFee(prepaidShipping.data?.fee ?? shippingFee);
   const codOptionFee = codFeeFor(codShipping.data?.fee ?? shippingFee);
   const codOptionTotal = totalWithFee(codShipping.data?.fee ?? shippingFee) + codOptionFee;
+  const codUnavailable = codOptionTotal > MAX_COD_ORDER_TOTAL;
+  // Cart grew past the COD limit (or a coupon was removed) while COD was picked — fall back
+  // to paying online rather than let the order fail at the Backend's same check.
+  useEffect(() => {
+    if (codUnavailable && paymentMethod === 'COD') setPaymentMethod('PREPAID');
+  }, [codUnavailable, paymentMethod]);
   // Inclusive breakup of subtotal (product price already includes GST — never an added
   // charge), same math the invoice PDF uses. 0 when nothing in the cart carries a GST rate.
   const gstAmount = cart?.gstAmount ?? 0;
@@ -809,23 +815,28 @@ function CheckoutPageContent() {
           {
             id: 'COD',
             title: 'Cash on Delivery',
-            sub: codOptionFee > 0
-              ? `Pay when your order arrives · includes ${formatCurrency(codOptionFee)} COD charges`
-              : 'Pay in cash or UPI when your order arrives',
-            badge: optionResolved(codShipping) ? formatCurrency(codOptionTotal) : null,
+            sub: codUnavailable
+              ? `Available on orders up to ${formatCurrency(MAX_COD_ORDER_TOTAL)}`
+              : codOptionFee > 0
+                ? `Pay when your order arrives · includes ${formatCurrency(codOptionFee)} COD charges`
+                : 'Pay in cash or UPI when your order arrives',
+            badge: !codUnavailable && optionResolved(codShipping) ? formatCurrency(codOptionTotal) : null,
           },
-        ] as const).map((opt) => (
+        ] as const).map((opt) => {
+          const optDisabled = opt.id === 'COD' && codUnavailable;
+          return (
           <label
             key={opt.id}
-            className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
-              paymentMethod === opt.id ? 'border-[#9C5A26] bg-[#9C5A26]/5' : 'border-[#2B1B0C]/15'
-            }`}
+            className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
+              optDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+            } ${paymentMethod === opt.id ? 'border-[#9C5A26] bg-[#9C5A26]/5' : 'border-[#2B1B0C]/15'}`}
           >
             <input
               type="radio"
               name="paymentMethod"
               value={opt.id}
               checked={paymentMethod === opt.id}
+              disabled={optDisabled}
               onChange={() => setPaymentMethod(opt.id)}
               className="accent-[#9C5A26]"
             />
@@ -835,7 +846,8 @@ function CheckoutPageContent() {
             </span>
             {opt.badge && <span className="font-body text-sm font-semibold text-[#2B1B0C]">{opt.badge}</span>}
           </label>
-        ))}
+          );
+        })}
       </div>
       {isCod && (
         <p className="font-body text-[11px] text-[#8A7A63] -mt-1">

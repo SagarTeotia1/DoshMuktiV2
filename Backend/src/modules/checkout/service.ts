@@ -11,6 +11,7 @@ import {
   FREE_SHIPPING_ABOVE,
   RESERVATION_MINUTES,
   PACKAGING_WEIGHT_GRAMS,
+  MAX_COD_ORDER_TOTAL,
 } from "../../shared/constants/purposes";
 import { logger } from "../../shared/logger/pino";
 import { cancelPendingOrderTx } from "../orders/service";
@@ -58,9 +59,6 @@ export class PaymentGatewayError extends Error {
 // tie up inventory with a pile of orders it never intends to accept. Caps how many COD
 // orders one customer can have open (placed, not yet shipped) at once.
 const MAX_OPEN_COD_ORDERS = 3;
-// Ekart rejects a COD parcel above this (see ekart/client.ts) — refuse it at checkout
-// rather than confirm an order that can never be booked.
-const MAX_COD_ORDER_TOTAL = 49_999;
 
 export class CodNotAllowedError extends Error {
   constructor(public code: "TOO_MANY_COD_ORDERS" | "COD_LIMIT_EXCEEDED") {

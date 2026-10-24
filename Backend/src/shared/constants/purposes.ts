@@ -30,5 +30,9 @@ export const PAYMENT_METHODS = ['PREPAID', 'COD'] as const;
 // than paying online (below the free-delivery threshold COD's higher Ekart shipping rate
 // already does that). Mirrored in Frontend/src/lib/constants.ts.
 export const COD_FEE = 50;
+// Largest order total (incl. COD_FEE) accepted as COD — bigger orders must pay online.
+// Business limit, well under Ekart's own Rs49,999 per-parcel COD cap. Mirrored in
+// Frontend/src/lib/constants.ts.
+export const MAX_COD_ORDER_TOTAL = 1499;
 // Parcels heavier than this ship via Ekart even when prepaid.
 export const EKART_MIN_WEIGHT_GRAMS = 500;

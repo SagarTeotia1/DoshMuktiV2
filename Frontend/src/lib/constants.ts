@@ -3,6 +3,8 @@ export const SHIPPING_FEE = 90; // flat shipping & packaging fee — mirrors Bac
 export const FREE_SHIPPING_ABOVE = 299;
 // COD handling charge on orders that get free delivery — mirrors Backend's COD_FEE.
 export const COD_FEE = 50;
+// Largest order total (incl. COD_FEE) accepted as COD — mirrors Backend's MAX_COD_ORDER_TOTAL.
+export const MAX_COD_ORDER_TOTAL = 1499;
 // Items priced below this are final sale — too low-value to make a reverse-pickup
 // return economical. Mirrors the same threshold in Terms & Conditions § 9.
 export const RETURN_ELIGIBLE_ABOVE = 299;

@@ -9,6 +9,7 @@ import { clearCart } from '../cart/service';
 import { handlePaymentCaptured } from '../webhooks/service';
 import { logger } from '../../shared/logger/pino';
 import { env } from '../../config/env';
+import { MAX_COD_ORDER_TOTAL } from '../../shared/constants/purposes';
 
 function sessionIdOf(req: FastifyRequest): string | null {
   const id = req.headers['x-session-id'];
@@ -70,7 +71,7 @@ export async function checkoutHandler(req: FastifyRequest, reply: FastifyReply) 
     }
     if (err instanceof CodNotAllowedError) {
       const error = err.code === 'COD_LIMIT_EXCEEDED'
-        ? 'Cash on Delivery is available on orders up to ₹49,999. Please pay online for this order.'
+        ? `Cash on Delivery is available on orders up to ₹${MAX_COD_ORDER_TOTAL.toLocaleString('en-IN')}. Please pay online for this order.`
         : 'You already have several Cash on Delivery orders on the way. Please pay online, or wait for one to ship.';
       return reply.code(409).send({ error, code: err.code });
     }
