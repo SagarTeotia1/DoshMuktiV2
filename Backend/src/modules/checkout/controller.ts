@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { checkoutSchema, verifyPaymentSchema } from './schema';
-import { initiateCheckout, OutOfStockError, NotServiceableError, InvalidOrderTotalError, PaymentGatewayError } from './service';
+import { initiateCheckout, OutOfStockError, NotServiceableError, InvalidOrderTotalError, PaymentGatewayError, CodNotAllowedError } from './service';
 import { redis } from '../../shared/cache/client';
 import { cacheKeys } from '../../shared/cache/keys';
 import { mapCouponValidationError } from '../coupons/controller';
@@ -42,6 +42,13 @@ export async function checkoutHandler(req: FastifyRequest, reply: FastifyReply) 
   try {
     const result = await initiateCheckout(parsed.data, userId);
 
+    // COD is confirmed at placement — no payment step left that could fail — so the Buy Now
+    // pseudo-cart can go now (prepaid clears it in verifyPaymentHandler instead).
+    const sessionId = sessionIdOf(req);
+    if (result.paymentMethod === 'COD' && sessionId?.endsWith(':buynow')) {
+      clearCart(sessionId).catch((err) => logger.warn({ err, sessionId }, 'Failed to clear cart after COD order'));
+    }
+
     // Buy Now pseudo-cart is intentionally left untouched here — the order created by
     // initiateCheckout is only PENDING_PAYMENT, and the customer may still dismiss the
     // Razorpay modal or have the payment fail. Clearing it at this point (as this used
@@ -60,6 +67,12 @@ export async function checkoutHandler(req: FastifyRequest, reply: FastifyReply) 
     }
     if (err instanceof InvalidOrderTotalError) {
       return reply.code(409).send({ error: 'Order total is too low to pay online. Please add an item or remove the coupon.', code: 'ORDER_TOTAL_TOO_LOW' });
+    }
+    if (err instanceof CodNotAllowedError) {
+      const error = err.code === 'COD_LIMIT_EXCEEDED'
+        ? 'Cash on Delivery is available on orders up to ₹49,999. Please pay online for this order.'
+        : 'You already have several Cash on Delivery orders on the way. Please pay online, or wait for one to ship.';
+      return reply.code(409).send({ error, code: err.code });
     }
     if (err instanceof PaymentGatewayError) {
       return reply.code(502).send({ error: 'Payment gateway is unavailable right now. Please try again in a minute.', code: 'PAYMENT_GATEWAY_ERROR' });

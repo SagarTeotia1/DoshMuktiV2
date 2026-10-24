@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { db } from '../../shared/db/client';
 import { logger } from '../../shared/logger/pino';
 import { sendOrderConfirmation, sendShipmentNotification } from '../../shared/integrations/resend/client';
@@ -100,22 +101,28 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
   const { payment } = outcome;
   if (outcome.restocked) await invalidateProductCaches();
 
-  // Fire-and-forget — never block webhook response on email/shipment calls
-  if (payment.order.customerEmail) {
-    void sendOrderConfirmation(payment.order.customerEmail, payment.order.orderNumber, Number(payment.order.total));
+  onOrderConfirmed(payment.order);
+}
+
+// Side effects once an order is confirmed — a prepaid order on payment capture, a COD order
+// the moment it's placed (see checkout/service.ts). Fire-and-forget: never blocks the
+// caller's response on email/shipment calls.
+export function onOrderConfirmed(order: { id: string; orderNumber: string; customerEmail: string | null; total: Prisma.Decimal | number }): void {
+  if (order.customerEmail) {
+    void sendOrderConfirmation(order.customerEmail, order.orderNumber, Number(order.total));
   }
   // Carrier choice (Delhivery vs Ekart), weight and COD cash amount are all resolved
   // inside bookOrderShipment — same path as the manual admin retry.
-  void bookOrderShipment(payment.orderId).then((booked) => {
-    if (payment.order.customerEmail) {
-      void sendShipmentNotification(payment.order.customerEmail, payment.order.orderNumber, booked.waybill);
+  void bookOrderShipment(order.id).then((booked) => {
+    if (order.customerEmail) {
+      void sendShipmentNotification(order.customerEmail, order.orderNumber, booked.waybill);
     }
   }).catch((err) => {
     // A rejection (bad wallet balance, fraud check, bad address, Ekart not configured…)
     // or thrown error (network failure) would otherwise leave the order stuck with no
     // waybill and no trace of why. Admin can retry via the manual "Book Shipment" action
     // once the underlying issue is fixed.
-    logger.error({ err, orderNumber: payment.order.orderNumber }, 'Auto-booking shipment failed');
+    logger.error({ err, orderNumber: order.orderNumber }, 'Auto-booking shipment failed');
   });
 }
 

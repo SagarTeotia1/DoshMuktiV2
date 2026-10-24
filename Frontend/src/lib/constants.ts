@@ -75,6 +75,3 @@ export const PRODUCT_SORTS = [
 
 export type SortId = (typeof PRODUCT_SORTS)[number]['id'];
 
-// Mirrors Backend/src/shared/constants/purposes.ts — COD customers pay this online up
-// front (shipping/handling advance); the rest of the order is paid in cash on delivery.
-export const COD_ADVANCE_FEE = 90;

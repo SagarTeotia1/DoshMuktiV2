@@ -71,7 +71,7 @@ export default async function CheckoutSuccessPage({
       )}
       {order?.paymentMethod === 'COD' && (
         <p className="inline-block rounded-full bg-[#9C5A26]/10 px-4 py-1.5 font-body text-sm font-semibold text-[#2B1B0C] mb-3">
-          Paid ₹{Number(order.codAdvanceAmount)} · Pay ₹{Number(order.codAmountDue)} on delivery
+          Cash on Delivery · Pay ₹{Number(order.codAmountDue)} on delivery
         </p>
       )}
       {deliveryEstimate && (

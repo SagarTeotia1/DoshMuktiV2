@@ -187,7 +187,6 @@ export interface CartResponse {
   // Sum of (compareAtPrice - price) × quantity across every line with an MRP above its
   // actual price — server-computed so cart and checkout never show different numbers.
   savings: number;
-  codAdvance: number;
   codAmountDue: number;
   updatedAt: string;
 }
@@ -244,7 +243,8 @@ export interface CheckoutResponse {
   orderId: string;
   orderNumber: string;
   publicToken: string;
-  rzpOrderId: string;
+  // null for COD — nothing is charged online, the order is confirmed at placement.
+  rzpOrderId: string | null;
   amount: number;
   currency: string;
   paymentMethod: PaymentMethod;
@@ -262,8 +262,9 @@ export interface OrderTrackingResponse {
   shippingFee: number;
   discountAmount: number;
   total: number;
-  // COD: `codAdvanceAmount` was paid online, `codAmountDue` is collected in cash on
-  // delivery. Both 0 for PREPAID. (Prisma Decimals serialize as strings — wrap in Number().)
+  // COD: `codAmountDue` is collected in cash on delivery (the full total on current orders).
+  // `codAdvanceAmount` is only non-zero on older COD orders that paid a shipping advance
+  // online. Both 0 for PREPAID. (Prisma Decimals serialize as strings — wrap in Number().)
   paymentMethod: PaymentMethod;
   codAdvanceAmount: number | string;
   codAmountDue: number | string;

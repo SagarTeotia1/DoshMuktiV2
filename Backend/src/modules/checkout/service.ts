@@ -23,6 +23,7 @@ import {
   CouponExhaustedError,
 } from "../coupons/service";
 import { chooseCarrier, computePaymentBreakdown, type PaymentMethodId } from "../../shared/shipping/carrier";
+import { onOrderConfirmed } from "../webhooks/service";
 import type { CheckoutInput } from "./schema";
 
 export class OutOfStockError extends Error {
@@ -50,6 +51,21 @@ export class PaymentGatewayError extends Error {
   constructor() {
     super("Payment gateway unavailable");
     this.name = "PaymentGatewayError";
+  }
+}
+
+// Full-COD orders reserve stock with nothing paid up front, so an account could otherwise
+// tie up inventory with a pile of orders it never intends to accept. Caps how many COD
+// orders one customer can have open (placed, not yet shipped) at once.
+const MAX_OPEN_COD_ORDERS = 3;
+// Ekart rejects a COD parcel above this (see ekart/client.ts) — refuse it at checkout
+// rather than confirm an order that can never be booked.
+const MAX_COD_ORDER_TOTAL = 49_999;
+
+export class CodNotAllowedError extends Error {
+  constructor(public code: "TOO_MANY_COD_ORDERS" | "COD_LIMIT_EXCEEDED") {
+    super(`COD not allowed: ${code}`);
+    this.name = "CodNotAllowedError";
   }
 }
 
@@ -288,10 +304,21 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
     input.paymentMethod,
   );
   const paymentMethod = input.paymentMethod;
-  const reservedUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
+  const isCod = paymentMethod === "COD";
+  // COD has no online payment to wait for, so no reservation window — the order is
+  // confirmed (and its stock deducted for good) the moment it's placed.
+  const reservedUntil = isCod ? null : new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
   const orderTotal = subtotal + shippingFee - totalDiscount;
   if (orderTotal < MIN_ONLINE_ORDER_TOTAL) throw new InvalidOrderTotalError(orderTotal);
+
+  if (isCod) {
+    if (orderTotal > MAX_COD_ORDER_TOTAL) throw new CodNotAllowedError("COD_LIMIT_EXCEEDED");
+    const openCod = await db.order.count({
+      where: { userId, paymentMethod: "COD", status: { in: ["PAID", "PROCESSING", "PACKED"] } },
+    });
+    if (openCod >= MAX_OPEN_COD_ORDERS) throw new CodNotAllowedError("TOO_MANY_COD_ORDERS");
+  }
 
   const { order, payment } = await withSerializableRetry(() =>
     db.$transaction(
@@ -328,8 +355,20 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
             discountAmount: totalDiscount,
             total: orderTotal,
             paymentMethod,
-            codAdvanceAmount: breakdown.codAdvance,
             codAmountDue: breakdown.codAmountDue,
+            ...(isCod
+              ? {
+                  status: "PAID" as const,
+                  statusLog: {
+                    create: {
+                      from: "PENDING_PAYMENT" as const,
+                      to: "PAID" as const,
+                      createdBy: "system",
+                      note: "Cash on delivery — confirmed at placement, full amount collected on delivery",
+                    },
+                  },
+                }
+              : {}),
             couponId: coupon?.id ?? null,
             reservedUntil,
             items: {
@@ -372,15 +411,14 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
           },
         });
 
+        // COD: nothing is charged online, so there's no Razorpay order. The row is still
+        // created (amount 0, CAPTURED) so every "order confirmed" gate — invoice download,
+        // GST report, purchase conversion — treats a placed COD order the same as a paid
+        // prepaid one. No razorpayPaymentId, so the cancel path never attempts a refund.
         const payment = await tx.payment.create({
-          data: {
-            orderId: order.id,
-            razorpayOrderId: `pending_${order.id}`,
-            // What Razorpay actually charges: full total for prepaid, only the COD
-            // advance for COD (the rest is collected in cash on delivery).
-            amount: breakdown.payNow,
-            status: "PENDING",
-          },
+          data: isCod
+            ? { orderId: order.id, razorpayOrderId: `cod_${order.id}`, amount: 0, status: "CAPTURED", verifiedAt: new Date() }
+            : { orderId: order.id, razorpayOrderId: `pending_${order.id}`, amount: breakdown.payNow, status: "PENDING" },
         });
 
         return { order, payment };
@@ -399,6 +437,21 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
       },
     ),
   );
+
+  if (isCod) {
+    await invalidateProductCaches();
+    onOrderConfirmed(order);
+    return {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      publicToken: order.publicToken,
+      rzpOrderId: null,
+      amount: 0,
+      currency: "INR",
+      paymentMethod,
+      codAmountDue: Number(order.codAmountDue),
+    };
+  }
 
   const finalTotal = Number(payment.amount);
 

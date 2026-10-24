@@ -233,16 +233,13 @@ export interface CartPricing {
   // set above its actual price — the "MRP savings" shown on cart/checkout, computed once
   // here so the number can never drift between the two pages.
   savings: number;
-  // Payment split if the customer picks COD: `codAdvance` is charged online now, the
-  // remaining `codAmountDue` is paid in cash on delivery. `total` stays the true order
-  // value either way. Same computePaymentBreakdown checkout uses, so preview == charge.
-  codAdvance: number;
+  // Cash the courier collects if the customer picks COD (full order total — nothing is
+  // charged online). Same computePaymentBreakdown checkout uses, so preview == charge.
   codAmountDue: number;
 }
 
-function codSplit(total: number): { codAdvance: number; codAmountDue: number } {
-  const { codAdvance, codAmountDue } = computePaymentBreakdown('COD', total);
-  return { codAdvance, codAmountDue };
+function codSplit(total: number): { codAmountDue: number } {
+  return { codAmountDue: computePaymentBreakdown('COD', total).codAmountDue };
 }
 
 function computeCartSavings(cart: Cart): number {

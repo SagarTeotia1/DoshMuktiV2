@@ -1,6 +1,5 @@
 import { api } from '@/lib/api-client';
 import {
-  COD_ADVANCE_FEE,
   FREE_SHIPPING_ABOVE,
   PURPOSES,
   RETURN_ELIGIBLE_ABOVE,
@@ -120,7 +119,7 @@ function policies(): string {
 - Shipping: flat shipping & packaging fee of ${rupees(SHIPPING_FEE)}, free on orders above ${rupees(FREE_SHIPPING_ABOVE)}. Shipped via Delhivery, Ekart or another courier partner to serviceable pincodes; delivery estimates are indicative, not guaranteed.
 - Returns: 7-day return window from delivery for eligible products priced at ${rupees(RETURN_ELIGIBLE_ABOVE)} or above (unused, original packaging, proof of purchase). Items below ${rupees(RETURN_ELIGIBLE_ABOVE)} are final sale for change-of-mind returns.
 - Damaged or wrong item: report within 48 hours of delivery with an unboxing video or photos for a replacement, regardless of price.
-- Cash on Delivery (COD): where offered at checkout, requires a ${rupees(COD_ADVANCE_FEE)} advance paid online; the balance is paid on delivery. The advance is non-refundable after dispatch.
+- Cash on Delivery (COD): available at checkout; nothing is paid online, the full order amount is paid to the courier on delivery.
 - Support: +91 88823 86868 (WhatsApp), support@doshmukti.com. Full terms: ${BASE}/terms
 - Company: CIN U22300DL2020PTC367758
 `;

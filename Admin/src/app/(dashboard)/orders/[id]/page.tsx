@@ -66,7 +66,9 @@ export default function OrderDetailPage() {
           if (wasCancel && updated.refundError) {
             toast.error(`Order cancelled, but refund failed: ${updated.refundError}`);
           } else if (wasCancel) {
-            toast.success('Order cancelled' + (order?.payment?.status === 'CAPTURED' ? ' and payment refunded' : ''));
+            // Only an online payment can be refunded — a COD order's payment row is CAPTURED
+            // with no razorpayPaymentId (nothing was charged online).
+            toast.success('Order cancelled' + (order?.payment?.status === 'CAPTURED' && order.payment.razorpayPaymentId ? ' and payment refunded' : ''));
           } else {
             toast.success('Order status updated');
           }
@@ -187,7 +189,9 @@ export default function OrderDetailPage() {
               </div>
               {order.paymentMethod === 'COD' && (
                 <div className="mt-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-slate-800">
-                  <div className="flex justify-between"><span>COD advance paid online</span><span>{formatCurrency(order.codAdvanceAmount)}</span></div>
+                  {Number(order.codAdvanceAmount) > 0 && (
+                    <div className="flex justify-between"><span>COD advance paid online</span><span>{formatCurrency(order.codAdvanceAmount)}</span></div>
+                  )}
                   <div className="flex justify-between font-semibold"><span>Cash to collect on delivery</span><span>{formatCurrency(order.codAmountDue)}</span></div>
                 </div>
               )}

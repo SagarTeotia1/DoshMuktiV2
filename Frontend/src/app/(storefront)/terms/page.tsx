@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { Reveal } from '@/components/motion/Reveal';
-import { RETURN_ELIGIBLE_ABOVE, SHIPPING_FEE, FREE_SHIPPING_ABOVE, COD_ADVANCE_FEE } from '@/lib/constants';
+import { RETURN_ELIGIBLE_ABOVE, SHIPPING_FEE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
 
 export const metadata = {
   title: 'Terms & Conditions — Doshmukti',
@@ -161,28 +161,18 @@ export default function TermsPage() {
                 released.
               </p>
               <p>
-                <strong className="text-[#2B1B0C]">Cash on Delivery (COD).</strong> Where offered at checkout, COD
-                orders require an advance of ₹{COD_ADVANCE_FEE}, paid online, to confirm
-                the order; this advance is counted towards your order total and covers shipping. The remaining
-                balance is payable in cash (or as accepted by the courier) at the time of delivery. A COD order is
-                confirmed once the advance is captured. If an order is cancelled before dispatch, the advance paid
-                is refunded to the original payment method.
+                <strong className="text-[#2B1B0C]">Cash on Delivery (COD).</strong> Where offered at checkout, you
+                can choose COD and pay nothing online. The full order amount, including any shipping charge, is
+                payable to the courier at the time of delivery, in cash or as otherwise accepted by the courier. A
+                COD order is confirmed as soon as it is placed.
               </p>
               <p>
-                <strong className="text-[#2B1B0C]">COD advance is non-refundable after dispatch.</strong> The
-                advance covers shipping and courier charges, which we incur the moment the parcel is handed to the
-                courier. Once a COD order has been dispatched, the advance is{' '}
-                <strong className="text-[#2B1B0C]">not refundable</strong> if (a) you refuse to accept delivery,
-                (b) you are unreachable or unavailable at the delivery address after the courier&rsquo;s attempts,
-                (c) you give an incorrect or incomplete address or phone number, or (d) you change your mind or no
-                longer want the product. In such cases the order is returned to us (RTO) and no refund of the
-                advance will be issued. Refusing a COD parcel does not entitle you to a refund of any amount
-                already paid. Repeated refusals may lead to COD being disabled for your account.
-              </p>
-              <p>
-                <strong className="text-[#2B1B0C]">Exceptions.</strong> The advance is refunded or the product is
-                replaced only where we are at fault: wrong item shipped, or damaged/defective on arrival (reported
-                within 48 hours, with an unboxing video or photos), or where we cancel the order ourselves.
+                <strong className="text-[#2B1B0C]">Refusing a COD parcel.</strong> Shipping and courier charges are
+                incurred the moment a parcel is handed to the courier. If, after dispatch, you (a) refuse to accept
+                delivery, (b) are unreachable or unavailable at the delivery address after the courier&rsquo;s
+                attempts, (c) give an incorrect or incomplete address or phone number, or (d) no longer want the
+                product, the order is returned to us (RTO). Repeated refusals may lead to COD being disabled for
+                your account, and we may limit how many COD orders an account can have open at once.
               </p>
             </Section>
 
@@ -207,8 +197,8 @@ export default function TermsPage() {
                 You may cancel an order free of charge any time before it is marked &ldquo;Packed&rdquo;. Once an
                 order has shipped, it cannot be cancelled — you may instead initiate a return once delivered,
                 subject to Section 9. To cancel, contact us via WhatsApp or email with your order number. Amounts
-                paid online for a cancelled order are refunded to the original payment method (for a COD order,
-                this is the advance paid).
+                paid online for a cancelled order are refunded to the original payment method. A COD order has
+                nothing paid online, so there is nothing to refund.
               </p>
             </Section>
 
@@ -234,8 +224,8 @@ export default function TermsPage() {
               </p>
               <p>
                 <strong className="text-[#2B1B0C]">Refusal of delivery.</strong> Refusing to accept a delivered
-                parcel is not a return. Refunds are not available for COD orders refused at the doorstep; the
-                advance paid (shipping charge) is forfeited as set out in Section 6. For a refused prepaid order,
+                parcel is not a return. A COD order refused at the doorstep is returned to us (RTO) as set
+                out in Section 6. For a refused prepaid order,
                 shipping and return charges are deducted from any refund. A replacement (not a refund) may be
                 offered where the product is damaged, defective, or incorrect, subject to verification.
               </p>

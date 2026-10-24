@@ -23,15 +23,17 @@ type PaymentBadgeOrder = Pick<Order, 'paymentMethod' | 'codAdvanceAmount' | 'cod
   payment: { status: string } | null;
 };
 
-// "COD - PAID ₹100" + "₹900 due on delivery" (or "cash collected" once DELIVERED);
-// "PREPAID - PAID" for online orders. Amounts arrive as Prisma Decimal strings.
+// "COD - CONFIRMED" + "₹999 due on delivery" (or "cash collected" once DELIVERED);
+// "PREPAID - PAID" for online orders. A COD order's payment row is CAPTURED (amount 0) the
+// moment it's placed. Older COD orders paid a shipping advance online — those still show
+// "COD - PAID ₹90". Amounts arrive as Prisma Decimal strings.
 export function PaymentBadge({ order }: { order: PaymentBadgeOrder }) {
   const paid = order.payment?.status === 'CAPTURED';
   const isCod = order.paymentMethod === 'COD';
   const tone = paid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700';
 
   const label = isCod
-    ? `COD - ${paid ? `PAID ${formatCurrency(Number(order.codAdvanceAmount))}` : 'ADVANCE PENDING'}`
+    ? `COD - ${!paid ? 'PENDING' : Number(order.codAdvanceAmount) > 0 ? `PAID ${formatCurrency(Number(order.codAdvanceAmount))}` : 'CONFIRMED'}`
     : `PREPAID - ${paid ? 'PAID' : (order.payment?.status ?? 'PENDING')}`;
 
   const note = isCod && paid

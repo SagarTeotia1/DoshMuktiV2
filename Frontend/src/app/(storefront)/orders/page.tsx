@@ -116,9 +116,9 @@ export default function OrdersPage() {
                         <p className="font-heading font-bold text-base text-[#2B1B0C]">{formatCurrency(order.total)}</p>
                         {order.paymentMethod === 'COD' && (
                           <p className="font-body text-[11px] text-[#8A7A63]">
-                            {order.status === 'DELIVERED'
-                              ? `Paid ₹${Number(order.codAdvanceAmount)} online + ₹${Number(order.codAmountDue)} on delivery`
-                              : `Paid ₹${Number(order.codAdvanceAmount)} · ₹${Number(order.codAmountDue)} due on delivery`}
+                            {Number(order.codAdvanceAmount) > 0
+                              ? `Paid ₹${Number(order.codAdvanceAmount)} online · ₹${Number(order.codAmountDue)} ${order.status === 'DELIVERED' ? 'paid' : 'due'} on delivery`
+                              : `Cash on Delivery · ₹${Number(order.codAmountDue)} ${order.status === 'DELIVERED' ? 'paid' : 'due'} on delivery`}
                           </p>
                         )}
                       </div>

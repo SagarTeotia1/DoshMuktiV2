@@ -15,7 +15,7 @@ import { api, ApiError } from '@/lib/api-client';
 import { getSessionId, getBuyNowSessionId } from '@/lib/session';
 import { getToken } from '@/lib/auth';
 import { formatCurrency, formatDeliveryEstimate } from '@/lib/formatters';
-import { SHIPPING_FEE, FREE_SHIPPING_ABOVE, COD_ADVANCE_FEE } from '@/lib/constants';
+import { SHIPPING_FEE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
 import { trackBeginCheckout, trackAddPaymentInfo } from '@/lib/analytics';
 import type { Address, CheckoutInput, PaymentMethod, CheckoutResponse, CouponPreviewResponse, SuggestedCoupon } from '@/types/api.types';
 import type { RazorpayResponse } from '@/hooks/use-razorpay';
@@ -414,16 +414,12 @@ function CheckoutPageContent() {
   const preDiscountTotal = subtotal + shippingFee - autoAppliedDiscount;
   const couponDiscount = appliedCoupon?.discountAmount ?? 0;
   const total = Math.max(preDiscountTotal - couponDiscount, 0);
-  // Display-only split — the Backend recomputes the authoritative amounts at checkout
-  // (computePaymentBreakdown). COD: advance is charged online now, the rest in cash.
+  // COD is full cash on delivery — nothing charged online, the courier collects `total`.
   const isCod = paymentMethod === 'COD';
-  const codAdvance = Math.min(COD_ADVANCE_FEE, total);
-  const codAmountDue = total - codAdvance;
   // Per-option totals for the payment radio labels (independent of the selected method).
   const totalWithFee = (fee: number) => Math.max(subtotal + fee - autoAppliedDiscount - couponDiscount, 0);
   const prepaidOptionTotal = totalWithFee(prepaidShipping.data?.fee ?? shippingFee);
   const codOptionTotal = totalWithFee(codShipping.data?.fee ?? shippingFee);
-  const codOptionAdvance = Math.min(COD_ADVANCE_FEE, codOptionTotal);
   // Inclusive breakup of subtotal (product price already includes GST — never an added
   // charge), same math the invoice PDF uses. 0 when nothing in the cart carries a GST rate.
   const gstAmount = cart?.gstAmount ?? 0;
@@ -528,13 +524,18 @@ function CheckoutPageContent() {
       });
 
       trackAddPaymentInfo(total);
+
+      // COD: Backend has already confirmed the order — no payment step, straight to success.
+      if (!result.rzpOrderId) {
+        queryClient.invalidateQueries({ queryKey: ['cart', sessionIdForScope(scope), scope] });
+        router.push(`/checkout/success?t=${result.publicToken}`);
+        return;
+      }
+
       await openCheckout({
         amount: result.amount,
         currency: result.currency,
         name: 'Doshmukti',
-        description: isCod
-          ? `COD shipping advance — pay ${formatCurrency(result.codAmountDue)} on delivery`
-          : undefined,
         order_id: result.rzpOrderId,
         prefill: { name: form.customerName, email: form.customerEmail, contact: form.customerPhone },
         theme: { color: '#9C5A26' },
@@ -798,10 +799,8 @@ function CheckoutPageContent() {
           {
             id: 'COD',
             title: 'Cash on Delivery',
-            sub: optionResolved(codShipping)
-              ? `Pay ${formatCurrency(codOptionAdvance)} now · ${formatCurrency(codOptionTotal - codOptionAdvance)} on delivery`
-              : `Pay ${formatCurrency(COD_ADVANCE_FEE)} now, rest on delivery`,
-            badge: null,
+            sub: 'Pay in cash or UPI when your order arrives',
+            badge: optionResolved(codShipping) ? formatCurrency(codOptionTotal) : null,
           },
         ] as const).map((opt) => (
           <label
@@ -828,8 +827,7 @@ function CheckoutPageContent() {
       </div>
       {isCod && (
         <p className="font-body text-[11px] text-[#8A7A63] -mt-1">
-          The {formatCurrency(COD_ADVANCE_FEE)} is your shipping charge — it&apos;s already counted in your total.
-          It is non-refundable if you refuse or don&apos;t accept delivery after dispatch.
+          Nothing to pay now — keep {hasResolvedPincodeRate ? formatCurrency(total) : 'the order total'} ready for the delivery partner.
         </p>
       )}
       {subtotal > 0 && subtotal <= FREE_SHIPPING_ABOVE && (
@@ -853,15 +851,17 @@ function CheckoutPageContent() {
             {submitting
               ? 'Processing...'
               : isCod
-                ? `Pay ${formatCurrency(codAdvance)} & Place Order`
+                ? 'Place Order (Cash on Delivery)'
                 : hasResolvedPincodeRate
                   ? `Pay ${formatCurrency(total)}`
                   : 'Pay Now'}
           </button>
-          <p className="flex items-center justify-center gap-1.5 font-body text-[10px] text-[#8A7A63] mt-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#9C5A26]" />
-            Secured by Razorpay
-          </p>
+          {!isCod && (
+            <p className="flex items-center justify-center gap-1.5 font-body text-[10px] text-[#8A7A63] mt-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#9C5A26]" />
+              Secured by Razorpay
+            </p>
+          )}
           <p className="font-body text-[11px] text-[#8A7A63] text-center leading-relaxed">
             All payments are subject to our{' '}
             <a href="/terms#payments" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#9C5A26] underline">

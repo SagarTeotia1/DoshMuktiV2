@@ -280,10 +280,12 @@ export default async function TrackOrderPage({ params }: { params: Promise<{ tok
             </div>
             {order.paymentMethod === 'COD' && (
               <div className="rounded-xl bg-[#9C5A26]/5 border border-[#9C5A26]/20 px-3 py-2.5 flex flex-col gap-1">
-                <div className="flex justify-between font-body text-sm text-[#6B5539]">
-                  <span>Paid online (shipping)</span>
-                  <span>{formatCurrency(Number(order.codAdvanceAmount))}</span>
-                </div>
+                {Number(order.codAdvanceAmount) > 0 && (
+                  <div className="flex justify-between font-body text-sm text-[#6B5539]">
+                    <span>Paid online (shipping)</span>
+                    <span>{formatCurrency(Number(order.codAdvanceAmount))}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-body text-sm font-bold text-[#2B1B0C]">
                   <span>{order.status === 'DELIVERED' ? 'Paid on delivery' : 'Pay on delivery'}</span>
                   <span>{formatCurrency(Number(order.codAmountDue))}</span>

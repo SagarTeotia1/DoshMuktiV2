@@ -108,7 +108,11 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
       }
 
       metaCell(PAGE_LEFT + 14, 'Order Date', formatDate(order.createdAt));
-      metaCell(PAGE_LEFT + 14 + metaColWidth, 'Payment ID', order.payment?.razorpayPaymentId ?? '—');
+      metaCell(
+        PAGE_LEFT + 14 + metaColWidth,
+        order.paymentMethod === 'COD' ? 'Payment' : 'Payment ID',
+        order.paymentMethod === 'COD' ? 'Cash on Delivery' : (order.payment?.razorpayPaymentId ?? '—'),
+      );
       metaCell(
         PAGE_LEFT + 14 + metaColWidth * 2,
         'AWB / Tracking No.',
@@ -259,10 +263,12 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
       }
 
       const isCod = order.paymentMethod === 'COD';
+      // Orders placed before COD went full cash-on-delivery paid a shipping advance online;
+      // only those show the split. New COD orders collect the whole total in cash.
+      const codAdvance = Number(order.codAdvanceAmount);
+      const codRows = isCod ? (codAdvance > 0 ? 2 : 1) : 0;
       const rowH = 20;
-      // Total stays the true full order value; for COD the two extra lines below show
-      // how it splits between the online advance and cash on delivery.
-      const panelHeight = totalsRows.length * rowH + 44 + (isCod ? 2 * rowH + 8 : 0);
+      const panelHeight = totalsRows.length * rowH + 44 + (codRows ? codRows * rowH + 8 : 0);
       doc.roundedRect(totalsX, y, totalsWidth, panelHeight, 4).fill(PANEL).fillColor(INK);
 
       let rowY = y + 12;
@@ -283,9 +289,11 @@ export async function generateInvoicePdf(order: InvoiceOrder): Promise<Buffer> {
       if (isCod) {
         rowY += 26;
         doc.font('Helvetica').fontSize(9.5);
-        doc.fillColor(MUTED).text('Paid online (shipping advance)', totalsX + 14, rowY);
-        doc.fillColor(INK).text(`- ${formatCurrency(order.codAdvanceAmount)}`, totalsX + 14, rowY, { width: totalsWidth - 28, align: 'right' });
-        rowY += rowH;
+        if (codAdvance > 0) {
+          doc.fillColor(MUTED).text('Paid online (shipping advance)', totalsX + 14, rowY);
+          doc.fillColor(INK).text(`- ${formatCurrency(codAdvance)}`, totalsX + 14, rowY, { width: totalsWidth - 28, align: 'right' });
+          rowY += rowH;
+        }
         doc.font('Helvetica-Bold').fillColor(INK).text('Cash due on delivery', totalsX + 14, rowY);
         doc.fillColor(BRAND).text(formatCurrency(order.codAmountDue), totalsX + 14, rowY, { width: totalsWidth - 28, align: 'right' });
       }
