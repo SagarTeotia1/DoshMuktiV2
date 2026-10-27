@@ -23,6 +23,11 @@ interface Address {
 
 const cachedTokens = new Map<EkartAccount, { value: string; expiresAt: number }>();
 
+// Drops cached access tokens (tests, or after rotating credentials without a restart).
+export function resetEkartTokenCache(): void {
+  cachedTokens.clear();
+}
+
 // Ekart caches the token server-side for ~24h, so re-fetching near expiry is cheap.
 async function getAccessToken(account: EkartAccount): Promise<string> {
   const cached = cachedTokens.get(account);
