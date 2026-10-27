@@ -1,5 +1,6 @@
 import { env } from '../../../config/env';
 import { joinAddressLines, sanitizeCarrierText } from '../../shipping/addressText';
+import { ekartConfig, type EkartAccount } from './accounts';
 
 // Ekart Logistics (Elite API). Request/response shapes follow Ekart's published OpenAPI
 // spec (https://app.elite.ekartlogistics.in/api/docs). Contract mirrors
@@ -7,8 +8,9 @@ import { joinAddressLines, sanitizeCarrierText } from '../../shipping/addressTex
 // { waybill } = success. `waybill` is Ekart's tracking_id — the id every later call
 // (label, cancel, NDR, e-way bill, tracking) is keyed on.
 
-export function isEkartConfigured(): boolean {
-  return Boolean(env.EKART_CLIENT_ID && env.EKART_USERNAME && env.EKART_PASSWORD);
+export function isEkartConfigured(account: EkartAccount): boolean {
+  const c = ekartConfig(account);
+  return Boolean(c.clientId && c.username && c.password);
 }
 
 interface Address {
@@ -19,16 +21,23 @@ interface Address {
   pincode: string;
 }
 
-let cachedToken: { value: string; expiresAt: number } | null = null;
+const cachedTokens = new Map<EkartAccount, { value: string; expiresAt: number }>();
+
+// Drops cached access tokens (tests, or after rotating credentials without a restart).
+export function resetEkartTokenCache(): void {
+  cachedTokens.clear();
+}
 
 // Ekart caches the token server-side for ~24h, so re-fetching near expiry is cheap.
-async function getAccessToken(): Promise<string> {
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) return cachedToken.value;
+async function getAccessToken(account: EkartAccount): Promise<string> {
+  const cached = cachedTokens.get(account);
+  if (cached && cached.expiresAt > Date.now() + 60_000) return cached.value;
 
-  const res = await fetch(`${env.EKART_BASE_URL}/integrations/v2/auth/token/${env.EKART_CLIENT_ID}`, {
+  const cfg = ekartConfig(account);
+  const res = await fetch(`${env.EKART_BASE_URL}/integrations/v2/auth/token/${cfg.clientId}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: env.EKART_USERNAME, password: env.EKART_PASSWORD }),
+    body: JSON.stringify({ username: cfg.username, password: cfg.password }),
   });
   const body = (await res.json().catch(() => ({}))) as {
     access_token?: string;
@@ -37,21 +46,21 @@ async function getAccessToken(): Promise<string> {
     description?: string;
   };
   if (!res.ok || !body.access_token) {
-    cachedToken = null;
-    throw new Error(`Ekart auth failed: ${body.message ?? res.status}${body.description ? ` — ${body.description}` : ''}`);
+    cachedTokens.delete(account);
+    throw new Error(`Ekart account ${account} auth failed: ${body.message ?? res.status}${body.description ? ` — ${body.description}` : ''}`);
   }
-  cachedToken = { value: body.access_token, expiresAt: Date.now() + (body.expires_in ?? 3600) * 1000 };
+  cachedTokens.set(account, { value: body.access_token, expiresAt: Date.now() + (body.expires_in ?? 3600) * 1000 });
   return body.access_token;
 }
 
-async function ekartFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const token = await getAccessToken();
+async function ekartFetch(account: EkartAccount, path: string, init: RequestInit = {}): Promise<Response> {
+  const token = await getAccessToken(account);
   const res = await fetch(`${env.EKART_BASE_URL}${path}`, {
     ...init,
     headers: { ...(init.headers as Record<string, string>), Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
   });
   // Token revoked/rotated mid-cache — drop it so the next call re-auths.
-  if (res.status === 401) cachedToken = null;
+  if (res.status === 401) cachedTokens.delete(account);
   return res;
 }
 
@@ -64,9 +73,10 @@ function phone10(raw: string): number {
   return Number(raw.replace(/\D/g, '').slice(-10));
 }
 
-function pickupLocation() {
+function pickupLocation(account: EkartAccount) {
   // Alias-only form is the documented way to reference an address registered with Ekart.
-  if (env.EKART_PICKUP_ALIAS) return { name: env.EKART_PICKUP_ALIAS };
+  const { pickupAlias } = ekartConfig(account);
+  if (pickupAlias) return { name: pickupAlias };
   return {
     location_type: 'Office',
     name: env.EKART_SELLER_NAME,
@@ -79,7 +89,17 @@ function pickupLocation() {
   };
 }
 
-export async function createEkartShipment(params: {
+// Ekart's rejection text when it can't deliver to the drop pincode. Only this kind of failure
+// is allowed to fall back to Delhivery; wallet/auth/network problems must wait for a retry.
+const UNSERVICEABLE_RE = /serviceab|not\s+serv(?:ed|iced)|non[-\s]?serv|pin\s*code.*(?:invalid|not\s+(?:found|available|covered))|no\s+(?:courier|service)/i;
+
+export function isUnserviceableRemark(remark: string): boolean {
+  return UNSERVICEABLE_RE.test(remark);
+}
+
+export type EkartBookingError = { error: string; unserviceable: boolean };
+
+export async function createEkartShipment(account: EkartAccount, params: {
   orderNumber: string;
   customerName: string;
   customerPhone: string;
@@ -94,12 +114,12 @@ export async function createEkartShipment(params: {
   productsDesc: string;
   quantity: number;
   invoiceDate: string; // YYYY-MM-DD
-}): Promise<{ waybill: string } | { error: string } | null> {
-  if (!isEkartConfigured()) return null;
-  if (params.codAmount > 49_999) return { error: 'Ekart cannot collect more than ₹49,999 COD on one shipment' };
+}): Promise<{ waybill: string } | EkartBookingError | null> {
+  if (!isEkartConfigured(account)) return null;
+  if (params.codAmount > 49_999) return { error: 'Ekart cannot collect more than ₹49,999 COD on one shipment', unserviceable: false };
 
   const taxable = Math.max(params.orderTotal - params.taxValue, 1);
-  const pickup = pickupLocation();
+  const pickup = pickupLocation(account);
   const payload = {
     seller_name: env.EKART_SELLER_NAME,
     seller_address: env.EKART_SELLER_ADDRESS || env.DELHIVERY_WAREHOUSE_ADDRESS,
@@ -140,23 +160,28 @@ export async function createEkartShipment(params: {
 
   let res: Response;
   try {
-    res = await ekartFetch('/api/v1/package/create', { method: 'PUT', body: JSON.stringify(payload) });
+    res = await ekartFetch(account, '/api/v1/package/create', { method: 'PUT', body: JSON.stringify(payload) });
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Ekart request failed' };
+    return { error: err instanceof Error ? err.message : 'Ekart request failed', unserviceable: false };
   }
-  if (!res.ok) return { error: await errorMessage(res) };
+  // A 5xx is Ekart being down — never an unserviceable-pincode verdict.
+  if (!res.ok) {
+    const error = await errorMessage(res);
+    return { error, unserviceable: res.status < 500 && isUnserviceableRemark(error) };
+  }
 
   const data = (await res.json()) as { status?: boolean; remark?: string; tracking_id?: string };
   if (data.status === false || !data.tracking_id) {
-    return { error: data.remark || 'Ekart rejected the shipment with no reason given' };
+    const error = data.remark || 'Ekart rejected the shipment with no reason given';
+    return { error, unserviceable: isUnserviceableRemark(error) };
   }
   return { waybill: data.tracking_id };
 }
 
 // Frees the parcel before pickup — used when an admin cancels the order.
-export async function cancelEkartShipment(trackingId: string): Promise<{ success: boolean; error?: string }> {
-  if (!isEkartConfigured()) return { success: false, error: 'Ekart not configured' };
-  const res = await ekartFetch(`/api/v1/package/cancel?tracking_id=${encodeURIComponent(trackingId)}`, { method: 'DELETE' });
+export async function cancelEkartShipment(account: EkartAccount, trackingId: string): Promise<{ success: boolean; error?: string }> {
+  if (!isEkartConfigured(account)) return { success: false, error: 'Ekart not configured' };
+  const res = await ekartFetch(account, `/api/v1/package/cancel?tracking_id=${encodeURIComponent(trackingId)}`, { method: 'DELETE' });
   if (!res.ok) return { success: false, error: await errorMessage(res) };
   const data = (await res.json().catch(() => ({}))) as { status?: boolean; remark?: string };
   return data.status === false ? { success: false, error: data.remark } : { success: true };
@@ -164,9 +189,9 @@ export async function cancelEkartShipment(trackingId: string): Promise<{ success
 
 // PDF bytes of Ekart's own packing label (already print-ready — unlike Delhivery's, no
 // re-sizing pass needed).
-export async function fetchEkartLabelPdf(trackingId: string): Promise<Buffer | { error: string }> {
-  if (!isEkartConfigured()) return { error: 'Ekart not configured' };
-  const res = await ekartFetch('/api/v1/package/label?json_only=false', {
+export async function fetchEkartLabelPdf(account: EkartAccount, trackingId: string): Promise<Buffer | { error: string }> {
+  if (!isEkartConfigured(account)) return { error: 'Ekart not configured' };
+  const res = await ekartFetch(account, '/api/v1/package/label?json_only=false', {
     method: 'POST',
     body: JSON.stringify({ ids: [trackingId] }),
   });
@@ -176,13 +201,13 @@ export async function fetchEkartLabelPdf(trackingId: string): Promise<Buffer | {
 
 export type EkartNdrAction = 'Re-Attempt' | 'RTO';
 
-export async function takeEkartNdrAction(params: {
+export async function takeEkartNdrAction(account: EkartAccount, params: {
   trackingId: string;
   action: EkartNdrAction;
   reattemptDate?: string; // YYYY-MM-DD; Ekart wants it within the next 7 days, excluding today
   instructions?: string;
 }): Promise<{ success: boolean; error?: string }> {
-  if (!isEkartConfigured()) return { success: false, error: 'Ekart not configured' };
+  if (!isEkartConfigured(account)) return { success: false, error: 'Ekart not configured' };
   const body: Record<string, unknown> = { action: params.action, wbn: params.trackingId };
   if (params.action === 'Re-Attempt') {
     if (!params.reattemptDate) return { success: false, error: 'Re-attempt date is required' };
@@ -190,16 +215,16 @@ export async function takeEkartNdrAction(params: {
   }
   if (params.instructions) body.instructions = params.instructions;
 
-  const res = await ekartFetch('/api/v2/package/ndr', { method: 'POST', body: JSON.stringify(body) });
+  const res = await ekartFetch(account, '/api/v2/package/ndr', { method: 'POST', body: JSON.stringify(body) });
   if (!res.ok) return { success: false, error: await errorMessage(res) };
   const data = (await res.json().catch(() => ({}))) as { status?: boolean; remark?: string };
   return data.status === false ? { success: false, error: data.remark } : { success: true };
 }
 
-export async function updateEkartEwaybill(trackingId: string, ewbn: string): Promise<{ success: boolean; error?: string }> {
-  if (!isEkartConfigured()) return { success: false, error: 'Ekart not configured' };
+export async function updateEkartEwaybill(account: EkartAccount, trackingId: string, ewbn: string): Promise<{ success: boolean; error?: string }> {
+  if (!isEkartConfigured(account)) return { success: false, error: 'Ekart not configured' };
   if (!/^\d{12}$/.test(ewbn)) return { success: false, error: 'Ekart e-way bill number must be 12 digits' };
-  const res = await ekartFetch('/data/shipment/ewbn', { method: 'POST', body: JSON.stringify({ id: trackingId, ewbn }) });
+  const res = await ekartFetch(account, '/data/shipment/ewbn', { method: 'POST', body: JSON.stringify({ id: trackingId, ewbn }) });
   if (!res.ok) return { success: false, error: await errorMessage(res) };
   const data = (await res.json().catch(() => ({}))) as { status?: boolean; remark?: string };
   return data.status === false ? { success: false, error: data.remark } : { success: true };
@@ -226,11 +251,75 @@ export async function fetchEkartTrack(trackingId: string): Promise<EkartTrack | 
 
 // One-off: subscribe to tracking pushes. The `secret` (6–30 chars) is Ekart's HMAC key;
 // the token in the URL is what our handler actually verifies (see webhooks/controller.ts).
-export async function registerEkartWebhook(params: { url: string; secret: string }): Promise<{ id: string }> {
-  const res = await ekartFetch('/api/v2/webhook', {
+export async function registerEkartWebhook(account: EkartAccount, params: { url: string; secret: string }): Promise<{ id: string }> {
+  const res = await ekartFetch(account, '/api/v2/webhook', {
     method: 'POST',
     body: JSON.stringify({ url: params.url, secret: params.secret, topics: ['track_updated'], active: true }),
   });
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as { id: string };
+}
+
+export interface EkartServiceability {
+  serviceable: boolean;
+  /** False when Ekart cannot collect cash at this pincode. */
+  codAllowed: boolean;
+  remark: string;
+}
+
+// Authoritative pincode check (GET /api/v2/serviceability/{pin}). null = could not be
+// determined (not configured, HTTP error, network) - callers must then just try the booking.
+export async function checkEkartServiceability(account: EkartAccount, pincode: string): Promise<EkartServiceability | null> {
+  if (!isEkartConfigured(account) || !/^\d{6}$/.test(pincode)) return null;
+  try {
+    const res = await ekartFetch(account, `/api/v2/serviceability/${pincode}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { status?: boolean; remark?: string; details?: { cod?: boolean; forward_drop?: boolean } };
+    if (typeof data.status !== 'boolean') return null;
+    if (!data.status) return { serviceable: false, codAllowed: false, remark: data.remark ?? 'Pincode is not serviceable' };
+    return { serviceable: data.details?.forward_drop !== false, codAllowed: data.details?.cod !== false, remark: data.remark ?? '' };
+  } catch {
+    return null;
+  }
+}
+
+export interface EkartCostQuote {
+  preTax: number;
+  tax: number;
+  total: number;
+}
+
+// Rate for this account at its negotiated prices, GST included (POST /data/v2/pricing/estimate).
+// null on any failure - a missing quote must never block or fail a booking.
+export async function estimateEkartCost(account: EkartAccount, params: {
+  originPincode: string;
+  destPincode: string;
+  weight: number; // grams
+  codAmount: number;
+  invoiceAmount: number;
+}): Promise<EkartCostQuote | null> {
+  if (!isEkartConfigured(account)) return null;
+  try {
+    const res = await ekartFetch(account, '/data/v2/pricing/estimate', {
+      method: 'POST',
+      body: JSON.stringify({
+        pickupPincode: Number(params.originPincode),
+        dropPincode: Number(params.destPincode),
+        invoiceAmount: params.invoiceAmount,
+        weight: Math.max(Math.round(params.weight), 1),
+        length: env.EKART_PACKAGE_LENGTH_CM,
+        width: env.EKART_PACKAGE_WIDTH_CM,
+        height: env.EKART_PACKAGE_HEIGHT_CM,
+        serviceType: 'SURFACE',
+        codAmount: params.codAmount,
+        packagingType: 'Regular',
+      }),
+    });
+    if (!res.ok) return null;
+    const d = (await res.json()) as { preTax?: number; tax?: number; total?: number };
+    if (typeof d.total !== 'number') return null;
+    return { preTax: d.preTax ?? d.total - (d.tax ?? 0), tax: d.tax ?? 0, total: d.total };
+  } catch {
+    return null;
+  }
 }

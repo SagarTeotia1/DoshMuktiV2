@@ -395,7 +395,19 @@ model Shipment {
   // carrier) — `carrier` says whose waybill it is.
   delhiveryWaybill  String?
   carrier           Carrier        @default(DELHIVERY)
-  status            ShipmentStatus @default(PENDING)
+  // Which Ekart account (1 = prepaid, 2 = COD) owns the waybill; null for Delhivery.
+  // Label/cancel/NDR/e-way-bill calls must use the same account that booked it.
+  ekartAccount      Int?
+  // Login (Ekart username / Delhivery client) the parcel was booked under, shown in Admin.
+  bookedVia         String?
+  // Why this parcel is not on its first-choice carrier (e.g. "Ekart: Pincode is not serviceable").
+  fallbackReason    String?
+  // Carrier rate quote taken the moment the waybill was created (not a carrier invoice).
+  // costTotal lives in Order.bookingShippingCost; these two are its GST split, null when the
+  // carrier's quote doesn't expose one.
+  costPreTax        Decimal?       @db.Decimal(10, 2)
+  costTax           Decimal?       @db.Decimal(10, 2)
+  status           ShipmentStatus @default(PENDING)
   trackingEvents    Json           @default("[]") // [{timestamp,status,location,description}]
   estimatedDelivery DateTime?
   // Government e-way bill number (GST-required above the transport value threshold) —

@@ -1,13 +1,14 @@
-import { COD_FEE, EKART_MIN_WEIGHT_GRAMS } from '../constants/purposes';
+import { COD_FEE } from '../constants/purposes';
+import type { EkartAccount } from '../integrations/ekart/accounts';
 
 export type PaymentMethodId = 'PREPAID' | 'COD';
 export type CarrierId = 'DELHIVERY' | 'EKART';
 
-// COD always goes Ekart; prepaid goes Ekart only when heavier than the threshold.
-// Pure — no I/O — so checkout, booking and tests all share one rule.
-export function chooseCarrier(paymentMethod: PaymentMethodId, weightGrams: number): CarrierId {
-  if (paymentMethod === 'COD') return 'EKART';
-  return weightGrams > EKART_MIN_WEIGHT_GRAMS ? 'EKART' : 'DELHIVERY';
+// Every parcel goes Ekart first: prepaid on account 1, COD on account 2. Delhivery is the
+// fallback, used only when Ekart reports the pincode isn't serviceable (see bookOrderShipment) —
+// a wallet/auth/network failure waits for a retry instead. Pure — no I/O.
+export function chooseEkartAccount(paymentMethod: PaymentMethodId): EkartAccount {
+  return paymentMethod === 'COD' ? 2 : 1;
 }
 
 // COD handling charge: COD_FEE when a COD order's delivery is free (shippingFee 0), else 0.

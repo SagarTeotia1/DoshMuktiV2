@@ -40,5 +40,6 @@ export async function chatHandler(req: FastifyRequest, reply: FastifyReply) {
     reply: result.reply,
     recommendedProducts: result.recommendedProducts,
     recommendationReason: result.recommendationReason,
+    followUps: result.followUps,
   });
 }

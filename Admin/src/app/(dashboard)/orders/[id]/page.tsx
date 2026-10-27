@@ -100,6 +100,17 @@ export default function OrderDetailPage() {
     );
   }
 
+  const shipment = order.shipment;
+  const isEkart = shipment?.carrier === 'EKART';
+  const carrierName = shipment ? (isEkart ? 'Ekart' : 'Delhivery') : null;
+  const courierLabel = !shipment
+    ? null
+    : isEkart
+      ? `Ekart · ${shipment.ekartAccount === 1 ? 'Prepaid account (1)' : shipment.ekartAccount === 2 ? 'COD account (2)' : 'Account unknown'}`
+      : 'Delhivery';
+  const customerPaidShipping = Number(order.shippingFee) + Number(order.codFee);
+  const shippingMargin = order.bookingShippingCost !== null ? customerPaidShipping - Number(order.bookingShippingCost) : null;
+
   return (
     <>
       <Topbar title={order.orderNumber} />
@@ -160,14 +171,26 @@ export default function OrderDetailPage() {
               )}
               {order.actualShippingCost !== null && (
                 <div className="flex justify-between text-sm text-slate-500">
-                  <span>Delhivery cost (estimate at checkout)</span>
+                  <span>Shipping estimate at checkout</span>
                   <span>{formatCurrency(order.actualShippingCost)}</span>
                 </div>
               )}
-              {order.bookingShippingCost !== null && (
+              {shipment && order.bookingShippingCost !== null ? (
+                <>
+                  <div className="flex justify-between text-sm text-slate-700 font-medium">
+                    <span>{carrierName} courier cost (rate quote at booking, incl. GST)</span>
+                    <span>{formatCurrency(order.bookingShippingCost)}</span>
+                  </div>
+                  {shipment.costPreTax != null && shipment.costTax != null && (
+                    <div className="flex justify-end text-xs text-slate-400">
+                      {formatCurrency(shipment.costPreTax)} + GST {formatCurrency(shipment.costTax)}
+                    </div>
+                  )}
+                </>
+              ) : (
                 <div className="flex justify-between text-sm text-slate-500">
-                  <span>Delhivery cost (at booking)</span>
-                  <span>{formatCurrency(order.bookingShippingCost)}</span>
+                  <span>Courier cost</span>
+                  <span>{shipment ? 'No quote recorded' : 'Not booked yet'}</span>
                 </div>
               )}
               {order.finalShippingCost !== null && (
@@ -176,7 +199,18 @@ export default function OrderDetailPage() {
                   <span>{formatCurrency(order.finalShippingCost)}</span>
                 </div>
               )}
-              {order.shipment?.weightDiscrepancyNote && (
+              {shippingMargin !== null && (
+                <>
+                  <div className={`flex justify-between text-sm font-medium ${shippingMargin >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <span>Margin on shipping</span>
+                    <span>{formatCurrency(shippingMargin)}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Customer paid {formatCurrency(customerPaidShipping)} for shipping/COD. Courier cost is a carrier rate quote, not an invoice.
+                  </p>
+                </>
+              )}
+              {shipment && !isEkart && order.shipment?.weightDiscrepancyNote && (
                 <div className="mt-1 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
                   <strong>Delhivery reported a weight discrepancy</strong> — cost above was
                   re-quoted where possible, but verify the real charge on Delhivery&apos;s side.
@@ -263,12 +297,22 @@ export default function OrderDetailPage() {
           <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5 flex flex-col gap-5">
             <h2 className="font-heading font-bold text-sm text-slate-900">Order Progress</h2>
 
-            {order.shipment && (
-              <div className="text-sm">
-                <p className="text-slate-500">Shipment status: {order.shipment.status}</p>
-                {order.shipment.delhiveryWaybill && <p className="text-xs text-slate-400 mt-1">{order.shipment.carrier === 'EKART' ? 'Ekart' : 'Delhivery'} waybill: {order.shipment.delhiveryWaybill}</p>}
-                {order.shipment.ewaybillNumber && <p className="text-xs text-slate-400 mt-1">E-way Bill: {order.shipment.ewaybillNumber}</p>}
+            {order.shipment ? (
+              <div className="text-sm rounded-lg border border-slate-200 p-3 flex flex-col gap-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Shipment</p>
+                <p className="text-slate-900 font-semibold">{courierLabel}</p>
+                <p className="text-slate-500">Status: {order.shipment.status}</p>
+                {order.shipment.bookedVia && <p className="text-xs text-slate-500">Booked with: {order.shipment.bookedVia}</p>}
+                {order.shipment.delhiveryWaybill && <p className="text-xs text-slate-500">Waybill: {order.shipment.delhiveryWaybill}</p>}
+                {order.shipment.ewaybillNumber && <p className="text-xs text-slate-400">E-way Bill: {order.shipment.ewaybillNumber}</p>}
+                {order.shipment.fallbackReason && (
+                  <div className="mt-1 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs font-semibold text-amber-800">
+                    Fallback to Delhivery — {order.shipment.fallbackReason}
+                  </div>
+                )}
               </div>
+            ) : (
+              <p className="text-sm text-slate-400">Shipment: not booked yet</p>
             )}
 
             <div>

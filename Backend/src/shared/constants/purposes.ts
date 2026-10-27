@@ -34,5 +34,3 @@ export const COD_FEE = 50;
 // Business limit, well under Ekart's own Rs49,999 per-parcel COD cap. Mirrored in
 // Frontend/src/lib/constants.ts.
 export const MAX_COD_ORDER_TOTAL = 1499;
-// Parcels heavier than this ship via Ekart even when prepaid.
-export const EKART_MIN_WEIGHT_GRAMS = 500;

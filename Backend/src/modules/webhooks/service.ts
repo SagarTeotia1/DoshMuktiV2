@@ -308,7 +308,7 @@ export function mapEkartStatus(status: string, ndrStatus?: string): ShipmentStat
 // forward (see syncOrderStatusFromShipment).
 export async function handleEkartStatusUpdate(
   trackingId: string,
-  event: { status: string; location: string; description: string; timestamp: string; ndrStatus?: string },
+  event: { status: string; location: string; description: string; timestamp: string; ndrStatus?: string; edd?: Date },
 ): Promise<void> {
   const shipment = await db.shipment.findFirst({ where: { delhiveryWaybill: trackingId, carrier: 'EKART' } });
   if (!shipment) return;
@@ -326,9 +326,12 @@ export async function handleEkartStatusUpdate(
     data: {
       trackingEvents: events as unknown as object,
       status: mapped,
+      // Ekart's expected delivery date (the customer's tracking page prefers it over the
+      // generic estimate). Kept as-is when a push carries no date.
+      ...(event.edd ? { estimatedDelivery: event.edd } : {}),
       ...(risk ? { riskFlag: risk.flag, riskReason: risk.reason } : {}),
     },
   });
 
-  await syncOrderStatusFromShipment(shipment.orderId, mapped);
+  await syncOrderStatusFromShipment(shipment.orderId, mapped, 'ekart');
 }

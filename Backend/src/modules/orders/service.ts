@@ -15,7 +15,9 @@ import { addItemToCart } from '../cart/service';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
 import { PACKAGING_WEIGHT_GRAMS } from '../../shared/constants/purposes';
-import { chooseCarrier, type CarrierId } from '../../shared/shipping/carrier';
+import { chooseEkartAccount, type CarrierId } from '../../shared/shipping/carrier';
+import { toEkartAccount, ekartConfig, type EkartAccount } from '../../shared/integrations/ekart/accounts';
+import { checkEkartServiceability, estimateEkartCost } from '../../shared/integrations/ekart/client';
 import {
   createEkartShipment,
   fetchEkartLabelPdf,
@@ -105,10 +107,10 @@ export class NoWaybillError extends Error {
 
 // Label / NDR / e-way bill go to whichever carrier owns the waybill — sending one
 // carrier's id to the other's API would fail or hit the wrong parcel.
-async function getShipmentOrThrow(orderId: string): Promise<{ waybill: string; carrier: CarrierId }> {
+async function getShipmentOrThrow(orderId: string): Promise<{ waybill: string; carrier: CarrierId; ekartAccount: EkartAccount }> {
   const shipment = await db.shipment.findUnique({ where: { orderId } });
   if (!shipment?.delhiveryWaybill) throw new NoWaybillError();
-  return { waybill: shipment.delhiveryWaybill, carrier: shipment.carrier };
+  return { waybill: shipment.delhiveryWaybill, carrier: shipment.carrier, ekartAccount: toEkartAccount(shipment.ekartAccount) };
 }
 
 type BookableAddress = { line1: string; line2?: string; city: string; state: string; pincode: string };
@@ -133,8 +135,7 @@ export async function bookOrderShipment(orderId: string): Promise<{ waybill: str
     order.packageWeightOverride ??
     order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS;
   const address = order.shippingAddress as unknown as BookableAddress;
-  const primary = chooseCarrier(order.paymentMethod, weight);
-  const fallback: CarrierId = primary === 'EKART' ? 'DELHIVERY' : 'EKART';
+  const ekartAccount = chooseEkartAccount(order.paymentMethod);
 
   const codAmount = Number(order.codAmountDue);
   const productsDesc = order.items
@@ -143,84 +144,142 @@ export async function bookOrderShipment(orderId: string): Promise<{ waybill: str
   const quantity = order.items.reduce((sum, i) => sum + i.quantity, 0);
   const invoiceDate = order.createdAt.toISOString().slice(0, 10);
 
-  // Never throws — a network failure becomes { error } so the fallback carrier still gets a shot.
-  const attempt = async (c: CarrierId): Promise<{ waybill: string } | { error: string } | null> => {
+  // Ekart first. Never throws — a network failure becomes { error } so it can be reported.
+  const ekartAttempt = async () => {
     try {
-      return c === 'EKART'
-        ? await createEkartShipment({
-            orderNumber: order.orderNumber,
-            customerName: order.customerName,
-            customerPhone: order.customerPhone,
-            address,
-            weight,
-            codAmount,
-            orderTotal: Number(order.total),
-            taxValue: Math.round(computeOrderGst(order.items).gstAmount * 100) / 100,
-            productsDesc,
-            quantity,
-            invoiceDate,
-          })
-        : await createShipment({
-            orderNumber: order.orderNumber,
-            customerName: order.customerName,
-            customerPhone: order.customerPhone,
-            address,
-            weight,
-            // COD must keep collecting cash even when it lands on Delhivery as the fallback.
-            cod: codAmount > 0 ? { codAmount, orderTotal: Number(order.total), productsDesc, quantity, invoiceDate } : undefined,
-          });
+      return await createEkartShipment(ekartAccount, {
+        orderNumber: order.orderNumber,
+        customerName: order.customerName,
+        customerPhone: order.customerPhone,
+        address,
+        weight,
+        codAmount,
+        orderTotal: Number(order.total),
+        taxValue: Math.round(computeOrderGst(order.items).gstAmount * 100) / 100,
+        productsDesc,
+        quantity,
+        invoiceDate,
+      });
     } catch (err) {
-      return { error: err instanceof Error ? err.message : `${c} request failed` };
+      return { error: err instanceof Error ? err.message : 'Ekart request failed', unserviceable: false };
     }
   };
 
-  let carrier: CarrierId = primary;
-  let result = await attempt(primary);
-  // Primary rejected (pincode not serviceable, embargo, bad address, wallet, network…) —
-  // try the other carrier. `null` = that carrier isn't configured (treated as a failure too).
-  if (!result || 'error' in result) {
-    const primaryReason = !result ? `${primary} not configured` : result.error;
-    const second = await attempt(fallback);
-    if (second && !('error' in second)) {
-      logger.warn({ orderId, primary, fallback, primaryReason }, 'Primary carrier failed — booked on fallback carrier');
-      carrier = fallback;
-      result = second;
-    } else {
-      const secondReason = !second ? `${fallback} not configured` : second.error;
-      throw new Error(`${primary}: ${primaryReason} | ${fallback}: ${secondReason}`);
+  let carrier: CarrierId = 'EKART';
+  let result: { waybill: string };
+  // Ask Ekart up front whether it can deliver here (and take cash, for COD): a definite "no" goes
+  // straight to Delhivery without a doomed booking call. An unknown answer (null) just tries the
+  // booking, whose own error text is then classified.
+  const svc = await checkEkartServiceability(ekartAccount, address.pincode);
+  const ekart =
+    svc && (!svc.serviceable || (codAmount > 0 && !svc.codAllowed))
+      ? { error: svc.serviceable ? 'COD is not available at this pincode' : svc.remark, unserviceable: true }
+      : await ekartAttempt();
+  let fallbackReason: string | null = null;
+  if (ekart && !('error' in ekart)) {
+    result = ekart;
+  } else if (ekart && ekart.unserviceable) {
+    // Ekart cannot reach this pincode - the only failure that falls back to Delhivery. Wallet
+    // empty, bad credentials, Ekart down, bad address etc. throw instead so the order waits for
+    // a retry (admin "Book Shipment") rather than shipping on a different carrier.
+    let delhivery: { waybill: string } | { error: string } | null;
+    try {
+      delhivery = await createShipment({
+        orderNumber: order.orderNumber,
+        customerName: order.customerName,
+        customerPhone: order.customerPhone,
+        address,
+        weight,
+        // COD must keep collecting cash even when it lands on Delhivery as the fallback.
+        cod: codAmount > 0 ? { codAmount, orderTotal: Number(order.total), productsDesc, quantity, invoiceDate } : undefined,
+      });
+    } catch (err) {
+      delhivery = { error: err instanceof Error ? err.message : 'Delhivery request failed' };
     }
-  }
-
-  if (existing) {
-    await db.shipment.update({ where: { orderId }, data: { delhiveryWaybill: result.waybill, carrier, status: 'BOOKED' } });
+    if (!delhivery || 'error' in delhivery) {
+      const reason = !delhivery ? 'DELHIVERY not configured' : delhivery.error;
+      throw new Error(`EKART${ekartAccount}: ${ekart.error} | DELHIVERY: ${reason}`);
+    }
+    logger.warn({ orderId, ekartAccount, reason: ekart.error }, 'Ekart pincode not serviceable — booked on Delhivery');
+    carrier = 'DELHIVERY';
+    fallbackReason = `Ekart account ${ekartAccount}: ${ekart.error}`;
+    result = delhivery;
   } else {
-    await db.shipment.create({ data: { orderId, delhiveryWaybill: result.waybill, carrier, status: 'BOOKED' } });
+    throw new Error(`EKART${ekartAccount}: ${ekart ? ekart.error : 'not configured'} (no fallback — retry later)`);
   }
 
-  // The re-quote calls Delhivery's rate calculator — meaningless for an Ekart parcel.
-  if (carrier === 'DELHIVERY') void quoteBookingShippingCost(orderId, weight, address.pincode);
+  const shipmentData = {
+    delhiveryWaybill: result.waybill,
+    carrier,
+    ekartAccount: carrier === 'EKART' ? ekartAccount : null,
+    bookedVia: carrier === 'EKART' ? ekartConfig(ekartAccount).username || null : env.DELHIVERY_CLIENT_NAME,
+    fallbackReason,
+    status: 'BOOKED' as const,
+  };
+  if (existing) {
+    await db.shipment.update({ where: { orderId }, data: shipmentData });
+  } else {
+    await db.shipment.create({ data: { orderId, ...shipmentData } });
+  }
+
+  await recordBookingCost(orderId, {
+    carrier,
+    ekartAccount,
+    weight,
+    destPincode: address.pincode,
+    codAmount,
+    orderTotal: Number(order.total),
+  });
 
   return { waybill: result.waybill, carrier };
 }
 
-// Best-effort: re-quotes Delhivery's rate calculator the moment a shipment is booked,
-// with the exact weight just sent in the booking call (so it reflects a
-// packageWeightOverride set before booking, unlike actualShippingCost which is frozen
-// at checkout). Shared by bookOrderShipment above and the payment.captured auto-book in
-// webhooks/service.ts. Never throws into the caller — a failed re-quote just leaves
-// bookingShippingCost null; it never blocks the shipment booking itself.
-export async function quoteBookingShippingCost(orderId: string, weightGrams: number, destPincode: string): Promise<void> {
+// Best-effort: quotes what the carrier that actually took the parcel charges for it, the
+// moment it is booked - Ekart's own rate API for the booked account (GST split included), or
+// Delhivery's rate calculator for a fallback parcel. Uses the exact weight sent in the booking
+// call, so it reflects a packageWeightOverride (unlike actualShippingCost, frozen at checkout).
+// It is a rate quote, not a carrier invoice. Never throws into the caller: a failed quote just
+// leaves bookingShippingCost null; it never blocks or undoes the booking.
+async function recordBookingCost(
+  orderId: string,
+  p: { carrier: CarrierId; ekartAccount: EkartAccount; weight: number; destPincode: string; codAmount: number; orderTotal: number },
+): Promise<void> {
   try {
-    const result = await fetchDelhiveryShippingCost({
-      originPincode: env.DELHIVERY_WAREHOUSE_PINCODE,
-      destPincode,
-      weightGrams,
-      paymentMode: 'Pre-paid',
+    const originPincode = env.DELHIVERY_WAREHOUSE_PINCODE;
+    let total: number | null = null;
+    let tax: number | null = null;
+    if (p.carrier === 'EKART') {
+      const q = await estimateEkartCost(p.ekartAccount, {
+        originPincode,
+        destPincode: p.destPincode,
+        weight: p.weight,
+        codAmount: p.codAmount,
+        invoiceAmount: p.orderTotal,
+      });
+      if (q) {
+        total = q.total;
+        tax = q.tax;
+      }
+    } else {
+      const q = await fetchDelhiveryShippingCost({
+        originPincode,
+        destPincode: p.destPincode,
+        weightGrams: p.weight,
+        paymentMode: p.codAmount > 0 ? 'COD' : 'Pre-paid',
+      });
+      if (q) {
+        total = q.amount;
+        tax = q.tax;
+      }
+    }
+    if (total === null) return;
+    await db.order.update({ where: { id: orderId }, data: { bookingShippingCost: total } });
+    await db.shipment.update({
+      where: { orderId },
+      data: { costTax: tax, costPreTax: tax === null ? null : Math.round((total - tax) * 100) / 100 },
     });
-    if (!result) return;
-    await db.order.update({ where: { id: orderId }, data: { bookingShippingCost: result.amount } });
   } catch (err) {
-    logger.error({ err, orderId }, 'Failed to fetch booking-time Delhivery shipping cost');
+    logger.error({ err, orderId }, 'Failed to record booking-time shipping cost');
   }
 }
 
@@ -234,10 +293,10 @@ export async function updateOrderPackageWeight(orderId: string, weight: number |
 }
 
 export async function getShipmentLabel(orderId: string, size: LabelSize): Promise<{ pdfBase64: string }> {
-  const { waybill, carrier } = await getShipmentOrThrow(orderId);
+  const { waybill, carrier, ekartAccount } = await getShipmentOrThrow(orderId);
   if (carrier === 'EKART') {
     // Ekart's PDF is already print-ready; the size picker only applies to Delhivery's.
-    const pdf = await fetchEkartLabelPdf(waybill);
+    const pdf = await fetchEkartLabelPdf(ekartAccount, waybill);
     if ('error' in pdf) throw new Error(pdf.error);
     return { pdfBase64: pdf.toString('base64') };
   }
@@ -256,10 +315,10 @@ export async function takeOrderNdrAction(
   orderId: string,
   params: { action: NdrAction; reattemptDate?: string; comment?: string }
 ): Promise<void> {
-  const { waybill, carrier } = await getShipmentOrThrow(orderId);
+  const { waybill, carrier, ekartAccount } = await getShipmentOrThrow(orderId);
   const result =
     carrier === 'EKART'
-      ? await takeEkartNdrAction({
+      ? await takeEkartNdrAction(ekartAccount, {
           trackingId: waybill,
           action: params.action === 'RTO' ? 'RTO' : 'Re-Attempt',
           reattemptDate: params.reattemptDate,
@@ -293,9 +352,9 @@ export async function setShipmentRiskFlag(
 }
 
 export async function updateOrderEwaybill(orderId: string, ewaybillNumber: string): Promise<void> {
-  const { waybill, carrier } = await getShipmentOrThrow(orderId);
+  const { waybill, carrier, ekartAccount } = await getShipmentOrThrow(orderId);
   const result =
-    carrier === 'EKART' ? await updateEkartEwaybill(waybill, ewaybillNumber) : await updateEwaybill({ waybill, ewaybillNumber });
+    carrier === 'EKART' ? await updateEkartEwaybill(ekartAccount, waybill, ewaybillNumber) : await updateEwaybill({ waybill, ewaybillNumber });
   if (!result.success) throw new Error(result.error ?? 'E-way bill update failed');
 
   await db.shipment.update({ where: { orderId }, data: { ewaybillNumber } });
@@ -356,9 +415,35 @@ export async function getOrderById(id: string) {
   });
 }
 
-export async function listOrdersForAdmin(query: { status?: OrderStatus; from?: string; to?: string; page: number; limit: number }) {
+export async function listOrdersForAdmin(query: {
+  status?: OrderStatus;
+  from?: string;
+  to?: string;
+  q?: string;
+  paymentMethod?: 'PREPAID' | 'COD';
+  page: number;
+  limit: number;
+}) {
   const where: Prisma.OrderWhereInput = {};
   if (query.status) where.status = query.status;
+  if (query.paymentMethod) where.paymentMethod = query.paymentMethod;
+  const q = query.q?.trim();
+  if (q) {
+    const digits = q.replace(/\D/g, '');
+    const phoneLike = digits.length >= 3 && /^[\d\s+()-]+$/.test(q);
+    const ci = { contains: q, mode: 'insensitive' as const };
+    where.AND = [
+      {
+        OR: [
+          { orderNumber: ci },
+          { customerName: ci },
+          { customerPhone: { contains: phoneLike ? digits : q } },
+          { customerEmail: ci },
+          { shipment: { is: { delhiveryWaybill: ci } } },
+        ],
+      },
+    ];
+  }
   if (query.from || query.to) {
     where.createdAt = {
       ...(query.from ? { gte: new Date(`${query.from}T00:00:00.000Z`) } : {}),
@@ -531,7 +616,7 @@ export async function updateOrderStatus(
   // (Delhivery parcels are cancelled from Delhivery's own dashboard, as before.)
   const shipment = await db.shipment.findUnique({ where: { orderId } });
   if (shipment?.carrier === 'EKART' && shipment.delhiveryWaybill && shipment.status === 'BOOKED') {
-    const cancelled = await cancelEkartShipment(shipment.delhiveryWaybill).catch((err: unknown) => ({
+    const cancelled = await cancelEkartShipment(toEkartAccount(shipment.ekartAccount), shipment.delhiveryWaybill).catch((err: unknown) => ({
       success: false,
       error: err instanceof Error ? err.message : 'Ekart cancel failed',
     }));
@@ -628,7 +713,7 @@ const ORDER_STATUS_RANK: Record<OrderStatus, number> = {
 // FAILED shipment status has no mapping here on purpose — an NDR (failed delivery
 // attempt) needs an admin decision (reattempt vs RTO) via takeOrderNdrAction, not an
 // automatic order status flip.
-export async function syncOrderStatusFromShipment(orderId: string, shipmentStatus: string): Promise<void> {
+export async function syncOrderStatusFromShipment(orderId: string, shipmentStatus: string, source: 'delhivery' | 'ekart' = 'delhivery'): Promise<void> {
   const target = SHIPMENT_TO_ORDER_STATUS[shipmentStatus];
   if (!target) return;
 
@@ -644,11 +729,18 @@ export async function syncOrderStatusFromShipment(orderId: string, shipmentStatu
   await db.$transaction(async (tx) => {
     await tx.order.update({ where: { id: orderId }, data: { status: target } });
     await tx.orderStatusLog.create({
-      data: { orderId, from: order.status, to: target, note: 'Auto-updated from Delhivery tracking', createdBy: 'system:delhivery' },
+      data: {
+        orderId,
+        from: order.status,
+        to: target,
+        note: `Auto-updated from ${source === 'ekart' ? 'Ekart' : 'Delhivery'} tracking`,
+        createdBy: `system:${source}`,
+      },
     });
   });
 
-  if (target === 'DELIVERED') void fetchFinalShippingCost(orderId);
+  // The re-quote below is Delhivery's rate calculator - meaningless for an Ekart parcel.
+  if (target === 'DELIVERED' && source === 'delhivery') void fetchFinalShippingCost(orderId);
 }
 
 // Best-effort: re-quotes Delhivery's rate calculator with this order's final declared

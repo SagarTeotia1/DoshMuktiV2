@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Topbar } from '@/components/layout/Topbar';
@@ -51,6 +51,15 @@ const columns: ColumnDef<Order, unknown>[] = [
     },
   },
   { id: 'payment', header: 'Payment', cell: ({ row }) => <PaymentBadge order={row.original} /> },
+  {
+    id: 'courier',
+    header: 'Courier',
+    cell: ({ row }) => {
+      const s = row.original.shipment;
+      if (!s?.delhiveryWaybill) return <span className="text-slate-400">—</span>;
+      return s.carrier === 'EKART' ? `Ekart ${s.ekartAccount ?? ''}`.trim() : 'Delhivery';
+    },
+  },
   { id: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
   {
     id: 'risk',
@@ -122,7 +131,27 @@ function OrdersPageContent() {
   const [from, setFrom] = useState(searchParams.get('from') ?? DEFAULT_FROM_DATE);
   const [to, setTo] = useState(searchParams.get('to') ?? '');
   const [page, setPage] = useState(1);
-  const { data, isLoading } = useOrders(status || undefined, { from: from || undefined, to: to || undefined }, page);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'' | 'COD' | 'PREPAID'>('');
+
+  // Wait for a pause in typing before hitting the API; a new search always starts at page 1.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data, isLoading } = useOrders(
+    status || undefined,
+    { from: from || undefined, to: to || undefined },
+    page,
+    20,
+    debouncedSearch || undefined,
+    paymentMethod || undefined,
+  );
 
   const setStatusAndResetPage = (s: string) => {
     setStatus(s);
@@ -141,6 +170,32 @@ function OrdersPageContent() {
     <>
       <Topbar title="Orders" />
       <div className="p-6 flex flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name, phone, email, order # or waybill"
+            className="flex-1 min-w-[260px] border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none"
+          />
+          <div className="flex gap-2">
+            {([['', 'All payments'], ['COD', 'COD'], ['PREPAID', 'Prepaid']] as const).map(([value, label]) => (
+              <button
+                key={value}
+                onClick={() => {
+                  setPaymentMethod(value);
+                  setPage(1);
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  paymentMethod === value ? 'bg-[#9C5A26] text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setStatusAndResetPage('')}

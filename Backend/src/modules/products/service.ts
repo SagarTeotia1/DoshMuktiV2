@@ -213,6 +213,66 @@ export async function getProductsForChatRecommendation(purpose: string, limit = 
   })) as Array<{ id: string; name: string; slug: string; thumb: string | null }>;
 }
 
+// Compact catalog for the Acharya chat bot: every ACTIVE product with real price and a
+// real in-stock flag (any active, non-Sidhi-service variant with stock > 0). Cached for a few
+// minutes. The bot may only recommend rows from this list — see chat/grounding.ts.
+export interface ChatCatalogRow {
+  id: string;
+  name: string;
+  slug: string;
+  thumb: string | null;
+  price: number;
+  inStock: boolean;
+  purposes: string[];
+  categories: string[];
+  tags: string[];
+  featured: boolean;
+  blurb: string;
+}
+
+export async function getChatCatalog(): Promise<ChatCatalogRow[]> {
+  const key = cacheKeys.chatCatalog();
+  const cached = await redis.get<ChatCatalogRow[]>(key).catch(() => null);
+  if (cached) return cached;
+
+  const products = await db.product.findMany({
+    where: { status: 'ACTIVE' },
+    select: {
+      id: true, name: true, slug: true, images: true, categories: true, purpose: true, tags: true,
+      featured: true, basePrice: true, benefits: true, description: true,
+      variants: { where: { isActive: true }, select: { sku: true, stockQuantity: true, priceOverride: true } },
+    },
+    take: 300,
+  });
+
+  const rows: ChatCatalogRow[] = products.map((p) => {
+    const sellable = p.variants.filter((v) => v.stockQuantity > 0 && !v.sku.startsWith('SIDHI-') && !v.sku.endsWith('-SIDHI'));
+    const prices = sellable.map((v) => Number(v.priceOverride ?? p.basePrice));
+    const benefits = (Array.isArray(p.benefits) ? (p.benefits as Array<{ title?: unknown }>) : [])
+      .map((b) => (typeof b?.title === 'string' ? b.title : ''))
+      .filter(Boolean)
+      .slice(0, 3)
+      .join('; ');
+    const firstImage = Array.isArray(p.images) ? (p.images[0] as { thumb?: unknown } | undefined) : undefined;
+    return {
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      thumb: typeof firstImage?.thumb === 'string' ? firstImage.thumb : null,
+      price: prices.length > 0 ? Math.min(...prices) : Number(p.basePrice),
+      inStock: sellable.length > 0,
+      purposes: p.purpose,
+      categories: p.categories,
+      tags: p.tags,
+      featured: p.featured,
+      blurb: benefits || deriveExcerpt(p.description).slice(0, 120),
+    };
+  });
+
+  await redis.set(key, rows, { ex: CACHE_TTL.CHAT_CATALOG }).catch(() => undefined);
+  return rows;
+}
+
 // Category list now lives in the Category table (admin-managed) — see
 // categories/service.ts. Storefront only sees active categories that have at least one
 // ACTIVE product, in admin-defined order.

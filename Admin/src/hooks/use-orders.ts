@@ -4,9 +4,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
 import type { PaginatedOrders, Order, GstReport } from '@/types/api.types';
 
-export function useOrders(status?: string, dateRange?: { from?: string; to?: string }, page = 1, limit = 20) {
+export function useOrders(
+  status?: string,
+  dateRange?: { from?: string; to?: string },
+  page = 1,
+  limit = 20,
+  q?: string,
+  paymentMethod?: 'COD' | 'PREPAID',
+) {
   const params = new URLSearchParams();
   if (status) params.set('status', status);
+  if (q) params.set('q', q);
+  if (paymentMethod) params.set('paymentMethod', paymentMethod);
   if (dateRange?.from) params.set('from', dateRange.from);
   if (dateRange?.to) params.set('to', dateRange.to);
   params.set('page', String(page));
@@ -14,7 +23,7 @@ export function useOrders(status?: string, dateRange?: { from?: string; to?: str
   const qs = params.toString();
 
   return useQuery({
-    queryKey: ['admin-orders', status, dateRange?.from, dateRange?.to, page, limit],
+    queryKey: ['admin-orders', status, dateRange?.from, dateRange?.to, page, limit, q, paymentMethod],
     queryFn: () => api.get<PaginatedOrders>(`/api/admin/orders?${qs}`),
     placeholderData: (prev) => prev,
   });

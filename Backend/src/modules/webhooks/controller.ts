@@ -47,15 +47,26 @@ export async function razorpayWebhookHandler(req: RawBodyRequest, reply: Fastify
 // registering it (Ekart's spec documents an HMAC secret but not the signature header, so
 // a URL token is what we can verify) - constant-time compared, never ===.
 export async function ekartWebhookHandler(req: FastifyRequest, reply: FastifyReply) {
+  // Both Ekart accounts push to this one URL, each with its own token.
   const token = (req.query as { token?: string }).token ?? '';
   const tokenBuf = Buffer.from(token);
-  const expBuf = Buffer.from(env.EKART_WEBHOOK_TOKEN);
-  if (!env.EKART_WEBHOOK_TOKEN || tokenBuf.length !== expBuf.length || !crypto.timingSafeEqual(tokenBuf, expBuf)) {
+  const matchesToken = (expected: string) => {
+    const expBuf = Buffer.from(expected);
+    return expected !== '' && tokenBuf.length === expBuf.length && crypto.timingSafeEqual(tokenBuf, expBuf);
+  };
+  // Evaluate both (no short-circuit) so timing doesn't reveal which account matched.
+  const ok1 = matchesToken(env.EKART1_WEBHOOK_TOKEN);
+  const ok2 = matchesToken(env.EKART_WEBHOOK_TOKEN);
+  if (!ok1 && !ok2) {
     return reply.code(401).send({ error: 'Invalid token' });
   }
 
-  const body = req.body as { id?: string; status?: string; location?: string; desc?: string; ctime?: number } | undefined;
-  if (!body?.id || !body.status) return reply.code(400).send({ error: 'Invalid payload' });
+  const body = req.body as
+    | { id?: string; status?: string; location?: string; desc?: string; ctime?: number; ndrStatus?: string; edd?: number }
+    | undefined;
+  // The dashboard webhook is also subscribed to shipment_created, which has no tracking
+  // status - ack it (non-2xx makes Ekart retry and send failure alert emails) and move on.
+  if (!body?.id || !body.status) return reply.code(200).send({ status: 'ignored' });
 
   // Ack first - Ekart retries on slow responses.
   reply.code(200).send({ status: 'ok' });
@@ -64,6 +75,8 @@ export async function ekartWebhookHandler(req: FastifyRequest, reply: FastifyRep
     location: body.location ?? '',
     description: body.desc ?? '',
     timestamp: new Date(body.ctime ?? Date.now()).toISOString(),
+    ndrStatus: body.ndrStatus,
+    edd: typeof body.edd === 'number' && body.edd > 0 ? new Date(body.edd) : undefined,
   });
 }
 

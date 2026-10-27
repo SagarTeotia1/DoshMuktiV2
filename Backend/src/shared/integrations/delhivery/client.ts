@@ -129,7 +129,7 @@ export async function calculateShippingCost(params: {
   destPincode: string;
   weightGrams: number;
   paymentMode: 'Pre-paid' | 'COD';
-}): Promise<{ amount: number } | null> {
+}): Promise<{ amount: number; tax: number | null } | null> {
   if (!env.DELHIVERY_API_KEY) return null;
 
   const query = new URLSearchParams({
@@ -146,9 +146,12 @@ export async function calculateShippingCost(params: {
   });
   if (!res.ok) return null;
 
-  const data = (await res.json().catch(() => null)) as Array<{ total_amount?: number }> | null;
+  const data = (await res.json().catch(() => null)) as Array<{ total_amount?: number; tax_data?: Record<string, unknown> }> | null;
   const amount = data?.[0]?.total_amount;
-  return typeof amount === 'number' ? { amount } : null;
+  if (typeof amount !== 'number') return null;
+  // tax_data ({ IGST | CGST+SGST... }) is not always present - only report a split when it is.
+  const taxParts = Object.values(data?.[0]?.tax_data ?? {}).filter((v): v is number => typeof v === 'number');
+  return { amount, tax: taxParts.length ? Math.round(taxParts.reduce((a, b) => a + b, 0) * 100) / 100 : null };
 }
 
 export async function fetchShippingLabel(waybill: string): Promise<{ pdfUrl: string } | null> {

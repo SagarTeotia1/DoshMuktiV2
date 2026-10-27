@@ -23,6 +23,8 @@ export const cacheKeys = {
   // though KEYS itself is O(n) — acceptable at this traffic scale.
   chatSession: (sessionId: string) => `chat:session:${sessionId}` as const,
   chatSessionPrefix: () => `chat:session:` as const,
+  // Compact in-stock catalog the Acharya bot grounds recommendations in (short TTL keeps stock fresh).
+  chatCatalog: () => `chat:catalog:v1` as const,
   // Caches one geo lookup per IP for a day — avoids re-hitting the free geolocation API
   // (rate-limited) for repeat visitors or a multi-turn conversation from the same IP.
   geoIp: (ip: string) => `geo:ip:${ip}` as const,
@@ -50,6 +52,7 @@ export const CACHE_TTL = {
   CHAT_PROFILE: 60 * 60 * 24 * 30,
   CHAT_DAILY_LIMIT: 60 * 60 * 24,
   CHAT_SESSION: 60 * 60 * 24 * 30,
+  CHAT_CATALOG: 60 * 3,
   GEO_IP: 60 * 60 * 24,
   CHAT_DAILY_VOLUME: 60 * 60 * 24 * 35, // outlives the 30-day window a trend chart would ever query
   BANNERS: 60 * 10,

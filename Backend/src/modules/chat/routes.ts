@@ -11,7 +11,7 @@ import {
 
 export async function chatRoutes(app: FastifyInstance) {
   // Public + costs real money per call — keep this tight regardless of how generous other routes are.
-  app.post('/chat/acharya', { config: { rateLimit: { max: 15, timeWindow: '1 minute' } } }, chatHandler);
+  app.post('/chat/acharya', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, chatHandler);
 
   // Admin visibility into Acharya Madhav sessions — who's chatting, from where, about what.
   app.get('/admin/chat-sessions', { preHandler: verifyAdmin }, listChatSessionsHandler);

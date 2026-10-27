@@ -2,15 +2,26 @@ import { chatCompletion, GroqNotConfiguredError, type ChatMessage } from '../../
 import { redis } from '../../shared/cache/client';
 import { cacheKeys, CACHE_TTL } from '../../shared/cache/keys';
 import { lookupGeo } from '../../shared/integrations/geoip/client';
-import { getProductsForChatRecommendation } from '../products/service';
-import { retrieveRelevantChunks, type RetrievedChunk } from './bookRetrieval';
+import { getChatCatalog } from '../products/service';
+import { retrieveRelevantChunks } from './bookRetrieval';
+import { computeKundliFacts, extractDobFromText, extractPhoneFromText } from './astrology';
+import { buildSystemPrompt } from './prompt';
+import { canShowProducts, MAX_RECOMMENDED_PRODUCTS, wantsProducts } from './intent';
 import {
-  computeKundliFacts,
-  extractDobFromText,
-  extractPhoneFromText,
-  formatKundliFactsForPrompt,
-  type KundliFacts,
-} from './astrology';
+  DEFAULT_FOLLOW_UPS,
+  INJECTION_REPLY,
+  MAX_ASSISTANT_HISTORY_CHARS,
+  MAX_USER_CHARS,
+  capReply,
+  groundProducts,
+  looksLikePromptInjection,
+  mapIntentToPurposes,
+  normalizeFollowUps,
+  rankCatalog,
+  sanitizeUserText,
+  scrubReply,
+  type CatalogProduct,
+} from './grounding';
 import { normalizePhone } from '../../shared/utils/phone';
 import { db } from '../../shared/db/client';
 import {
@@ -57,109 +68,20 @@ function mergeProfile(existing: ChatProfile, incoming: Partial<ChatProfile>): Ch
   };
 }
 
-const CONTROL_CHARS = new RegExp(
-  '[' + String.fromCharCode(0) + '-' + String.fromCharCode(8) +
-  String.fromCharCode(11) + String.fromCharCode(12) +
-  String.fromCharCode(14) + '-' + String.fromCharCode(31) +
-  String.fromCharCode(127) + ']',
-  'g'
-);
-const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?:[^\uD800-\uDBFF]|^)[\uDC00-\uDFFF]/g;
-
-function sanitizeForPrompt(text: string): string {
-  return text.replace(CONTROL_CHARS, '').replace(LONE_SURROGATE, '').trim();
-}
-
-function buildSystemPrompt(
-  profile: ChatProfile,
-  bookChunks: RetrievedChunk[],
-  kundliFacts: KundliFacts | null
-): string {
-  const knownLines = [
-    profile.name ? `Name: ${profile.name}` : null,
-    profile.dob ? `Date of Birth: ${profile.dob}` : null,
-    profile.phone ? `Phone / WhatsApp: ${profile.phone}` : null,
-    profile.problem ? `What's troubling them: ${profile.problem}` : null,
-  ].filter(Boolean);
-
-  const bookContext =
-    bookChunks.length > 0
-      ? `\n\nRelevant passages from reference texts:\n${bookChunks.map((c) => `- ${sanitizeForPrompt(c.content)}`).join('\n')}\n\nGround your remedy/mantra in these passages where relevant — paraphrase naturally.`
-      : '';
-
-  const kundliContext = kundliFacts ? `\n\n${formatKundliFactsForPrompt(kundliFacts)}` : '';
-
-  return `You are Acharya Madhav, a warm, wise, modern Vedic astrologer and numerologist for Doshhmukti (an Indian spiritual store). You speak like a trusted, enlightened guide and wise friend who has deep mastery over Jyotish, Kundli, and Numerology.
-
-VOICE & TONE:
-- Gentle, grounded, empathetic, deeply insightful and authentic.
-- Always reply in natural Hinglish (Hindi written in Roman/Latin alphabet mixed with common conversational English words, as spoken in India). E.g., "Aapki janma tithi dekhkar aapke grahon ki sthiti samajh aa rahi hai", "Dil ke bahut saaf hain aap, par log aksar kadar nahi karte".
-- Never be dry, robotic, or preachy. Address the seeker warmly.
-
-CORE ASTROLOGICAL & KUNDLI GUIDELINES:
-1. When Date of Birth (DOB) is available (or user shares their birth date in this turn):
-   - You MUST refer to the verified Kundli facts provided below.
-   - Reveal 2-3 uncanny, deeply relatable facts about their personality, life struggles, and tendencies (e.g. Mulank ruling planet personality trait, relationship truth where they help others but don't get appreciation, inner overthinking/decision struggle, lucky day/color).
-   - This creates an authentic, captivating, deeply real astrological connection ("real feel").
-   - Connect their ruling Graha (planet) and planetary energy to why they are facing their current challenge.
-2. If DOB is NOT yet provided:
-   - When addressing their question or problem, warmly invite them to share their Date of Birth (janma tithi) if they like:
-     "Aap chahein toh apni Date of Birth (janma tithi) batayein, taaki main aapki Kundli aur Mulank dekhkar bilkul accurate graha sthiti aur specific upay bata sakun."
-
-PHONE NUMBER CAPTURE (BAATO-BAATO ME PHONE NUMBER MANGNA):
-- Organically and conversationally, ask for their WhatsApp/Phone number so you can send them their detailed Kundli analysis report and daily remedies:
-  E.g.: "Aapki poori Kundli report, shubh muhurat aur daily dhyan vidhi ko main aapke WhatsApp par bhi bhej dunga — aap apna WhatsApp/phone number share kar dijiye."
-- If the user has just provided their phone number in this turn:
-  Warmly acknowledge and confirm:
-  "Dhanyawad! Maine aapka WhatsApp number note kar liya hai. Aapki personalized Kundli report aur poore upay humari team jald hi WhatsApp par bhej degi. 🙏"
-  Mark "phoneCollected": true in profile.
-- If phone is already collected, do NOT ask for it again.
-
-REMEDY & RECOMMENDATIONS:
-- Structure your response as short, separate lines (use literal \\n between each part, never one dense block):
-  1. One short line naming the planetary energy/Mulank tendency behind their situation.
-  2. A remedy line, clearly marked with:
-     🕉️ Mantra: <the specific Beej Mantra or Shloka>
-     🪔 Kriya: <simple practical act or precaution, 1 short sentence>
-  3. One closing line hinting that an energized spiritual remedy item can help them further (CRITICAL: do NOT invent or name any specific product name, as real matching products are attached below automatically).
-  4. Set readyForProducts: true with purpose set to the best-fitting category ("love" | "wealth" | "health" | "success" | "protection" | "clarity") and recommendationReason filled with a concise 1-2 sentence reason.
-
-Keep the whole reply tight — 3 to 5 short lines total.
-
-${knownLines.length > 0 ? `Known about the user:\n${knownLines.join('\n')}` : 'No prior details known yet.'}
-${kundliContext}
-${bookContext}
-
-Respond with ONLY a valid JSON object matching exactly this shape:
-{
-  "reply": "<your Hinglish reply to the user, with literal \\n between short lines>",
-  "profile": {
-    "name": string|null,
-    "dob": string|null,
-    "phone": string|null,
-    "problem": string|null,
-    "offeredSuggestion": boolean|null,
-    "askedForPhone": boolean|null,
-    "phoneCollected": boolean|null
-  },
-  "purpose": "love" | "wealth" | "health" | "success" | "protection" | "clarity" | null,
-  "readyForProducts": boolean,
-  "recommendationReason": string|null
-}
-Output the JSON object exactly once, nothing before or after it.`;
-}
-
 export interface RecommendedProduct {
   id: string;
   name: string;
   slug: string;
   thumb: string | null;
+  price: number; // real current price in INR, from the catalog (never from the model)
+  inStock: boolean;
 }
 
 export interface ChatTurnResult {
   reply: string;
   recommendedProducts: RecommendedProduct[];
   recommendationReason: string | null;
+  followUps: string[];
 }
 
 const MAX_LOGGED_MESSAGES = 40;
@@ -263,24 +185,52 @@ export async function sendMessage(input: ChatRequestInput, sessionId: string | n
   return result;
 }
 
+const MAX_PROMPT_HISTORY = 12;
+const SECOND_TURN_FOLLOW_UPS = ['Ise kaise use karein?', 'Mujhe thoda aur samjhayein', 'Meri Kundli dekhein'];
+
+function buildHistory(input: ChatRequestInput): ChatMessage[] {
+  // Client-supplied assistant turns are unverifiable, so they are truncated harder than user turns.
+  return input.messages
+    .slice(-MAX_PROMPT_HISTORY)
+    .map((m) => ({
+      role: m.role,
+      content: sanitizeUserText(m.content, m.role === 'user' ? MAX_USER_CHARS : MAX_ASSISTANT_HISTORY_CHARS),
+    }))
+    .filter((m) => m.content.length > 0);
+}
+
+function toRecommended(p: CatalogProduct): RecommendedProduct {
+  return { id: p.id, name: p.name, slug: p.slug, thumb: p.thumb, price: Math.round(p.price), inStock: true };
+}
+
+async function loadCatalog(): Promise<CatalogProduct[]> {
+  try {
+    return await getChatCatalog();
+  } catch (err) {
+    console.error('[chat] catalog load failed, replying without product grounding', err);
+    return [];
+  }
+}
+
+function fallbackResult(reply: string): ChatTurnResult {
+  return { reply, recommendedProducts: [], recommendationReason: null, followUps: DEFAULT_FOLLOW_UPS };
+}
+
 async function sendMessageInner(input: ChatRequestInput, sessionId: string | null, ip: string): Promise<ChatTurnResult> {
   const existingProfile = await loadProfile(sessionId);
 
-  // Extract DOB and phone from the latest user message
   const lastUserMessage = input.messages[input.messages.length - 1];
+  const cleanedLast = sanitizeUserText(lastUserMessage?.content ?? '');
+
+  // Prompt-injection attempts never reach the model (no cost, no leak surface).
+  if (looksLikePromptInjection(cleanedLast)) return fallbackResult(INJECTION_REPLY);
+
   let textExtractedDob: string | null = null;
   let textExtractedPhone: string | null = null;
-
-  if (lastUserMessage && lastUserMessage.role === 'user') {
-    const dobMatch = extractDobFromText(lastUserMessage.content);
-    if (dobMatch) {
-      textExtractedDob = dobMatch.dob.toISOString().slice(0, 10);
-    }
-    const phoneMatch = extractPhoneFromText(lastUserMessage.content);
-    if (phoneMatch) {
-      textExtractedPhone = phoneMatch;
-    }
-  }
+  const dobMatch = extractDobFromText(cleanedLast);
+  if (dobMatch) textExtractedDob = dobMatch.dob.toISOString().slice(0, 10);
+  const phoneMatch = extractPhoneFromText(cleanedLast);
+  if (phoneMatch) textExtractedPhone = phoneMatch;
 
   const activeDob = textExtractedDob || existingProfile.dob;
   const activePhone = textExtractedPhone || existingProfile.phone;
@@ -293,22 +243,41 @@ async function sendMessageInner(input: ChatRequestInput, sessionId: string | nul
   };
 
   const kundliFacts = activeDob ? computeKundliFacts(activeDob) : null;
-  const bookChunks = await retrieveRelevantChunks(preMergedProfile.problem);
+
+  // Intent text: the last few user turns plus the stored problem, so a short "haan" or
+  // "mera DOB ..." reply still keeps the original concern in scope.
+  const userTurns = input.messages.filter((m) => m.role === 'user');
+  const intentText = [preMergedProfile.problem ?? '', ...userTurns.slice(-3).map((m) => sanitizeUserText(m.content, 300))]
+    .join(' ')
+    .trim();
+  const intentPurposes = mapIntentToPurposes(intentText);
+
+  const [catalog, bookChunks] = await Promise.all([
+    loadCatalog(),
+    retrieveRelevantChunks(intentText.slice(0, 400) || null),
+  ]);
+  const candidates = rankCatalog(catalog, { purposes: intentPurposes, text: intentText, limit: 8 });
 
   const messages: ChatMessage[] = [
-    { role: 'system', content: buildSystemPrompt(preMergedProfile, bookChunks, kundliFacts) },
-    ...input.messages.map((m) => ({ role: m.role, content: m.content }) satisfies ChatMessage),
+    {
+      role: 'system',
+      content: buildSystemPrompt({
+        profile: preMergedProfile,
+        bookChunks,
+        kundliFacts,
+        candidates,
+        turnNumber: userTurns.length,
+      }),
+    },
+    ...buildHistory(input),
   ];
 
   let raw: string;
   try {
     raw = await chatCompletion(messages, { jsonMode: true });
   } catch (err) {
-    if (err instanceof GroqNotConfiguredError) {
-      return { reply: FALLBACK_REPLY, recommendedProducts: [], recommendationReason: null };
-    }
-    console.error('[chat] LLM call failed', err);
-    return { reply: FALLBACK_REPLY, recommendedProducts: [], recommendationReason: null };
+    if (!(err instanceof GroqNotConfiguredError)) console.error('[chat] LLM call failed', err);
+    return fallbackResult(FALLBACK_REPLY);
   }
 
   const parsedInput = unwrapDoubleEncoded(safeJsonParse(raw));
@@ -319,7 +288,7 @@ async function sendMessageInner(input: ChatRequestInput, sessionId: string | nul
       parsedInput && typeof parsedInput === 'object' && typeof (parsedInput as { reply?: unknown }).reply === 'string'
         ? ((parsedInput as { reply: string }).reply.trim() || null)
         : null;
-    return { reply: salvagedReply ?? FALLBACK_REPLY, recommendedProducts: [], recommendationReason: null };
+    return fallbackResult(salvagedReply ? capReply(scrubReply(salvagedReply)) : FALLBACK_REPLY);
   }
 
   const turn = parsed.data;
@@ -333,24 +302,26 @@ async function sendMessageInner(input: ChatRequestInput, sessionId: string | nul
   });
   await saveProfile(sessionId, mergedProfile);
 
-  // If phone number is available, save/upsert lead into database
   if (finalPhone) {
     void saveLeadToDatabase(sessionId, finalPhone, mergedProfile, turn.purpose, ip);
   }
 
-  let recommendedProducts: RecommendedProduct[] = [];
-  if (turn.readyForProducts && turn.purpose) {
-    try {
-      recommendedProducts = await getProductsForChatRecommendation(turn.purpose);
-    } catch (err) {
-      console.error('[chat] product recommendation lookup failed, replying without cards', err);
-    }
-  }
+  // Grounding: only real, in-stock catalog rows survive. Guidance-first: cards appear only when
+  // the visitor asked for something to buy/do, or after a few turns when the model is ready.
+  // Our own purpose-ranked fallback picks are used only on an explicit ask.
+  const asked = wantsProducts(userTurns.slice(-2).map((m) => sanitizeUserText(m.content, 300)).join(' '));
+  const showProducts = canShowProducts({ asked, userTurns: userTurns.length, modelReady: turn.readyForProducts });
+  const purposeOrder = [...(turn.purpose ? [turn.purpose] : []), ...intentPurposes];
+  const fallbackPicks = asked ? rankCatalog(catalog, { purposes: purposeOrder, text: intentText, limit: MAX_RECOMMENDED_PRODUCTS }) : [];
+  const grounded = showProducts ? groundProducts(turn.suggestedSlugs, catalog, fallbackPicks, MAX_RECOMMENDED_PRODUCTS) : [];
+  const recommendedProducts = grounded.map(toRecommended);
 
+  const reply = capReply(scrubReply(turn.reply, grounded.map((p) => p.price)));
   return {
-    reply: turn.reply,
+    reply,
     recommendedProducts,
     recommendationReason: recommendedProducts.length > 0 ? turn.recommendationReason : null,
+    followUps: normalizeFollowUps(turn.followUps, recommendedProducts.length > 0 ? SECOND_TURN_FOLLOW_UPS : DEFAULT_FOLLOW_UPS),
   };
 }
 

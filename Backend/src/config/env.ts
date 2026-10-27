@@ -48,11 +48,18 @@ const envSchema = z.object({
   DELHIVERY_CLIENT_NAME: z.string().default('Doshhmukti'),
 
   // Ekart Logistics (Elite API, spec: https://app.elite.ekartlogistics.in/api/docs) —
-  // handles every COD order and any parcel over EKART_MIN_WEIGHT_GRAMS (see
-  // shared/shipping/carrier.ts). Empty credentials = integration off: booking fails with a
-  // clear error instead of silently falling back to Delhivery (which would ship a COD
-  // parcel with no cash-collection instruction).
+  // two accounts (see shared/shipping/carrier.ts): account 1 (EKART1_*) is first choice for
+  // prepaid orders, account 2 (EKART_*) is first choice for COD. Delhivery is used only when
+  // Ekart says the pincode isn't serviceable. Empty credentials = that account is off:
+  // booking fails with a clear error instead of silently falling back.
   EKART_BASE_URL: z.string().url().default('https://app.elite.ekartlogistics.in'),
+  // Account 1 — prepaid. Own credentials, pickup alias and webhook token.
+  EKART1_CLIENT_ID: z.string().default(''),
+  EKART1_USERNAME: z.string().default(''),
+  EKART1_PASSWORD: z.string().default(''),
+  EKART1_PICKUP_ALIAS: z.string().default(''),
+  EKART1_WEBHOOK_TOKEN: z.string().default(''),
+  // Account 2 — COD (the original single-account EKART_* vars).
   EKART_CLIENT_ID: z.string().default(''),
   EKART_USERNAME: z.string().default(''),
   EKART_PASSWORD: z.string().default(''),
