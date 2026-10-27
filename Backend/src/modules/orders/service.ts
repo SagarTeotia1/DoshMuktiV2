@@ -641,7 +641,7 @@ const ORDER_STATUS_RANK: Record<OrderStatus, number> = {
 // FAILED shipment status has no mapping here on purpose — an NDR (failed delivery
 // attempt) needs an admin decision (reattempt vs RTO) via takeOrderNdrAction, not an
 // automatic order status flip.
-export async function syncOrderStatusFromShipment(orderId: string, shipmentStatus: string): Promise<void> {
+export async function syncOrderStatusFromShipment(orderId: string, shipmentStatus: string, source: 'delhivery' | 'ekart' = 'delhivery'): Promise<void> {
   const target = SHIPMENT_TO_ORDER_STATUS[shipmentStatus];
   if (!target) return;
 
@@ -657,11 +657,18 @@ export async function syncOrderStatusFromShipment(orderId: string, shipmentStatu
   await db.$transaction(async (tx) => {
     await tx.order.update({ where: { id: orderId }, data: { status: target } });
     await tx.orderStatusLog.create({
-      data: { orderId, from: order.status, to: target, note: 'Auto-updated from Delhivery tracking', createdBy: 'system:delhivery' },
+      data: {
+        orderId,
+        from: order.status,
+        to: target,
+        note: `Auto-updated from ${source === 'ekart' ? 'Ekart' : 'Delhivery'} tracking`,
+        createdBy: `system:${source}`,
+      },
     });
   });
 
-  if (target === 'DELIVERED') void fetchFinalShippingCost(orderId);
+  // The re-quote below is Delhivery's rate calculator - meaningless for an Ekart parcel.
+  if (target === 'DELIVERED' && source === 'delhivery') void fetchFinalShippingCost(orderId);
 }
 
 // Best-effort: re-quotes Delhivery's rate calculator with this order's final declared

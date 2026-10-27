@@ -61,7 +61,9 @@ export async function ekartWebhookHandler(req: FastifyRequest, reply: FastifyRep
     return reply.code(401).send({ error: 'Invalid token' });
   }
 
-  const body = req.body as { id?: string; status?: string; location?: string; desc?: string; ctime?: number } | undefined;
+  const body = req.body as
+    | { id?: string; status?: string; location?: string; desc?: string; ctime?: number; ndrStatus?: string; edd?: number }
+    | undefined;
   // The dashboard webhook is also subscribed to shipment_created, which has no tracking
   // status - ack it (non-2xx makes Ekart retry and send failure alert emails) and move on.
   if (!body?.id || !body.status) return reply.code(200).send({ status: 'ignored' });
@@ -73,6 +75,8 @@ export async function ekartWebhookHandler(req: FastifyRequest, reply: FastifyRep
     location: body.location ?? '',
     description: body.desc ?? '',
     timestamp: new Date(body.ctime ?? Date.now()).toISOString(),
+    ndrStatus: body.ndrStatus,
+    edd: typeof body.edd === 'number' && body.edd > 0 ? new Date(body.edd) : undefined,
   });
 }
 
