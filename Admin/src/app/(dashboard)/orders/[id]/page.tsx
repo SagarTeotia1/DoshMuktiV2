@@ -7,7 +7,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { StatusBadge, PaymentBadge } from '@/components/ui/StatusBadge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ShippingActions } from '@/components/orders/ShippingActions';
-import { useOrder, useUpdateOrderStatus, useUpdatePackageWeight } from '@/hooks/use-orders';
+import { useOrder, useResendWhatsApp, useUpdateOrderStatus, useUpdatePackageWeight } from '@/hooks/use-orders';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ApiError } from '@/lib/api-client';
 
@@ -30,6 +30,7 @@ export default function OrderDetailPage() {
   const { data: order, isLoading } = useOrder(id);
   const updateStatus = useUpdateOrderStatus(id);
   const updatePackageWeight = useUpdatePackageWeight(id);
+  const resendWhatsApp = useResendWhatsApp(id);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [weightInput, setWeightInput] = useState('');
   const [weightEdited, setWeightEdited] = useState(false);
@@ -270,6 +271,25 @@ export default function OrderDetailPage() {
             <p className="text-sm text-slate-700">{order.customerName}</p>
             <p className="text-sm font-semibold text-slate-900">{order.customerPhone}</p>
             {order.customerEmail && <p className="text-sm text-slate-500">{order.customerEmail}</p>}
+            <div className="mt-3 flex items-center justify-between gap-2 rounded-md bg-slate-50 border border-slate-200 px-3 py-2">
+              <span className={`text-xs font-medium ${order.whatsappConfirmSentAt ? 'text-emerald-700' : 'text-slate-500'}`}>
+                {order.whatsappConfirmSentAt
+                  ? `✓ WhatsApp confirmation sent · ${formatDate(order.whatsappConfirmSentAt)}`
+                  : 'WhatsApp confirmation not sent'}
+              </span>
+              <button
+                onClick={() =>
+                  resendWhatsApp.mutate(undefined, {
+                    onSuccess: () => toast.success('WhatsApp confirmation sent'),
+                    onError: (err) => toast.error(err instanceof ApiError ? err.body.error : 'Failed to send WhatsApp message'),
+                  })
+                }
+                disabled={resendWhatsApp.isPending}
+                className="shrink-0 px-2.5 py-1 rounded-md text-[11px] font-semibold text-slate-700 border border-slate-300 hover:border-slate-400 disabled:opacity-40 transition-colors"
+              >
+                {resendWhatsApp.isPending ? 'Sending…' : order.whatsappConfirmSentAt ? 'Resend' : 'Send now'}
+              </button>
+            </div>
             <p className="text-sm text-slate-500 mt-2">
               {order.shippingAddress.line1}
               {order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ''}

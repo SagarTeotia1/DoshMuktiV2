@@ -50,6 +50,21 @@ const columns: ColumnDef<Order, unknown>[] = [
       return <span className="text-slate-400">—</span>;
     },
   },
+  {
+    id: 'whatsapp',
+    header: 'WhatsApp',
+    cell: ({ row }) =>
+      row.original.whatsappConfirmSentAt ? (
+        <span
+          className="text-emerald-600 font-bold"
+          title={`Order confirmation sent on WhatsApp · ${formatDate(row.original.whatsappConfirmSentAt)}`}
+        >
+          ✓
+        </span>
+      ) : (
+        <span className="text-slate-300" title="Order confirmation not sent on WhatsApp">—</span>
+      ),
+  },
   { id: 'payment', header: 'Payment', cell: ({ row }) => <PaymentBadge order={row.original} /> },
   {
     id: 'courier',

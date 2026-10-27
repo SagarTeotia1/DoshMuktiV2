@@ -91,6 +91,14 @@ const envSchema = z.object({
 
   CRON_SECRET: z.string().min(32),
 
+  // WhatsApp order confirmation via MSG91 (shared/integrations/msg91/whatsapp.ts). The authkey has
+  // IP Security on - the server's public IP must be allow-listed in MSG91 or every call is
+  // rejected with apiError 418. Any of the three empty = feature off (orders are unaffected).
+  MSG91_WHATSAPP_AUTH_KEY: z.string().default(''),
+  MSG91_WHATSAPP_NUMBER: z.string().regex(/^\d*$/, 'digits only, with country code').default(''),
+  MSG91_WHATSAPP_NAMESPACE: z.string().default(''),
+  MSG91_WHATSAPP_ORDER_TEMPLATE: z.string().default('dosh_order_confirm'),
+
   // Nightly encrypted database backup (jobs/db-backup.ts, restore with scripts/restore-backup.ts).
   // BACKUP_R2_BUCKET must be a PRIVATE bucket, never the public images bucket. Empty = the job
   // fails loudly instead of silently doing nothing. Key: `openssl rand -hex 32` - keep a copy

@@ -78,6 +78,19 @@ export function useBookShipment(id: string) {
   });
 }
 
+// Sends the WhatsApp "order confirmed" message again (first send failed, or the customer's
+// number changed). The backend replies 502 with MSG91's reason if it is rejected.
+export function useResendWhatsApp(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<{ sent: boolean }>(`/api/admin/orders/${id}/whatsapp-confirmation`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-order', id] });
+      qc.invalidateQueries({ queryKey: ['admin-orders'] });
+    },
+  });
+}
+
 export type SyncMode = 'shipped' | 'delivered';
 
 // On-demand carrier tracking sync, one bounded batch per click:
