@@ -62,7 +62,9 @@ export async function ekartWebhookHandler(req: FastifyRequest, reply: FastifyRep
   }
 
   const body = req.body as { id?: string; status?: string; location?: string; desc?: string; ctime?: number } | undefined;
-  if (!body?.id || !body.status) return reply.code(400).send({ error: 'Invalid payload' });
+  // The dashboard webhook is also subscribed to shipment_created, which has no tracking
+  // status - ack it (non-2xx makes Ekart retry and send failure alert emails) and move on.
+  if (!body?.id || !body.status) return reply.code(200).send({ status: 'ignored' });
 
   // Ack first - Ekart retries on slow responses.
   reply.code(200).send({ status: 'ok' });
