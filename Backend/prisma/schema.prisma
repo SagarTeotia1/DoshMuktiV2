@@ -395,7 +395,10 @@ model Shipment {
   // carrier) — `carrier` says whose waybill it is.
   delhiveryWaybill  String?
   carrier           Carrier        @default(DELHIVERY)
-  status            ShipmentStatus @default(PENDING)
+  // Which Ekart account (1 = prepaid, 2 = COD) owns the waybill; null for Delhivery.
+  // Label/cancel/NDR/e-way-bill calls must use the same account that booked it.
+  ekartAccount      Int?
+  status           ShipmentStatus @default(PENDING)
   trackingEvents    Json           @default("[]") // [{timestamp,status,location,description}]
   estimatedDelivery DateTime?
   // Government e-way bill number (GST-required above the transport value threshold) —

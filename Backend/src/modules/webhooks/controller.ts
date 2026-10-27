@@ -47,10 +47,17 @@ export async function razorpayWebhookHandler(req: RawBodyRequest, reply: Fastify
 // registering it (Ekart's spec documents an HMAC secret but not the signature header, so
 // a URL token is what we can verify) - constant-time compared, never ===.
 export async function ekartWebhookHandler(req: FastifyRequest, reply: FastifyReply) {
+  // Both Ekart accounts push to this one URL, each with its own token.
   const token = (req.query as { token?: string }).token ?? '';
   const tokenBuf = Buffer.from(token);
-  const expBuf = Buffer.from(env.EKART_WEBHOOK_TOKEN);
-  if (!env.EKART_WEBHOOK_TOKEN || tokenBuf.length !== expBuf.length || !crypto.timingSafeEqual(tokenBuf, expBuf)) {
+  const matchesToken = (expected: string) => {
+    const expBuf = Buffer.from(expected);
+    return expected !== '' && tokenBuf.length === expBuf.length && crypto.timingSafeEqual(tokenBuf, expBuf);
+  };
+  // Evaluate both (no short-circuit) so timing doesn't reveal which account matched.
+  const ok1 = matchesToken(env.EKART1_WEBHOOK_TOKEN);
+  const ok2 = matchesToken(env.EKART_WEBHOOK_TOKEN);
+  if (!ok1 && !ok2) {
     return reply.code(401).send({ error: 'Invalid token' });
   }
 

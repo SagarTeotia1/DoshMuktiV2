@@ -3,9 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "../../shared/db/client";
 import { razorpay } from "../../shared/integrations/razorpay/client";
 import { redis } from "../../shared/cache/client";
-import { cacheKeys, CACHE_TTL } from "../../shared/cache/keys";
-import { env } from "../../config/env";
-import { calculateShippingCost } from "../../shared/integrations/delhivery/client";
+import { cacheKeys } from "../../shared/cache/keys";
 import {
   SHIPPING_FEE,
   FREE_SHIPPING_ABOVE,
@@ -23,7 +21,7 @@ import {
   reserveCouponUsageTx,
   CouponExhaustedError,
 } from "../coupons/service";
-import { chooseCarrier, computeCodFee, computePaymentBreakdown, type PaymentMethodId } from "../../shared/shipping/carrier";
+import { computeCodFee, computePaymentBreakdown, type PaymentMethodId } from "../../shared/shipping/carrier";
 import { onOrderConfirmed } from "../webhooks/service";
 import type { CheckoutInput } from "./schema";
 
@@ -142,37 +140,11 @@ async function generateOrderNumber(
   return `DOSH-${today}-${String(row.seq).padStart(4, "0")}`;
 }
 
-// Live Delhivery rate (Surface mode), cached by route+weight since the same
-// origin/destination/weight always prices the same — this is hit on every cart/PDP
-// view, not just checkout, so an uncached call there would hammer Delhivery for no
-// reason. Returns null (never throws) on any failure so callers can fall back to the
-// flat SHIPPING_FEE — a customer must never be blocked from checking out because a
-// pricing API had a bad moment.
-async function getLiveShippingRate(destPincode: string, weightGrams: number): Promise<number | null> {
-  try {
-    const originPincode = env.DELHIVERY_WAREHOUSE_PINCODE;
-    const key = cacheKeys.shippingRate(originPincode, destPincode, weightGrams);
-
-    const cached = await redis.get<number>(key);
-    if (typeof cached === "number") return cached;
-
-    const result = await calculateShippingCost({ originPincode, destPincode, weightGrams, paymentMode: "Pre-paid" });
-    if (!result) return null;
-
-    const rounded = Math.ceil(result.amount);
-    await redis.set(key, rounded, { ex: CACHE_TTL.SHIPPING_RATE });
-    return rounded;
-  } catch (err) {
-    logger.warn({ err, destPincode }, "live shipping rate lookup failed, using flat fee");
-    return null;
-  }
-}
-
 // Exported for the cart module — the cart's pricing preview (shown pre-checkout on the
 // cart/checkout pages) must compute shipping the exact same way the real order will, or
 // the displayed total drifts from what actually gets charged.
 //
-// `originalFee` is always the real (or flat-fallback) shipping cost regardless of the
+// `originalFee` is always the real shipping cost regardless of the
 // free-shipping threshold — the UI shows it struck through ("₹99 → FREE") once the cart
 // crosses FREE_SHIPPING_ABOVE, rather than just disappearing. `fee` is what's actually
 // charged (0 once waived).
@@ -182,17 +154,11 @@ export async function calculateShippingFee(
   destPincode: string,
   paymentMethod: PaymentMethodId = "PREPAID",
 ): Promise<{ fee: number; originalFee: number }> {
-  // Quote the carrier that will actually ship the parcel (same rule as booking):
-  //   Ekart (COD, or prepaid over the weight threshold) — flat SHIPPING_FEE (Rs90, Ekart's
-  //   flat rate up to 2kg), no lookup.
-  //   Delhivery (prepaid at/under the threshold) — real rate for this route + weight,
-  //   falling back to the flat fee only if Delhivery can't quote.
-  // Either way it's waived above FREE_SHIPPING_ABOVE (we bear it) — originalFee stays the
-  // true cost so the UI can show it struck through.
-  const originalFee =
-    chooseCarrier(paymentMethod, weightGrams) === "EKART"
-      ? SHIPPING_FEE
-      : ((await getLiveShippingRate(destPincode, weightGrams)) ?? SHIPPING_FEE);
+  // Every parcel ships Ekart first (see shared/shipping/carrier.ts), so the quote is the flat
+  // SHIPPING_FEE (Rs90, Ekart's flat rate up to 2kg), no lookup. Waived above
+  // FREE_SHIPPING_ABOVE (we bear it) - originalFee stays the true cost so the UI can show it
+  // struck through.
+  const originalFee = SHIPPING_FEE;
   return { fee: subtotal > FREE_SHIPPING_ABOVE ? 0 : originalFee, originalFee };
 }
 
