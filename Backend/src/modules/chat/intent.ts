@@ -8,7 +8,7 @@ const PRODUCT_ASK_RE =
 
 export const MAX_RECOMMENDED_PRODUCTS = 2;
 // Guidance turns the visitor must have had before the model's own "ready" signal is trusted.
-export const MIN_TURNS_BEFORE_UNPROMPTED_PRODUCTS = 3;
+export const MIN_TURNS_BEFORE_UNPROMPTED_PRODUCTS = 2;
 
 export function wantsProducts(recentUserText: string): boolean {
   return PRODUCT_ASK_RE.test(recentUserText);

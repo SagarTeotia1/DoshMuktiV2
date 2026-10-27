@@ -23,9 +23,11 @@ describe('canShowProducts', () => {
   test('explicit ask always shows, even on turn 1', () => assert.equal(canShowProducts({ asked: true, userTurns: 1, modelReady: false }), true));
   test('model ready but too early -> hidden', () => {
     assert.equal(canShowProducts({ asked: false, userTurns: 1, modelReady: true }), false);
-    assert.equal(canShowProducts({ asked: false, userTurns: 2, modelReady: true }), false);
   });
-  test('model ready after guidance turns -> shown', () => assert.equal(canShowProducts({ asked: false, userTurns: 3, modelReady: true }), true));
+  test('model ready after guidance turns -> shown', () => {
+    assert.equal(canShowProducts({ asked: false, userTurns: 2, modelReady: true }), true);
+    assert.equal(canShowProducts({ asked: false, userTurns: 3, modelReady: true }), true);
+  });
   test('not ready, no ask, many turns -> hidden', () => assert.equal(canShowProducts({ asked: false, userTurns: 9, modelReady: false }), false));
   test('never more than 2 cards', () => assert.equal(MAX_RECOMMENDED_PRODUCTS, 2));
 });

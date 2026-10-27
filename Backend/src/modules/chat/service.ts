@@ -312,7 +312,7 @@ async function sendMessageInner(input: ChatRequestInput, sessionId: string | nul
   const asked = wantsProducts(userTurns.slice(-2).map((m) => sanitizeUserText(m.content, 300)).join(' '));
   const showProducts = canShowProducts({ asked, userTurns: userTurns.length, modelReady: turn.readyForProducts });
   const purposeOrder = [...(turn.purpose ? [turn.purpose] : []), ...intentPurposes];
-  const fallbackPicks = asked ? rankCatalog(catalog, { purposes: purposeOrder, text: intentText, limit: MAX_RECOMMENDED_PRODUCTS }) : [];
+  const fallbackPicks = showProducts ? rankCatalog(catalog, { purposes: purposeOrder, text: intentText, limit: MAX_RECOMMENDED_PRODUCTS }) : [];
   const grounded = showProducts ? groundProducts(turn.suggestedSlugs, catalog, fallbackPicks, MAX_RECOMMENDED_PRODUCTS) : [];
   const recommendedProducts = grounded.map(toRecommended);
 

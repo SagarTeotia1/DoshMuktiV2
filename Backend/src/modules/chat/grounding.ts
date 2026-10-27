@@ -185,6 +185,8 @@ export function scrubReply(reply: string, allowedPrices: number[] = [], siteHost
     const sentences = line.split(/(?<=[.!?।])\s+/);
     const kept = sentences.filter((s) => !FORBIDDEN_CLAIM.test(s));
     let joined = kept.join(' ');
+    // Model sometimes leaks template placeholders ("[Name]", "{name}") when the name is unknown.
+    joined = joined.replace(/\s*[[{<]\s*(?:name|naam|user|dob)\s*[\]}>][,!:]?/gi, '');
     joined = joined.replace(URL_RE, (u) => (u.toLowerCase().includes(siteHost) ? u : ''));
     joined = joined.replace(CURRENCY, (m, a?: string, b?: string) => {
       const n = Math.round(Number((a ?? b ?? '').replace(/,/g, '')));
@@ -242,6 +244,8 @@ export function normalizeFollowUps(raw: unknown, fallback: string[] = []): strin
     if (typeof item !== 'string') continue;
     const t = item.replace(CTRL, '').replace(/\s+/g, ' ').trim();
     if (t.length < 2 || t.length > 40 || /https?:|www\./i.test(t)) continue;
+    // Chip is sent verbatim as the user's message — drop template placeholders like "[Name]" or "{name}".
+    if (/[[\]{}<>]/.test(t)) continue;
     if (out.some((o) => o.toLowerCase() === t.toLowerCase())) continue;
     out.push(t);
     if (out.length >= 3) break;
