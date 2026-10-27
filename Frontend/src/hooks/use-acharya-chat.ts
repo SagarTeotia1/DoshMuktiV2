@@ -8,6 +8,7 @@ import type { ChatMessage, ChatRecommendedProduct, ChatResponse } from '@/types/
 export type DisplayMessage = ChatMessage & {
   recommendedProducts?: ChatRecommendedProduct[];
   recommendationReason?: string | null;
+  followUps?: string[];
 };
 
 const GREETING: DisplayMessage = {
@@ -34,14 +35,14 @@ export function useAcharyaChat() {
         const history = nextMessages
           .slice(-MAX_HISTORY)
           .map((m) => ({ role: m.role, content: m.content }));
-        const { reply, recommendedProducts, recommendationReason } = await api.post<ChatResponse>(
+        const { reply, recommendedProducts, recommendationReason, followUps } = await api.post<ChatResponse>(
           '/api/chat/acharya',
           { messages: history },
           { 'x-session-id': getSessionId() }
         );
         setMessages((curr) => [
           ...curr,
-          { role: 'assistant', content: reply, recommendedProducts, recommendationReason },
+          { role: 'assistant', content: reply, recommendedProducts, recommendationReason, followUps },
         ]);
       } catch (err) {
         const content =

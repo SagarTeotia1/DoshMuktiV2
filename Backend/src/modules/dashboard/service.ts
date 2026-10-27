@@ -11,7 +11,7 @@ export async function getDashboardSummary() {
   const [todayOrders, actionNeeded, lowStockRows, allTimeAgg, totalUsers, statusGroups] = await Promise.all([
     db.order.findMany({
       where: { status: { in: ['PAID', 'PROCESSING', 'PACKED', 'SHIPPED', 'DELIVERED'] }, createdAt: { gte: startOfDay } },
-      select: { total: true },
+      select: { total: true, paymentMethod: true },
     }),
     db.order.count({ where: { status: 'PAID' } }),
     db.$queryRaw<LowStockCountRow[]>`
@@ -33,6 +33,8 @@ export async function getDashboardSummary() {
 
   return {
     todayOrderCount: todayOrders.length,
+    todayCodCount: todayOrders.filter((o) => o.paymentMethod === 'COD').length,
+    todayPrepaidCount: todayOrders.filter((o) => o.paymentMethod === 'PREPAID').length,
     todayRevenue,
     ordersNeedingAction: actionNeeded,
     lowStockCount: Number(lowStockRows[0]?.count ?? 0),

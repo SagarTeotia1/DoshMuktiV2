@@ -26,6 +26,9 @@ export const listOrdersQuerySchema = z.object({
   status: z.enum(['PENDING_PAYMENT', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'REFUNDED', 'PACKED']).optional(),
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'from must be YYYY-MM-DD').optional(),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'to must be YYYY-MM-DD').optional(),
+  // Free-text admin search: order #, customer name/phone/email, waybill.
+  q: z.string().trim().max(100).optional(),
+  paymentMethod: z.enum(['PREPAID', 'COD']).optional(),
   page: z.coerce.number().int().min(1).max(999).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });

@@ -336,12 +336,15 @@ export interface ChatRecommendedProduct {
   name: string;
   slug: string;
   thumb: string | null;
+  price?: number;
+  inStock?: boolean;
 }
 
 export interface ChatResponse {
   reply: string;
   recommendedProducts?: ChatRecommendedProduct[];
   recommendationReason?: string | null;
+  followUps?: string[];
 }
 
 export interface CreateReviewInput {

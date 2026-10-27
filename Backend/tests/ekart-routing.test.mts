@@ -3,13 +3,14 @@
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-interface FakeShipment { orderId: string; delhiveryWaybill: string | null; carrier: string; ekartAccount: number | null; status: string }
+interface FakeShipment { orderId: string; delhiveryWaybill: string | null; carrier: string; ekartAccount: number | null; status: string; bookedVia?: string | null; fallbackReason?: string | null; costPreTax?: number | null; costTax?: number | null }
 const fake = {
   order: null as Record<string, unknown> | null,
   shipments: new Map<string, FakeShipment>(),
+  orderUpdates: [] as Array<Record<string, unknown>>,
 };
 const fakeDb = {
-  order: { findUnique: async () => fake.order, update: async () => { throw new Error('not faked'); } },
+  order: { findUnique: async () => fake.order, update: async ({ data }: { data: Record<string, unknown> }) => { fake.orderUpdates.push(data); return data; } },
   shipment: {
     findUnique: async ({ where }: { where: { orderId: string } }) => fake.shipments.get(where.orderId) ?? null,
     findFirst: async () => null,
@@ -30,6 +31,9 @@ let calls: Call[] = [];
 let ekartCreate: () => Response | Promise<Response> = () => json({ status: true, tracking_id: 'EK-TRACK-1' });
 let delhiveryCreate: () => Response | Promise<Response> = () => json({ success: true, packages: [{ waybill: 'DL-WB-1' }] });
 let authFails = new Set<string>(); // client ids whose auth call returns 401
+let serviceability: (pin: string) => Response = () => json({ status: true, remark: 'Pincode is serviceable', details: { cod: true, forward_drop: true } });
+let ekartPricing: () => Response = () => json({ preTax: 43, tax: 7.74, total: 50.74 });
+let delhiveryRate: () => Response = () => json([{ total_amount: 70, tax_data: { IGST: 10.68 } }]);
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -45,6 +49,10 @@ globalThis.fetch = (async (input: string | URL | Request, init: RequestInit = {}
     if (authFails.has(clientId)) return json({ message: 'bad credentials' }, 401);
     return json({ access_token: `tok-${clientId}`, expires_in: 3600 });
   }
+  const svcMatch = /\/api\/v2\/serviceability\/(\d+)/.exec(url);
+  if (svcMatch) return serviceability(svcMatch[1]!);
+  if (url.includes('/data/v2/pricing/estimate')) return ekartPricing();
+  if (url.includes('/api/kinko/v1/invoice/charges')) return delhiveryRate();
   if (url.includes('/api/v1/package/create')) return ekartCreate();
   if (url.includes('/api/cmu/create.json')) return delhiveryCreate();
   if (url.includes('/api/v1/package/cancel')) return json({ status: true });
@@ -95,6 +103,10 @@ beforeEach(() => {
   fake.shipments.clear();
   fake.order = makeOrder('PREPAID');
   authFails = new Set();
+  fake.orderUpdates = [];
+  serviceability = () => json({ status: true, remark: 'Pincode is serviceable', details: { cod: true, forward_drop: true } });
+  ekartPricing = () => json({ preTax: 43, tax: 7.74, total: 50.74 });
+  delhiveryRate = () => json([{ total_amount: 70, tax_data: { IGST: 10.68 } }]);
   ekartCreate = () => json({ status: true, tracking_id: 'EK-TRACK-1' });
   delhiveryCreate = () => json({ success: true, packages: [{ waybill: 'DL-WB-1' }] });
 });
@@ -324,6 +336,123 @@ describe('bookOrderShipment', () => {
   test('missing order -> throws', async () => {
     fake.order = null;
     await assert.rejects(orders.bookOrderShipment('ord1'), /Order not found/);
+  });
+});
+
+describe('serviceability pre-check', () => {
+  test('Ekart says not serviceable -> Delhivery, Ekart create never called, reason recorded', async () => {
+    serviceability = () => json({ status: false, pincode: 744101, remark: 'Pincode is not serviceable' });
+    const r = await orders.bookOrderShipment('ord1');
+    assert.equal(r.carrier, 'DELHIVERY');
+    assert.equal(createCalls().length, 0);
+    const s = fake.shipments.get('ord1')!;
+    assert.equal(s.fallbackReason, 'Ekart account 1: Pincode is not serviceable');
+    assert.equal(s.ekartAccount, null);
+  });
+  test('COD order where Ekart has no COD at pincode -> Delhivery with cash collection', async () => {
+    fake.order = makeOrder('COD');
+    serviceability = () => json({ status: true, remark: 'Pincode is serviceable', details: { cod: false, forward_drop: true } });
+    const r = await orders.bookOrderShipment('ord1');
+    assert.equal(r.carrier, 'DELHIVERY');
+    assert.equal(createCalls().length, 0);
+    assert.match(fake.shipments.get('ord1')!.fallbackReason!, /COD is not available/);
+  });
+  test('prepaid still books on Ekart when only COD is unavailable', async () => {
+    serviceability = () => json({ status: true, remark: 'ok', details: { cod: false, forward_drop: true } });
+    assert.equal((await orders.bookOrderShipment('ord1')).carrier, 'EKART');
+  });
+  test('forward_drop false -> not serviceable', async () => {
+    serviceability = () => json({ status: true, remark: 'ok', details: { cod: true, forward_drop: false } });
+    assert.equal((await orders.bookOrderShipment('ord1')).carrier, 'DELHIVERY');
+  });
+  test('serviceability API error is inconclusive -> books on Ekart normally', async () => {
+    serviceability = () => json({ message: 'boom' }, 500);
+    assert.equal((await orders.bookOrderShipment('ord1')).carrier, 'EKART');
+  });
+  test('serviceability inconclusive + wallet empty -> still waits (no fallback)', async () => {
+    serviceability = () => json({}, 500);
+    ekartCreate = () => json({ remark: 'Insufficient wallet balance' }, 400);
+    await assert.rejects(orders.bookOrderShipment('ord1'), /no fallback/);
+    assert.equal(delhiveryCalls().length, 0);
+  });
+  test('wallet empty is not mistaken for unserviceable even when pincode check is fine', async () => {
+    ekartCreate = () => json({ remark: 'Insufficient wallet balance' }, 400);
+    await assert.rejects(orders.bookOrderShipment('ord1'), /no fallback/);
+  });
+});
+
+describe('booking record + cost quote', () => {
+  test('Ekart prepaid: bookedVia is the account email, cost quote with GST stored', async () => {
+    await orders.bookOrderShipment('ord1');
+    const s = fake.shipments.get('ord1')!;
+    assert.equal(s.bookedVia, E1.user);
+    assert.equal(s.fallbackReason, null);
+    assert.equal(s.costTax, 7.74);
+    assert.equal(s.costPreTax, 43);
+    assert.deepEqual(fake.orderUpdates.at(-1), { bookingShippingCost: 50.74 });
+  });
+  test('Ekart COD: account 2 email, quote requested with COD amount', async () => {
+    fake.order = makeOrder('COD');
+    let sent: Record<string, unknown> = {};
+    ekartPricing = () => { sent = JSON.parse(calls.find((c) => c.url.includes('/pricing/estimate'))?.body ?? '{}'); return json({ preTax: 75, tax: 13.5, total: 88.5 }); };
+    await orders.bookOrderShipment('ord1');
+    assert.equal(fake.shipments.get('ord1')!.bookedVia, E2.user);
+    assert.equal(fake.orderUpdates.at(-1)!.bookingShippingCost, 88.5);
+    assert.equal(sent.codAmount, 499);
+    assert.equal(sent.pickupPincode, Number(env.DELHIVERY_WAREHOUSE_PINCODE));
+    assert.equal(sent.dropPincode, 110001);
+  });
+  test('quote uses the declared weight (override)', async () => {
+    fake.order = makeOrder('PREPAID', { packageWeightOverride: 2500 });
+    await orders.bookOrderShipment('ord1');
+    const q = JSON.parse(calls.find((c) => c.url.includes('/pricing/estimate'))!.body);
+    assert.equal(q.weight, 2500);
+  });
+  test('quote failure never fails the booking', async () => {
+    ekartPricing = () => json({ message: 'down' }, 500);
+    const r = await orders.bookOrderShipment('ord1');
+    assert.equal(r.carrier, 'EKART');
+    assert.equal(fake.orderUpdates.length, 0);
+  });
+  test('Delhivery fallback: bookedVia is client name, Delhivery rate (with tax split) stored, COD mode for COD', async () => {
+    fake.order = makeOrder('COD');
+    serviceability = () => json({ status: false, remark: 'Pincode is not serviceable' });
+    await orders.bookOrderShipment('ord1');
+    const s = fake.shipments.get('ord1')!;
+    assert.equal(s.bookedVia, env.DELHIVERY_CLIENT_NAME);
+    assert.equal(s.costTax, 10.68);
+    assert.equal(s.costPreTax, 59.32);
+    assert.equal(fake.orderUpdates.at(-1)!.bookingShippingCost, 70);
+    const rateCall = calls.find((c) => c.url.includes('/invoice/charges'))!;
+    assert.match(rateCall.url, /pt=COD/);
+  });
+  test('Delhivery rate without tax data stores total only', async () => {
+    serviceability = () => json({ status: false, remark: 'Pincode is not serviceable' });
+    delhiveryRate = () => json([{ total_amount: 82 }]);
+    await orders.bookOrderShipment('ord1');
+    const s = fake.shipments.get('ord1')!;
+    assert.equal(s.costTax ?? null, null);
+    assert.equal(fake.orderUpdates.at(-1)!.bookingShippingCost, 82);
+  });
+});
+
+describe('ekart serviceability + estimate clients', () => {
+  test('checkEkartServiceability: unconfigured / bad pincode -> null without HTTP', async () => {
+    assert.equal(await ekart.checkEkartServiceability(1, '12'), null);
+    env.EKART1_CLIENT_ID = '';
+    assert.equal(await ekart.checkEkartServiceability(1, '110001'), null);
+    assert.equal(calls.length, 0);
+  });
+  test('checkEkartServiceability parses serviceable details', async () => {
+    assert.deepEqual(await ekart.checkEkartServiceability(1, '110001'), { serviceable: true, codAllowed: true, remark: 'Pincode is serviceable' });
+  });
+  test('estimateEkartCost parses the quote', async () => {
+    const q = await ekart.estimateEkartCost(1, { originPincode: '110085', destPincode: '400001', weight: 500, codAmount: 0, invoiceAmount: 499 });
+    assert.deepEqual(q, { preTax: 43, tax: 7.74, total: 50.74 });
+  });
+  test('estimateEkartCost network error -> null', async () => {
+    ekartPricing = () => { throw new TypeError('x'); };
+    assert.equal(await ekart.estimateEkartCost(1, { originPincode: '110085', destPincode: '400001', weight: 500, codAmount: 0, invoiceAmount: 499 }), null);
   });
 });
 

@@ -415,9 +415,35 @@ export async function getOrderById(id: string) {
   });
 }
 
-export async function listOrdersForAdmin(query: { status?: OrderStatus; from?: string; to?: string; page: number; limit: number }) {
+export async function listOrdersForAdmin(query: {
+  status?: OrderStatus;
+  from?: string;
+  to?: string;
+  q?: string;
+  paymentMethod?: 'PREPAID' | 'COD';
+  page: number;
+  limit: number;
+}) {
   const where: Prisma.OrderWhereInput = {};
   if (query.status) where.status = query.status;
+  if (query.paymentMethod) where.paymentMethod = query.paymentMethod;
+  const q = query.q?.trim();
+  if (q) {
+    const digits = q.replace(/\D/g, '');
+    const phoneLike = digits.length >= 3 && /^[\d\s+()-]+$/.test(q);
+    const ci = { contains: q, mode: 'insensitive' as const };
+    where.AND = [
+      {
+        OR: [
+          { orderNumber: ci },
+          { customerName: ci },
+          { customerPhone: { contains: phoneLike ? digits : q } },
+          { customerEmail: ci },
+          { shipment: { is: { delhiveryWaybill: ci } } },
+        ],
+      },
+    ];
+  }
   if (query.from || query.to) {
     where.createdAt = {
       ...(query.from ? { gte: new Date(`${query.from}T00:00:00.000Z`) } : {}),

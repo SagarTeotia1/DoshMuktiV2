@@ -154,6 +154,9 @@ export function ChatWidget() {
                           )}
                         </div>
                         <p className="flex-1 min-w-0 font-heading font-bold text-xs text-[#2B1B0C] truncate">{p.name}</p>
+                        {typeof p.price === 'number' && (
+                          <span className="flex-shrink-0 font-body text-[11px] text-[#7E6E58]">₹{p.price}</span>
+                        )}
                         <span className="flex-shrink-0 font-body text-[11px] font-semibold text-[#9C5A26]">View →</span>
                       </Link>
                     ))}
@@ -196,6 +199,22 @@ export function ChatWidget() {
                 >
                   🧿 Nazar Dosh Nivaran
                 </button>
+              </div>
+            )}
+
+            {/* Follow-up suggestion chips from the latest assistant turn */}
+            {!isSending && messages.length > 1 && (messages[messages.length - 1]?.followUps?.length ?? 0) > 0 && (
+              <div className="flex flex-wrap gap-2 animate-fade-in-up">
+                {messages[messages.length - 1]?.followUps?.map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => trackedSendMessage(chip)}
+                    className="text-xs bg-[#F6E4C2]/40 hover:bg-[#F6E4C2]/70 text-[#2B1B0C] border border-[#2B1B0C]/10 rounded-full px-3 py-1.5 transition-colors font-medium"
+                  >
+                    {chip}
+                  </button>
+                ))}
               </div>
             )}
 

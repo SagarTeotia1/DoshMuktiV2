@@ -7,7 +7,11 @@ export const chatMessageSchema = z.object({
 });
 
 export const chatRequestSchema = z.object({
-  messages: z.array(chatMessageSchema).min(1).max(20), // caps history sent per request — cost/abuse guard
+  messages: z
+    .array(chatMessageSchema)
+    .min(1)
+    .max(20) // caps history sent per request — cost/abuse guard
+    .refine((m) => m[m.length - 1]?.role === 'user', { message: 'Last message must be from the user' }),
 });
 export type ChatRequestInput = z.infer<typeof chatRequestSchema>;
 
@@ -43,6 +47,11 @@ export const llmTurnSchema = z.object({
   purpose: z.enum(PURPOSE_IDS).nullable().default(null),
   readyForProducts: z.boolean().nullable().default(false).transform((v) => v ?? false),
   recommendationReason: z.string().max(400).nullable().default(null),
+  // Slugs (from the catalog list in the prompt) the model wants to recommend. Never trusted:
+  // grounding.ts resolves them against the real in-stock catalog and drops everything else.
+  suggestedSlugs: z.array(z.string().max(120)).max(6).nullable().default([]).transform((v) => v ?? []),
+  // 2-3 short tap-able replies for the widget.
+  followUps: z.array(z.string().max(60)).max(6).nullable().default([]).transform((v) => v ?? []),
 });
 export type LlmTurn = z.infer<typeof llmTurnSchema>;
 
