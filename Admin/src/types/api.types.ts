@@ -330,6 +330,15 @@ export interface Order {
   shipment: {
     delhiveryWaybill: string | null;
     carrier: 'DELHIVERY' | 'EKART';
+    /** 1 = prepaid account, 2 = COD account; null for Delhivery. */
+    ekartAccount: number | null;
+    /** Login (Ekart username / Delhivery client) the parcel was booked under. */
+    bookedVia: string | null;
+    /** Set when the parcel is not on its first-choice carrier. */
+    fallbackReason: string | null;
+    /** GST split of the booking-time rate quote (total is Order.bookingShippingCost). */
+    costPreTax: number | null;
+    costTax: number | null;
     status: string;
     ewaybillNumber: string | null;
     pickupRequestId: string | null;
@@ -385,6 +394,8 @@ export interface PaginatedUsers {
 
 export interface DashboardSummary {
   todayOrderCount: number;
+  todayCodCount: number;
+  todayPrepaidCount: number;
   todayRevenue: number;
   ordersNeedingAction: number;
   lowStockCount: number;

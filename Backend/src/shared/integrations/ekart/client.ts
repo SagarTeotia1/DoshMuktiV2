@@ -259,3 +259,67 @@ export async function registerEkartWebhook(account: EkartAccount, params: { url:
   if (!res.ok) throw new Error(await errorMessage(res));
   return (await res.json()) as { id: string };
 }
+
+export interface EkartServiceability {
+  serviceable: boolean;
+  /** False when Ekart cannot collect cash at this pincode. */
+  codAllowed: boolean;
+  remark: string;
+}
+
+// Authoritative pincode check (GET /api/v2/serviceability/{pin}). null = could not be
+// determined (not configured, HTTP error, network) - callers must then just try the booking.
+export async function checkEkartServiceability(account: EkartAccount, pincode: string): Promise<EkartServiceability | null> {
+  if (!isEkartConfigured(account) || !/^\d{6}$/.test(pincode)) return null;
+  try {
+    const res = await ekartFetch(account, `/api/v2/serviceability/${pincode}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { status?: boolean; remark?: string; details?: { cod?: boolean; forward_drop?: boolean } };
+    if (typeof data.status !== 'boolean') return null;
+    if (!data.status) return { serviceable: false, codAllowed: false, remark: data.remark ?? 'Pincode is not serviceable' };
+    return { serviceable: data.details?.forward_drop !== false, codAllowed: data.details?.cod !== false, remark: data.remark ?? '' };
+  } catch {
+    return null;
+  }
+}
+
+export interface EkartCostQuote {
+  preTax: number;
+  tax: number;
+  total: number;
+}
+
+// Rate for this account at its negotiated prices, GST included (POST /data/v2/pricing/estimate).
+// null on any failure - a missing quote must never block or fail a booking.
+export async function estimateEkartCost(account: EkartAccount, params: {
+  originPincode: string;
+  destPincode: string;
+  weight: number; // grams
+  codAmount: number;
+  invoiceAmount: number;
+}): Promise<EkartCostQuote | null> {
+  if (!isEkartConfigured(account)) return null;
+  try {
+    const res = await ekartFetch(account, '/data/v2/pricing/estimate', {
+      method: 'POST',
+      body: JSON.stringify({
+        pickupPincode: Number(params.originPincode),
+        dropPincode: Number(params.destPincode),
+        invoiceAmount: params.invoiceAmount,
+        weight: Math.max(Math.round(params.weight), 1),
+        length: env.EKART_PACKAGE_LENGTH_CM,
+        width: env.EKART_PACKAGE_WIDTH_CM,
+        height: env.EKART_PACKAGE_HEIGHT_CM,
+        serviceType: 'SURFACE',
+        codAmount: params.codAmount,
+        packagingType: 'Regular',
+      }),
+    });
+    if (!res.ok) return null;
+    const d = (await res.json()) as { preTax?: number; tax?: number; total?: number };
+    if (typeof d.total !== 'number') return null;
+    return { preTax: d.preTax ?? d.total - (d.tax ?? 0), tax: d.tax ?? 0, total: d.total };
+  } catch {
+    return null;
+  }
+}

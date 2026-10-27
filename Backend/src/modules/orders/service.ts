@@ -16,7 +16,8 @@ import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
 import { PACKAGING_WEIGHT_GRAMS } from '../../shared/constants/purposes';
 import { chooseEkartAccount, type CarrierId } from '../../shared/shipping/carrier';
-import { toEkartAccount, type EkartAccount } from '../../shared/integrations/ekart/accounts';
+import { toEkartAccount, ekartConfig, type EkartAccount } from '../../shared/integrations/ekart/accounts';
+import { checkEkartServiceability, estimateEkartCost } from '../../shared/integrations/ekart/client';
 import {
   createEkartShipment,
   fetchEkartLabelPdf,
@@ -166,7 +167,15 @@ export async function bookOrderShipment(orderId: string): Promise<{ waybill: str
 
   let carrier: CarrierId = 'EKART';
   let result: { waybill: string };
-  const ekart = await ekartAttempt();
+  // Ask Ekart up front whether it can deliver here (and take cash, for COD): a definite "no" goes
+  // straight to Delhivery without a doomed booking call. An unknown answer (null) just tries the
+  // booking, whose own error text is then classified.
+  const svc = await checkEkartServiceability(ekartAccount, address.pincode);
+  const ekart =
+    svc && (!svc.serviceable || (codAmount > 0 && !svc.codAllowed))
+      ? { error: svc.serviceable ? 'COD is not available at this pincode' : svc.remark, unserviceable: true }
+      : await ekartAttempt();
+  let fallbackReason: string | null = null;
   if (ekart && !('error' in ekart)) {
     result = ekart;
   } else if (ekart && ekart.unserviceable) {
@@ -193,6 +202,7 @@ export async function bookOrderShipment(orderId: string): Promise<{ waybill: str
     }
     logger.warn({ orderId, ekartAccount, reason: ekart.error }, 'Ekart pincode not serviceable — booked on Delhivery');
     carrier = 'DELHIVERY';
+    fallbackReason = `Ekart account ${ekartAccount}: ${ekart.error}`;
     result = delhivery;
   } else {
     throw new Error(`EKART${ekartAccount}: ${ekart ? ekart.error : 'not configured'} (no fallback — retry later)`);
@@ -202,6 +212,8 @@ export async function bookOrderShipment(orderId: string): Promise<{ waybill: str
     delhiveryWaybill: result.waybill,
     carrier,
     ekartAccount: carrier === 'EKART' ? ekartAccount : null,
+    bookedVia: carrier === 'EKART' ? ekartConfig(ekartAccount).username || null : env.DELHIVERY_CLIENT_NAME,
+    fallbackReason,
     status: 'BOOKED' as const,
   };
   if (existing) {
@@ -210,30 +222,64 @@ export async function bookOrderShipment(orderId: string): Promise<{ waybill: str
     await db.shipment.create({ data: { orderId, ...shipmentData } });
   }
 
-  // The re-quote calls Delhivery's rate calculator — meaningless for an Ekart parcel.
-  if (carrier === 'DELHIVERY') void quoteBookingShippingCost(orderId, weight, address.pincode);
+  await recordBookingCost(orderId, {
+    carrier,
+    ekartAccount,
+    weight,
+    destPincode: address.pincode,
+    codAmount,
+    orderTotal: Number(order.total),
+  });
 
   return { waybill: result.waybill, carrier };
 }
 
-// Best-effort: re-quotes Delhivery's rate calculator the moment a shipment is booked,
-// with the exact weight just sent in the booking call (so it reflects a
-// packageWeightOverride set before booking, unlike actualShippingCost which is frozen
-// at checkout). Shared by bookOrderShipment above and the payment.captured auto-book in
-// webhooks/service.ts. Never throws into the caller — a failed re-quote just leaves
-// bookingShippingCost null; it never blocks the shipment booking itself.
-export async function quoteBookingShippingCost(orderId: string, weightGrams: number, destPincode: string): Promise<void> {
+// Best-effort: quotes what the carrier that actually took the parcel charges for it, the
+// moment it is booked - Ekart's own rate API for the booked account (GST split included), or
+// Delhivery's rate calculator for a fallback parcel. Uses the exact weight sent in the booking
+// call, so it reflects a packageWeightOverride (unlike actualShippingCost, frozen at checkout).
+// It is a rate quote, not a carrier invoice. Never throws into the caller: a failed quote just
+// leaves bookingShippingCost null; it never blocks or undoes the booking.
+async function recordBookingCost(
+  orderId: string,
+  p: { carrier: CarrierId; ekartAccount: EkartAccount; weight: number; destPincode: string; codAmount: number; orderTotal: number },
+): Promise<void> {
   try {
-    const result = await fetchDelhiveryShippingCost({
-      originPincode: env.DELHIVERY_WAREHOUSE_PINCODE,
-      destPincode,
-      weightGrams,
-      paymentMode: 'Pre-paid',
+    const originPincode = env.DELHIVERY_WAREHOUSE_PINCODE;
+    let total: number | null = null;
+    let tax: number | null = null;
+    if (p.carrier === 'EKART') {
+      const q = await estimateEkartCost(p.ekartAccount, {
+        originPincode,
+        destPincode: p.destPincode,
+        weight: p.weight,
+        codAmount: p.codAmount,
+        invoiceAmount: p.orderTotal,
+      });
+      if (q) {
+        total = q.total;
+        tax = q.tax;
+      }
+    } else {
+      const q = await fetchDelhiveryShippingCost({
+        originPincode,
+        destPincode: p.destPincode,
+        weightGrams: p.weight,
+        paymentMode: p.codAmount > 0 ? 'COD' : 'Pre-paid',
+      });
+      if (q) {
+        total = q.amount;
+        tax = q.tax;
+      }
+    }
+    if (total === null) return;
+    await db.order.update({ where: { id: orderId }, data: { bookingShippingCost: total } });
+    await db.shipment.update({
+      where: { orderId },
+      data: { costTax: tax, costPreTax: tax === null ? null : Math.round((total - tax) * 100) / 100 },
     });
-    if (!result) return;
-    await db.order.update({ where: { id: orderId }, data: { bookingShippingCost: result.amount } });
   } catch (err) {
-    logger.error({ err, orderId }, 'Failed to fetch booking-time Delhivery shipping cost');
+    logger.error({ err, orderId }, 'Failed to record booking-time shipping cost');
   }
 }
 
