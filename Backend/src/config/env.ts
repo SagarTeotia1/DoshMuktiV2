@@ -104,7 +104,10 @@ const envSchema = z.object({
   // fails loudly instead of silently doing nothing. Key: `openssl rand -hex 32` - keep a copy
   // OUTSIDE this server (password manager): without it every backup is unreadable.
   BACKUP_R2_BUCKET: z.string().default(''),
-  BACKUP_ENCRYPTION_KEY: z.string().regex(/^([0-9a-fA-F]{64})?$/, 'BACKUP_ENCRYPTION_KEY must be 64 hex chars').default(''),
+  BACKUP_ENCRYPTION_KEY: z
+    .string()
+    .regex(/^([0-9a-fA-F]{64}|[A-Za-z0-9+/]{43}=)?$/, 'BACKUP_ENCRYPTION_KEY must be 32 bytes as 64 hex chars or base64 (openssl rand -base64 32)')
+    .default(''),
   BACKUP_RETENTION_DAYS: z.coerce.number().int().min(7).max(3650).default(30),
 });
 

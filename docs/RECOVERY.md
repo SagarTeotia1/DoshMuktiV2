@@ -31,7 +31,7 @@ Backups contain customer phones, addresses and orders. That is why the bucket mu
 
 1. **Create a private R2 bucket**, e.g. `doshmukti-db-backups`. Do **not** enable public access or attach a custom domain. Enable object versioning/lifecycle if you like; the job prunes by itself.
 2. **Generate the encryption key** and store it in a password manager *and* the server env:
-   `openssl rand -hex 32` → `BACKUP_ENCRYPTION_KEY`
+   `openssl rand -hex 32` (64 hex chars) **or** `openssl rand -base64 32` (44 chars ending in `=`) → `BACKUP_ENCRYPTION_KEY`. Either form is the same 32-byte key. Never paste it into chat, tickets or git.
    **If this key is lost, every backup is permanently unreadable.** Keep a copy that does not live only on the server.
 3. **Env (Backend):** `BACKUP_R2_BUCKET=doshmukti-db-backups`, `BACKUP_ENCRYPTION_KEY=<64 hex>`, optional `BACKUP_RETENTION_DAYS=30`. The existing `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` are reused — make sure that API token can read/write the new bucket (or create a token scoped to it).
 4. **Schedule it** (example, 02:30 IST daily; use the same service account/URL pattern as your other jobs):

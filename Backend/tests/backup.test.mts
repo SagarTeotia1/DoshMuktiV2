@@ -55,9 +55,24 @@ describe('backup file format', () => {
   test('non-backup file is rejected', () => {
     assert.throws(() => decryptBackup(Buffer.from('hello world, definitely not a backup file at all'), key), BackupFormatError);
   });
-  test('key must be 64 hex chars', () => {
-    for (const bad of ['', 'abc', 'z'.repeat(64), KEY_HEX.slice(2)]) assert.throws(() => parseBackupKey(bad), BackupFormatError);
+  test('key must be 32 bytes as hex or base64', () => {
+    const b64 = crypto.randomBytes(32).toString('base64');
+    for (const bad of ['', 'abc', 'z'.repeat(64), KEY_HEX.slice(2), b64.slice(1), b64.slice(0, 42) + '$=', 'a'.repeat(43) + '$']) {
+      assert.throws(() => parseBackupKey(bad), BackupFormatError, bad);
+    }
     assert.equal(parseBackupKey(KEY_HEX).length, 32);
+  });
+  test('base64 key (openssl rand -base64 32) works and equals its hex form', () => {
+    const raw = crypto.randomBytes(32);
+    const asB64 = raw.toString('base64');
+    assert.match(asB64, /^[A-Za-z0-9+/]{43}=$/);
+    assert.deepEqual(parseBackupKey(asB64), raw);
+    assert.deepEqual(parseBackupKey(raw.toString('hex')), raw);
+    // A file encrypted with the hex form opens with the base64 form of the same key.
+    assert.deepEqual(decryptBackup(encryptBackup(payload, parseBackupKey(raw.toString('hex'))), parseBackupKey(asB64)), payload);
+  });
+  test('surrounding whitespace/newline from a pasted key is tolerated', () => {
+    assert.equal(parseBackupKey(`  ${KEY_HEX}\n`).length, 32);
   });
   test('compresses repetitive data well', () => {
     const big: BackupPayload = { ...payload, data: { Order: Array.from({ length: 5000 }, (_, i) => ({ id: `o${i}`, status: 'PAID', total: 499 })) } };

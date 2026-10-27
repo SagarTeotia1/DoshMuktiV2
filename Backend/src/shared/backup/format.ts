@@ -26,11 +26,18 @@ export interface BackupPayload {
 
 export class BackupFormatError extends Error {}
 
-export function parseBackupKey(hex: string): Buffer {
-  if (!/^[0-9a-fA-F]{64}$/.test(hex)) {
-    throw new BackupFormatError('BACKUP_ENCRYPTION_KEY must be 64 hex characters (32 bytes). Generate: openssl rand -hex 32');
+// A 32-byte key written as 64 hex chars (openssl rand -hex 32) or as base64
+// (openssl rand -base64 32 -> 44 chars ending in "="). Both decode to the same kind of key.
+export const BACKUP_KEY_PATTERN = /^([0-9a-fA-F]{64}|[A-Za-z0-9+/]{43}=)$/;
+
+export function parseBackupKey(value: string): Buffer {
+  const v = value.trim();
+  if (/^[0-9a-fA-F]{64}$/.test(v)) return Buffer.from(v, 'hex');
+  if (/^[A-Za-z0-9+/]{43}=$/.test(v)) {
+    const bytes = Buffer.from(v, 'base64');
+    if (bytes.length === 32) return bytes;
   }
-  return Buffer.from(hex, 'hex');
+  throw new BackupFormatError('BACKUP_ENCRYPTION_KEY must be 32 bytes: 64 hex chars (openssl rand -hex 32) or base64 (openssl rand -base64 32)');
 }
 
 export function encryptBackup(payload: BackupPayload, key: Buffer): Buffer {
