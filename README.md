@@ -72,6 +72,7 @@ HTTP routes hit by Cloud Scheduler, `CRON_SECRET`-gated — not long-running pro
 - `tracking-sync` — polls Delhivery for waybill status updates on in-transit shipments.
 - `low-stock-digest` — periodic low-stock email summary.
 - `warm-cache` — pre-warms the Redis product-listing/category caches.
+- `db-backup` — nightly encrypted database snapshot to a private R2 bucket; restore with `Backend/scripts/restore-backup.ts`. Runbook: [`docs/RECOVERY.md`](docs/RECOVERY.md).
 
 ## Getting Started
 

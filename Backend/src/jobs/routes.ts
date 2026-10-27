@@ -5,6 +5,7 @@ import { releaseExpiredHolds } from './release-holds';
 import { syncOpenShipments, SyncBusyError, CRON_SYNC_LIMIT } from './tracking-sync';
 import { sendLowStockDigest } from './low-stock-digest';
 import { warmCache } from './warm-cache';
+import { runDbBackup } from './db-backup';
 
 function verifyCronSecret(req: FastifyRequest, reply: FastifyReply): boolean {
   const auth = req.headers.authorization ?? '';
@@ -39,6 +40,12 @@ export async function jobRoutes(app: FastifyInstance) {
   app.post('/jobs/low-stock-digest', async (req, reply) => {
     if (!verifyCronSecret(req, reply)) return;
     return reply.send(await sendLowStockDigest());
+  });
+
+  // Nightly encrypted DB backup. A failure surfaces as a 500 so Cloud Scheduler marks the run failed.
+  app.post('/jobs/db-backup', async (req, reply) => {
+    if (!verifyCronSecret(req, reply)) return;
+    return reply.send(await runDbBackup());
   });
 
   app.post('/jobs/warm-cache', async (req, reply) => {

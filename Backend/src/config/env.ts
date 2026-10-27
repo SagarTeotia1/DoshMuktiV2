@@ -90,6 +90,14 @@ const envSchema = z.object({
   OPENROUTER_MODEL: z.string().default('google/gemini-2.5-flash'),
 
   CRON_SECRET: z.string().min(32),
+
+  // Nightly encrypted database backup (jobs/db-backup.ts, restore with scripts/restore-backup.ts).
+  // BACKUP_R2_BUCKET must be a PRIVATE bucket, never the public images bucket. Empty = the job
+  // fails loudly instead of silently doing nothing. Key: `openssl rand -hex 32` - keep a copy
+  // OUTSIDE this server (password manager): without it every backup is unreadable.
+  BACKUP_R2_BUCKET: z.string().default(''),
+  BACKUP_ENCRYPTION_KEY: z.string().regex(/^([0-9a-fA-F]{64})?$/, 'BACKUP_ENCRYPTION_KEY must be 64 hex chars').default(''),
+  BACKUP_RETENTION_DAYS: z.coerce.number().int().min(7).max(3650).default(30),
 });
 
 // Docker's `--env-file` (used in production, see root Dockerfile/entrypoint.sh) does
