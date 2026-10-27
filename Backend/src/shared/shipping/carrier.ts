@@ -30,3 +30,11 @@ export function computePaymentBreakdown(paymentMethod: PaymentMethodId, orderTot
   if (paymentMethod === 'PREPAID') return { payNow: orderTotal, codAmountDue: 0 };
   return { payNow: 0, codAmountDue: orderTotal };
 }
+
+export type ShipmentProvider = 'AUTO' | 'EKART_1' | 'EKART_2' | 'DELHIVERY';
+
+/** Human name shown in Admin: Ekart account 1 = prepaid, account 2 = COD. */
+export function providerName(carrier: CarrierId, ekartAccount: number | null | undefined): string {
+  if (carrier === 'DELHIVERY') return 'Delhivery';
+  return ekartAccount === 1 ? 'Ekart 1 - Prepaid' : 'Ekart 2 - COD';
+}

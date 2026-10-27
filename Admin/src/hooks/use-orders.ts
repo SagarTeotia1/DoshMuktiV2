@@ -2,7 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
-import type { PaginatedOrders, Order, GstReport } from '@/types/api.types';
+import type { PaginatedOrders, Order, GstReport, BulkSwitchResult } from '@/types/api.types';
+import type { ShipmentProvider } from '@/lib/constants';
 
 export function useOrders(
   status?: string,
@@ -73,8 +74,41 @@ export function useGenerateLabel(id: string) {
 export function useBookShipment(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => api.post<{ waybill: string }>(`/api/admin/orders/${id}/shipment/book`, {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-order', id] }),
+    // AUTO = the normal rule; anything else books exactly on that provider with no fallback.
+    mutationFn: (provider: ShipmentProvider = 'AUTO') => api.post<{ waybill: string }>(`/api/admin/orders/${id}/shipment/book`, { provider }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-order', id] });
+      qc.invalidateQueries({ queryKey: ['admin-orders'] });
+    },
+  });
+}
+
+// Cancels the booked parcel at its carrier and books a new one on the chosen provider (before pickup only).
+export function useRebookShipment(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (provider: Exclude<ShipmentProvider, 'AUTO'>) =>
+      api.post<{ waybill: string; carrier: 'DELHIVERY' | 'EKART'; ekartAccount: number | null }>(`/api/admin/orders/${id}/shipment/rebook`, { provider }),
+    // onSettled, not onSuccess: a failed re-booking still changed the order (old parcel cancelled).
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['admin-order', id] });
+      qc.invalidateQueries({ queryKey: ['admin-orders'] });
+    },
+  });
+}
+
+// Bulk: Delhivery bookings not yet picked up -> Ekart (prepaid -> Ekart 1, COD -> Ekart 2).
+// dryRun=true only previews; dryRun=false moves one bounded batch, `remaining` > 0 means run again.
+export function useSwitchToEkart() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dryRun: boolean) => api.post<BulkSwitchResult>(`/api/admin/orders/shipments/switch-to-ekart?dryRun=${dryRun}`, {}),
+    onSuccess: (r) => {
+      if (!r.dryRun) {
+        qc.invalidateQueries({ queryKey: ['admin-orders'] });
+        qc.invalidateQueries({ queryKey: ['admin-order'] });
+      }
+    },
   });
 }
 

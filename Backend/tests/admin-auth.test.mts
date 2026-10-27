@@ -60,6 +60,8 @@ describe('other admin entry points reject customers too', () => {
     ['POST', '/api/admin/backups/run'],
     ['POST', '/api/admin/orders/x/whatsapp-confirmation'],
     ['POST', '/api/admin/orders/x/shipment/book'],
+    ['POST', '/api/admin/orders/x/shipment/rebook'],
+    ['POST', '/api/admin/orders/shipments/switch-to-ekart'],
   ] as const) {
     test(`${method} ${url}: customer 403, anonymous 401`, async () => {
       const as = (token?: string) => app.inject({ method, url, headers: token ? { authorization: `Bearer ${token}` } : {}, payload: method === 'POST' ? {} : undefined });

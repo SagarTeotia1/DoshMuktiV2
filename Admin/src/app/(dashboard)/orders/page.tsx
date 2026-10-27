@@ -5,10 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Topbar } from '@/components/layout/Topbar';
 import { DataTable } from '@/components/ui/DataTable';
+import { SwitchToEkart } from '@/components/orders/SwitchToEkart';
 import { StatusBadge, PaymentBadge } from '@/components/ui/StatusBadge';
 import { useOrders, useSyncTracking, type SyncMode } from '@/hooks/use-orders';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { ORDER_STATUSES } from '@/lib/constants';
+import { ORDER_STATUSES, providerName } from '@/lib/constants';
 import type { Order } from '@/types/api.types';
 
 // Default lower bound for the admin orders list — orders before this date are hidden
@@ -72,7 +73,7 @@ const columns: ColumnDef<Order, unknown>[] = [
     cell: ({ row }) => {
       const s = row.original.shipment;
       if (!s?.delhiveryWaybill) return <span className="text-slate-400">—</span>;
-      return s.carrier === 'EKART' ? `Ekart ${s.ekartAccount ?? ''}`.trim() : 'Delhivery';
+      return providerName(s.carrier, s.ekartAccount);
     },
   },
   { id: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
@@ -232,6 +233,8 @@ function OrdersPageContent() {
             </button>
           ))}
         </div>
+
+        <SwitchToEkart />
 
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">

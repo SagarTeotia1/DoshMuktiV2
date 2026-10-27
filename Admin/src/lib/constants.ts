@@ -41,3 +41,23 @@ export const PRODUCT_STATUSES = ['DRAFT', 'ACTIVE', 'ARCHIVED'] as const;
 // Default 7-day return eligibility threshold — mirrors Backend's RETURN_ELIGIBLE_ABOVE.
 // A product's returnEligibleOverride can force it either way regardless of price.
 export const RETURN_ELIGIBLE_ABOVE = 299;
+
+// Shipping providers an admin can book on. Ekart account 1 = prepaid, account 2 = COD.
+export type ShipmentProvider = 'AUTO' | 'EKART_1' | 'EKART_2' | 'DELHIVERY';
+export type PickableProvider = Exclude<ShipmentProvider, 'AUTO'>;
+
+export const PROVIDER_OPTIONS: Array<{ value: PickableProvider; label: string }> = [
+  { value: 'EKART_1', label: 'Ekart 1 - Prepaid' },
+  { value: 'EKART_2', label: 'Ekart 2 - COD' },
+  { value: 'DELHIVERY', label: 'Delhivery' },
+];
+
+export function providerName(carrier: 'DELHIVERY' | 'EKART', ekartAccount: number | null | undefined): string {
+  if (carrier === 'DELHIVERY') return 'Delhivery';
+  return ekartAccount === 1 ? 'Ekart 1 - Prepaid' : 'Ekart 2 - COD';
+}
+
+export function providerValue(carrier: 'DELHIVERY' | 'EKART', ekartAccount: number | null | undefined): PickableProvider {
+  if (carrier === 'DELHIVERY') return 'DELHIVERY';
+  return ekartAccount === 1 ? 'EKART_1' : 'EKART_2';
+}

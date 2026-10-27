@@ -13,6 +13,8 @@ import {
   gstReportHandler,
   shipmentLabelHandler,
   bookShipmentHandler,
+  rebookShipmentHandler,
+  switchToEkartHandler,
   resendWhatsAppConfirmationHandler,
   syncTrackingHandler,
   ndrActionHandler,
@@ -39,6 +41,8 @@ export async function orderRoutes(app: FastifyInstance) {
   app.patch('/admin/orders/:id/status', { preHandler: verifyAdmin }, updateOrderStatusHandler);
   app.get('/admin/orders/:id/shipment/label', { preHandler: verifyAdmin }, shipmentLabelHandler);
   app.post('/admin/orders/:id/shipment/book', { preHandler: verifyAdmin }, bookShipmentHandler);
+  app.post('/admin/orders/shipments/switch-to-ekart', { preHandler: verifyAdmin, config: { rateLimit: { max: 6, timeWindow: '1 minute' } } }, switchToEkartHandler);
+  app.post('/admin/orders/:id/shipment/rebook', { preHandler: verifyAdmin, config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, rebookShipmentHandler);
   app.post('/admin/orders/:id/whatsapp-confirmation', { preHandler: verifyAdmin, config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, resendWhatsAppConfirmationHandler);
   app.post('/admin/orders/:id/shipment/ndr', { preHandler: verifyAdmin }, ndrActionHandler);
   app.post('/admin/orders/:id/shipment/ewaybill', { preHandler: verifyAdmin }, ewaybillUpdateHandler);

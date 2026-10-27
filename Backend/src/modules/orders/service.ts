@@ -5,6 +5,7 @@ import {
   fetchShippingLabel,
   takeNdrAction,
   updateEwaybill,
+  cancelDelhiveryShipment,
   calculateShippingCost as fetchDelhiveryShippingCost,
   type NdrAction,
 } from '../../shared/integrations/delhivery/client';
@@ -15,7 +16,7 @@ import { addItemToCart } from '../cart/service';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
 import { PACKAGING_WEIGHT_GRAMS } from '../../shared/constants/purposes';
-import { chooseEkartAccount, type CarrierId } from '../../shared/shipping/carrier';
+import { chooseEkartAccount, providerName, type CarrierId, type ShipmentProvider } from '../../shared/shipping/carrier';
 import { toEkartAccount, ekartConfig, type EkartAccount } from '../../shared/integrations/ekart/accounts';
 import { checkEkartServiceability, estimateEkartCost } from '../../shared/integrations/ekart/client';
 import {
@@ -115,11 +116,38 @@ async function getShipmentOrThrow(orderId: string): Promise<{ waybill: string; c
 
 type BookableAddress = { line1: string; line2?: string; city: string; state: string; pincode: string };
 
-// Manual retry path for the auto-book on payment.captured (see webhooks/service.ts) —
-// that one is fire-and-forget and can fail silently (Delhivery rejection, network blip).
-// This lets Admin re-trigger it once whatever caused the rejection is fixed, without
-// needing a DB console. Refuses if a shipment already exists — never books twice.
-export async function bookOrderShipment(orderId: string): Promise<{ waybill: string; carrier: CarrierId }> {
+const REBOOK_NOTE = 'cancelled to switch provider';
+
+// Cancels a booked parcel at whichever carrier owns the waybill. Never throws.
+export async function cancelCarrierShipment(shipment: {
+  carrier: CarrierId;
+  delhiveryWaybill: string | null;
+  ekartAccount: number | null;
+}): Promise<{ success: boolean; error?: string }> {
+  if (!shipment.delhiveryWaybill) return { success: false, error: 'No waybill to cancel' };
+  try {
+    return shipment.carrier === 'EKART'
+      ? await cancelEkartShipment(toEkartAccount(shipment.ekartAccount), shipment.delhiveryWaybill)
+      : await cancelDelhiveryShipment(shipment.delhiveryWaybill);
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Cancel request failed' };
+  }
+}
+
+export interface BookedShipment {
+  waybill: string;
+  carrier: CarrierId;
+  /** 1 = prepaid, 2 = COD; null for Delhivery. */
+  ekartAccount: EkartAccount | null;
+}
+
+// Books the parcel. `target` AUTO (default, used by the automatic booking on payment and by the
+// Admin "Book" button): prepaid -> Ekart 1, COD -> Ekart 2, and Delhivery ONLY when Ekart says
+// the pincode (or COD) isn't serviceable; wallet/auth/network failures throw and wait for a retry.
+// An explicit target (EKART_1 / EKART_2 / DELHIVERY, chosen by an admin) books exactly there and
+// never falls back - the admin decided, so a failure is reported, not silently re-routed.
+// Refuses if a shipment already exists - never books twice.
+export async function bookOrderShipment(orderId: string, target: ShipmentProvider = 'AUTO'): Promise<BookedShipment> {
   const existing = await db.shipment.findUnique({ where: { orderId } });
   if (existing?.delhiveryWaybill) throw new Error('This order already has a shipment booked.');
 
@@ -127,15 +155,21 @@ export async function bookOrderShipment(orderId: string): Promise<{ waybill: str
   if (!order) throw new Error('Order not found');
 
   // Declared weight must match the real packed parcel (all items + packaging go into
-  // ONE box on ONE waybill) — under-declaring risks the carrier re-weighing and billing
+  // ONE box on ONE waybill) - under-declaring risks the carrier re-weighing and billing
   // the difference. See PACKAGING_WEIGHT_GRAMS's comment. An admin-set
-  // packageWeightOverride (see updateOrderPackageWeight) always wins — it means someone
+  // packageWeightOverride (see updateOrderPackageWeight) always wins - it means someone
   // actually weighed this specific box and knows better than the item-sum estimate.
   const weight =
     order.packageWeightOverride ??
     order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS;
   const address = order.shippingAddress as unknown as BookableAddress;
-  const ekartAccount = chooseEkartAccount(order.paymentMethod);
+  const forced = target !== 'AUTO';
+  const ekartAccount: EkartAccount = target === 'EKART_1' ? 1 : target === 'EKART_2' ? 2 : chooseEkartAccount(order.paymentMethod);
+
+  // A switched-provider rebooking uses a suffixed reference (DOSH-...-R1): carriers can reject a
+  // reference they've already seen, even for a cancelled waybill.
+  const switches = await db.orderStatusLog.count({ where: { orderId, note: { contains: REBOOK_NOTE } } });
+  const orderRef = switches > 0 ? `${order.orderNumber}-R${switches}` : order.orderNumber;
 
   const codAmount = Number(order.codAmountDue);
   const productsDesc = order.items
@@ -144,11 +178,11 @@ export async function bookOrderShipment(orderId: string): Promise<{ waybill: str
   const quantity = order.items.reduce((sum, i) => sum + i.quantity, 0);
   const invoiceDate = order.createdAt.toISOString().slice(0, 10);
 
-  // Ekart first. Never throws — a network failure becomes { error } so it can be reported.
+  // Never throw - a network failure becomes { error } so it can be reported / classified.
   const ekartAttempt = async () => {
     try {
       return await createEkartShipment(ekartAccount, {
-        orderNumber: order.orderNumber,
+        orderNumber: orderRef,
         customerName: order.customerName,
         customerPhone: order.customerPhone,
         address,
@@ -164,48 +198,59 @@ export async function bookOrderShipment(orderId: string): Promise<{ waybill: str
       return { error: err instanceof Error ? err.message : 'Ekart request failed', unserviceable: false };
     }
   };
-
-  let carrier: CarrierId = 'EKART';
-  let result: { waybill: string };
-  // Ask Ekart up front whether it can deliver here (and take cash, for COD): a definite "no" goes
-  // straight to Delhivery without a doomed booking call. An unknown answer (null) just tries the
-  // booking, whose own error text is then classified.
-  const svc = await checkEkartServiceability(ekartAccount, address.pincode);
-  const ekart =
-    svc && (!svc.serviceable || (codAmount > 0 && !svc.codAllowed))
-      ? { error: svc.serviceable ? 'COD is not available at this pincode' : svc.remark, unserviceable: true }
-      : await ekartAttempt();
-  let fallbackReason: string | null = null;
-  if (ekart && !('error' in ekart)) {
-    result = ekart;
-  } else if (ekart && ekart.unserviceable) {
-    // Ekart cannot reach this pincode - the only failure that falls back to Delhivery. Wallet
-    // empty, bad credentials, Ekart down, bad address etc. throw instead so the order waits for
-    // a retry (admin "Book Shipment") rather than shipping on a different carrier.
-    let delhivery: { waybill: string } | { error: string } | null;
+  const delhiveryAttempt = async (): Promise<{ waybill: string } | { error: string } | null> => {
     try {
-      delhivery = await createShipment({
-        orderNumber: order.orderNumber,
+      return await createShipment({
+        orderNumber: orderRef,
         customerName: order.customerName,
         customerPhone: order.customerPhone,
         address,
         weight,
-        // COD must keep collecting cash even when it lands on Delhivery as the fallback.
+        // COD must keep collecting cash whenever it lands on Delhivery.
         cod: codAmount > 0 ? { codAmount, orderTotal: Number(order.total), productsDesc, quantity, invoiceDate } : undefined,
       });
     } catch (err) {
-      delhivery = { error: err instanceof Error ? err.message : 'Delhivery request failed' };
+      return { error: err instanceof Error ? err.message : 'Delhivery request failed' };
     }
-    if (!delhivery || 'error' in delhivery) {
-      const reason = !delhivery ? 'DELHIVERY not configured' : delhivery.error;
-      throw new Error(`EKART${ekartAccount}: ${ekart.error} | DELHIVERY: ${reason}`);
-    }
-    logger.warn({ orderId, ekartAccount, reason: ekart.error }, 'Ekart pincode not serviceable — booked on Delhivery');
+  };
+
+  let carrier: CarrierId = 'EKART';
+  let result: { waybill: string };
+  let fallbackReason: string | null = null;
+
+  if (target === 'DELHIVERY') {
+    const d = await delhiveryAttempt();
+    if (!d || 'error' in d) throw new Error(`Delhivery: ${!d ? 'not configured' : d.error}`);
     carrier = 'DELHIVERY';
-    fallbackReason = `Ekart account ${ekartAccount}: ${ekart.error}`;
-    result = delhivery;
+    result = d;
   } else {
-    throw new Error(`EKART${ekartAccount}: ${ekart ? ekart.error : 'not configured'} (no fallback — retry later)`);
+    // Ask Ekart up front whether it can deliver here (and take cash, for COD): a definite "no" never
+    // wastes a doomed booking call. An unknown answer (null) just tries the booking, whose own error
+    // text is then classified.
+    const svc = await checkEkartServiceability(ekartAccount, address.pincode);
+    const ekart =
+      svc && (!svc.serviceable || (codAmount > 0 && !svc.codAllowed))
+        ? { error: svc.serviceable ? 'COD is not available at this pincode' : svc.remark, unserviceable: true }
+        : await ekartAttempt();
+    if (ekart && !('error' in ekart)) {
+      result = ekart;
+    } else if (ekart && ekart.unserviceable && !forced) {
+      // Ekart cannot reach this pincode - the only failure that falls back to Delhivery.
+      const delhivery = await delhiveryAttempt();
+      if (!delhivery || 'error' in delhivery) {
+        throw new Error(`${providerName('EKART', ekartAccount)}: ${ekart.error} | Delhivery: ${!delhivery ? 'not configured' : delhivery.error}`);
+      }
+      logger.warn({ orderId, ekartAccount, reason: ekart.error }, 'Ekart pincode not serviceable - booked on Delhivery');
+      carrier = 'DELHIVERY';
+      fallbackReason = `Ekart account ${ekartAccount}: ${ekart.error}`;
+      result = delhivery;
+    } else {
+      // Wallet empty, bad credentials, Ekart down, bad address etc. wait for a retry; an explicit
+      // admin choice is never silently re-routed either.
+      throw new Error(
+        `${providerName('EKART', ekartAccount)}: ${ekart ? ekart.error : 'not configured'} (${forced ? 'no fallback - you chose this provider' : 'no fallback - retry later'})`
+      );
+    }
   }
 
   const shipmentData = {
@@ -231,7 +276,107 @@ export async function bookOrderShipment(orderId: string): Promise<{ waybill: str
     orderTotal: Number(order.total),
   });
 
-  return { waybill: result.waybill, carrier };
+  return { waybill: result.waybill, carrier, ekartAccount: carrier === 'EKART' ? ekartAccount : null };
+}
+
+// Called when an order is cancelled: cancel the booked parcel too (Ekart 1/2 or Delhivery) so it is never
+// picked up and shipped. Best-effort - a failed carrier cancel is written to the order's history for the
+// admin but never blocks the refund. A parcel already with the courier can't be cancelled (that needs an
+// RTO) and the note says so. Never throws.
+export async function cancelShipmentForCancelledOrder(orderId: string, admin: string): Promise<void> {
+  try {
+    const shipment = await db.shipment.findUnique({ where: { orderId } });
+    if (!shipment?.delhiveryWaybill) return;
+    const name = providerName(shipment.carrier, shipment.ekartAccount);
+    const waybill = shipment.delhiveryWaybill;
+    const note = (text: string) => db.orderStatusLog.create({ data: { orderId, from: 'CANCELLED', to: 'CANCELLED', note: text, createdBy: admin } });
+
+    if (shipment.status === 'BOOKED') {
+      const cancelled = await cancelCarrierShipment(shipment);
+      if (!cancelled.success) {
+        logger.error({ orderId, waybill, reason: cancelled.error }, `Could not cancel ${name} shipment on order cancel`);
+        await note(`${name} shipment NOT cancelled: ${cancelled.error ?? 'unknown'} - cancel ${waybill} on the carrier dashboard`);
+      } else {
+        await db.shipment.update({ where: { orderId }, data: { status: 'FAILED' } });
+        await note(`${name} shipment ${waybill} cancelled`);
+      }
+    } else if (!['FAILED', 'RETURNED', 'DELIVERED'].includes(shipment.status)) {
+      await note(`${name} parcel ${waybill} is already ${shipment.status} and could not be cancelled - arrange an RTO`);
+    }
+  } catch (err) {
+    logger.error({ err, orderId }, 'Shipment cancellation on order cancel crashed');
+  }
+}
+
+const SWITCHABLE_ORDER_STATUSES = new Set(['PAID', 'PROCESSING', 'PACKED', 'SHIPPED']);
+
+// null = Ekart can take this parcel; otherwise the reason it can't (or that it couldn't be confirmed).
+async function ekartPreflight(account: EkartAccount, pincode: string, codAmount: number): Promise<string | null> {
+  const name = providerName('EKART', account);
+  const svc = await checkEkartServiceability(account, pincode);
+  if (!svc) return `Could not confirm that ${name} delivers to ${pincode} right now.`;
+  if (!svc.serviceable) return `${name} does not deliver to ${pincode}.`;
+  if (codAmount > 0 && !svc.codAllowed) return `${name} does not offer cash on delivery at ${pincode}.`;
+  return null;
+}
+
+// Moves an order to a different provider: cancels the existing waybill at its carrier FIRST (if that
+// fails nothing changes), clears the old shipment record, then books the new one. If the new booking
+// fails the old parcel is already cancelled - the error says so and the order shows "not booked" so
+// the admin can book again. Only possible before pickup (shipment still BOOKED).
+export async function rebookOrderShipment(orderId: string, target: ShipmentProvider, admin: string): Promise<BookedShipment> {
+  const order = await db.order.findUnique({ where: { id: orderId }, select: { status: true, shippingAddress: true, codAmountDue: true } });
+  if (!order) throw new Error('Order not found');
+  if (!SWITCHABLE_ORDER_STATUSES.has(order.status)) throw new Error(`Cannot switch the provider of a ${order.status} order`);
+
+  const shipment = await db.shipment.findUnique({ where: { orderId } });
+  if (!shipment?.delhiveryWaybill) return bookOrderShipment(orderId, target); // nothing to cancel
+  if (shipment.status !== 'BOOKED') {
+    throw new Error(`The parcel is already ${shipment.status.toLowerCase().replace(/_/g, ' ')} - it can no longer be switched. Use the NDR / RTO actions instead.`);
+  }
+
+  // Never cancel a working booking for a target that can't take the parcel: confirm Ekart serves the
+  // pincode (and takes cash, for COD) first. If that can't be confirmed, change nothing.
+  if (target === 'EKART_1' || target === 'EKART_2') {
+    const blocker = await ekartPreflight(target === 'EKART_1' ? 1 : 2, (order.shippingAddress as unknown as BookableAddress).pincode, Number(order.codAmountDue));
+    if (blocker) throw new Error(`${blocker} Nothing was changed.`);
+  }
+
+  const from = providerName(shipment.carrier, shipment.ekartAccount);
+  const oldWaybill = shipment.delhiveryWaybill;
+  const cancelled = await cancelCarrierShipment(shipment);
+  if (!cancelled.success) {
+    throw new Error(`Could not cancel the existing ${from} shipment (${cancelled.error ?? 'unknown error'}). Nothing was changed.`);
+  }
+
+  await db.shipment.update({
+    where: { orderId },
+    data: { delhiveryWaybill: null, status: 'PENDING', ekartAccount: null, bookedVia: null, fallbackReason: null, costPreTax: null, costTax: null },
+  });
+  await db.order.update({ where: { id: orderId }, data: { bookingShippingCost: null } });
+  await db.orderStatusLog.create({
+    data: { orderId, from: order.status, to: order.status, note: `Shipment ${oldWaybill} (${from}) ${REBOOK_NOTE}`, createdBy: admin },
+  });
+
+  try {
+    const booked = await bookOrderShipment(orderId, target);
+    await db.orderStatusLog.create({
+      data: {
+        orderId,
+        from: order.status,
+        to: order.status,
+        note: `Re-booked on ${providerName(booked.carrier, booked.ekartAccount)}: waybill ${booked.waybill}`,
+        createdBy: admin,
+      },
+    });
+    return booked;
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : 'booking failed';
+    await db.orderStatusLog
+      .create({ data: { orderId, from: order.status, to: order.status, note: `New booking after switch failed: ${reason}`, createdBy: admin } })
+      .catch(() => undefined);
+    throw new Error(`The old ${from} shipment was cancelled, but the new booking failed: ${reason}. Book again from this page.`);
+  }
 }
 
 // Best-effort: quotes what the carrier that actually took the parcel charges for it, the
@@ -611,24 +756,7 @@ export async function updateOrderStatus(
   // transaction on purpose (never hold a DB connection open across a network call).
   if (newStatus !== 'CANCELLED') return { order };
 
-  // Free the Ekart parcel so a cancelled COD order isn't picked up and shipped anyway.
-  // Best-effort: a failed cancel is logged for the admin but never blocks the refund below.
-  // (Delhivery parcels are cancelled from Delhivery's own dashboard, as before.)
-  const shipment = await db.shipment.findUnique({ where: { orderId } });
-  if (shipment?.carrier === 'EKART' && shipment.delhiveryWaybill && shipment.status === 'BOOKED') {
-    const cancelled = await cancelEkartShipment(toEkartAccount(shipment.ekartAccount), shipment.delhiveryWaybill).catch((err: unknown) => ({
-      success: false,
-      error: err instanceof Error ? err.message : 'Ekart cancel failed',
-    }));
-    if (!cancelled.success) {
-      logger.error({ orderId, waybill: shipment.delhiveryWaybill, reason: cancelled.error }, 'Could not cancel Ekart shipment on order cancel');
-      await db.orderStatusLog.create({
-        data: { orderId, from: 'CANCELLED', to: 'CANCELLED', note: `Ekart shipment not cancelled: ${cancelled.error ?? 'unknown'} — cancel ${shipment.delhiveryWaybill} on the Ekart dashboard`, createdBy: admin },
-      });
-    } else {
-      await db.shipment.update({ where: { orderId }, data: { status: 'FAILED' } });
-    }
-  }
+  await cancelShipmentForCancelledOrder(orderId, admin);
 
   const payment = await db.payment.findUnique({ where: { orderId } });
   if (!payment || payment.status !== 'CAPTURED' || !payment.razorpayPaymentId || payment.refundedAt) {
@@ -803,4 +931,60 @@ export async function applyWeightDiscrepancyCost(orderId: string, correctedWeigh
   } catch (err) {
     logger.error({ err, orderId, correctedWeightGrams }, 'Failed to apply weight-discrepancy shipping cost correction');
   }
+}
+
+export interface BulkSwitchResult {
+  dryRun: boolean;
+  /** Delhivery parcels that are booked but not yet picked up. */
+  eligible: number;
+  switched: number;
+  /** Left on Delhivery on purpose (Ekart can't serve the pincode / couldn't be checked). */
+  skipped: Array<{ orderNumber: string; reason: string }>;
+  failed: Array<{ orderNumber: string; error: string }>;
+  /** Eligible parcels not touched in this batch (batch limit) - run again. */
+  remaining: number;
+}
+
+// Moves parcels that are booked on Delhivery but not yet picked up over to Ekart: prepaid -> Ekart 1,
+// COD -> Ekart 2. Each one goes through rebookOrderShipment (pre-check, cancel, re-book, audit note),
+// one at a time and in bounded batches. dryRun only reports what would happen.
+export async function switchDelhiveryBookingsToEkart(opts: { dryRun: boolean; limit: number; admin: string }): Promise<BulkSwitchResult> {
+  const rows = await db.shipment.findMany({
+    where: {
+      carrier: 'DELHIVERY',
+      status: 'BOOKED',
+      delhiveryWaybill: { not: null },
+      // SHIPPED is excluded: the courier may already hold the parcel even if tracking hasn't caught up.
+      order: { status: { in: ['PAID', 'PROCESSING', 'PACKED'] } },
+    },
+    select: { order: { select: { id: true, orderNumber: true, paymentMethod: true, shippingAddress: true, codAmountDue: true } } },
+    orderBy: { order: { createdAt: 'asc' } },
+  });
+
+  const result: BulkSwitchResult = { dryRun: opts.dryRun, eligible: rows.length, switched: 0, skipped: [], failed: [], remaining: 0 };
+  let touched = 0;
+  for (const { order } of rows) {
+    const account: EkartAccount = order.paymentMethod === 'COD' ? 2 : 1;
+    const blocker = await ekartPreflight(account, (order.shippingAddress as unknown as BookableAddress).pincode, Number(order.codAmountDue));
+    if (blocker) {
+      result.skipped.push({ orderNumber: order.orderNumber, reason: blocker });
+      continue;
+    }
+    if (opts.dryRun) {
+      result.switched++; // "would switch"
+      continue;
+    }
+    if (touched >= opts.limit) {
+      result.remaining++;
+      continue;
+    }
+    touched++;
+    try {
+      await rebookOrderShipment(order.id, account === 1 ? 'EKART_1' : 'EKART_2', opts.admin);
+      result.switched++;
+    } catch (err) {
+      result.failed.push({ orderNumber: order.orderNumber, error: err instanceof Error ? err.message : 'failed' });
+    }
+  }
+  return result;
 }

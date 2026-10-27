@@ -6,12 +6,24 @@ import assert from 'node:assert/strict';
 interface FakeShipment { orderId: string; delhiveryWaybill: string | null; carrier: string; ekartAccount: number | null; status: string; bookedVia?: string | null; fallbackReason?: string | null; costPreTax?: number | null; costTax?: number | null }
 const fake = {
   order: null as Record<string, unknown> | null,
+  orderMap: new Map<string, Record<string, unknown>>(),
+  logs: [] as Array<{ orderId: string; note: string; createdBy: string }>,
   shipments: new Map<string, FakeShipment>(),
   orderUpdates: [] as Array<Record<string, unknown>>,
 };
 const fakeDb = {
-  order: { findUnique: async () => fake.order, update: async ({ data }: { data: Record<string, unknown> }) => { fake.orderUpdates.push(data); return data; } },
+  order: { findUnique: async ({ where }: { where: { id: string } }) => fake.orderMap.get(where.id) ?? fake.order, update: async ({ data }: { data: Record<string, unknown> }) => { fake.orderUpdates.push(data); return data; } },
+  orderStatusLog: {
+    count: async ({ where }: { where: { orderId: string; note: { contains: string } } }) =>
+      fake.logs.filter((l) => l.orderId === where.orderId && l.note.includes(where.note.contains)).length,
+    create: async ({ data }: { data: { orderId: string; note: string; createdBy: string } }) => { fake.logs.push(data); return data; },
+  },
   shipment: {
+    findMany: async ({ where }: { where: { carrier: string; status: string } }) =>
+      [...fake.shipments.values()]
+        .filter((sh) => sh.carrier === where.carrier && sh.status === where.status && sh.delhiveryWaybill)
+        .map((sh) => ({ order: fake.orderMap.get(sh.orderId)! }))
+        .filter((r) => r.order && ['PAID', 'PROCESSING', 'PACKED'].includes(r.order.status as string)),
     findUnique: async ({ where }: { where: { orderId: string } }) => fake.shipments.get(where.orderId) ?? null,
     findFirst: async () => null,
     create: async ({ data }: { data: FakeShipment }) => { fake.shipments.set(data.orderId, data); return data; },
@@ -32,6 +44,8 @@ let ekartCreate: () => Response | Promise<Response> = () => json({ status: true,
 let delhiveryCreate: () => Response | Promise<Response> = () => json({ success: true, packages: [{ waybill: 'DL-WB-1' }] });
 let authFails = new Set<string>(); // client ids whose auth call returns 401
 let serviceability: (pin: string) => Response = () => json({ status: true, remark: 'Pincode is serviceable', details: { cod: true, forward_drop: true } });
+let ekartCancel: () => Response = () => json({ status: true });
+let delhiveryCancel: () => Response = () => json({ status: true, waybill: 'x', remark: '' });
 let ekartPricing: () => Response = () => json({ preTax: 43, tax: 7.74, total: 50.74 });
 let delhiveryRate: () => Response = () => json([{ total_amount: 70, tax_data: { IGST: 10.68 } }]);
 
@@ -55,7 +69,8 @@ globalThis.fetch = (async (input: string | URL | Request, init: RequestInit = {}
   if (url.includes('/api/kinko/v1/invoice/charges')) return delhiveryRate();
   if (url.includes('/api/v1/package/create')) return ekartCreate();
   if (url.includes('/api/cmu/create.json')) return delhiveryCreate();
-  if (url.includes('/api/v1/package/cancel')) return json({ status: true });
+  if (url.includes('/api/v1/package/cancel')) return ekartCancel();
+  if (url.includes('/api/p/edit')) return delhiveryCancel();
   return json({}, 404);
 }) as typeof fetch;
 
@@ -82,6 +97,7 @@ function resetEnv() {
 function makeOrder(paymentMethod: 'PREPAID' | 'COD', over: Record<string, unknown> = {}) {
   return {
     id: 'ord1',
+    status: 'PAID',
     orderNumber: 'DOSH-TEST-0001',
     customerName: 'Test User',
     customerPhone: '9876543210',
@@ -107,6 +123,10 @@ beforeEach(() => {
   serviceability = () => json({ status: true, remark: 'Pincode is serviceable', details: { cod: true, forward_drop: true } });
   ekartPricing = () => json({ preTax: 43, tax: 7.74, total: 50.74 });
   delhiveryRate = () => json([{ total_amount: 70, tax_data: { IGST: 10.68 } }]);
+  ekartCancel = () => json({ status: true });
+  delhiveryCancel = () => json({ status: true, waybill: 'x', remark: '' });
+  fake.orderMap = new Map();
+  fake.logs = [];
   ekartCreate = () => json({ status: true, tracking_id: 'EK-TRACK-1' });
   delhiveryCreate = () => json({ success: true, packages: [{ waybill: 'DL-WB-1' }] });
 });
@@ -228,7 +248,7 @@ describe('ekart client', () => {
 describe('bookOrderShipment', () => {
   test('prepaid -> Ekart account 1, no Delhivery call', async () => {
     const r = await orders.bookOrderShipment('ord1');
-    assert.deepEqual(r, { waybill: 'EK-TRACK-1', carrier: 'EKART' });
+    assert.deepEqual(r, { waybill: 'EK-TRACK-1', carrier: 'EKART', ekartAccount: 1 });
     const s = fake.shipments.get('ord1')!;
     assert.equal(s.carrier, 'EKART');
     assert.equal(s.ekartAccount, 1);
@@ -258,7 +278,7 @@ describe('bookOrderShipment', () => {
   test('unserviceable pincode (prepaid) -> falls back to Delhivery, prepaid payload', async () => {
     ekartCreate = () => json({ remark: 'Pincode not serviceable' }, 400);
     const r = await orders.bookOrderShipment('ord1');
-    assert.deepEqual(r, { waybill: 'DL-WB-1', carrier: 'DELHIVERY' });
+    assert.deepEqual(r, { waybill: 'DL-WB-1', carrier: 'DELHIVERY', ekartAccount: null });
     const s = fake.shipments.get('ord1')!;
     assert.equal(s.carrier, 'DELHIVERY');
     assert.equal(s.ekartAccount, null);
@@ -274,7 +294,7 @@ describe('bookOrderShipment', () => {
   });
   test('wallet empty -> throws, NO Delhivery fallback, no shipment row', async () => {
     ekartCreate = () => json({ remark: 'Insufficient wallet balance' }, 400);
-    await assert.rejects(orders.bookOrderShipment('ord1'), /EKART1: Insufficient wallet balance.*no fallback/);
+    await assert.rejects(orders.bookOrderShipment('ord1'), /Ekart 1 - Prepaid: Insufficient wallet balance.*no fallback/);
     assert.equal(delhiveryCalls().length, 0);
     assert.equal(fake.shipments.size, 0);
   });
@@ -295,7 +315,7 @@ describe('bookOrderShipment', () => {
   });
   test('account not configured -> throws, no fallback', async () => {
     env.EKART1_CLIENT_ID = '';
-    await assert.rejects(orders.bookOrderShipment('ord1'), /EKART1: not configured/);
+    await assert.rejects(orders.bookOrderShipment('ord1'), /Ekart 1 - Prepaid: not configured/);
     assert.equal(calls.length, 0);
   });
   test('one account down does not affect the other', async () => {
@@ -308,13 +328,13 @@ describe('bookOrderShipment', () => {
   test('unserviceable + Delhivery rejects -> throws with both reasons', async () => {
     ekartCreate = () => json({ remark: 'Pincode not serviceable' }, 400);
     delhiveryCreate = () => json({ success: false, packages: [{ waybill: '', remarks: ['Invalid PIN'] }] });
-    await assert.rejects(orders.bookOrderShipment('ord1'), /EKART1: Pincode not serviceable \| DELHIVERY: Invalid PIN/);
+    await assert.rejects(orders.bookOrderShipment('ord1'), /Ekart 1 - Prepaid: Pincode not serviceable \| Delhivery: Invalid PIN/);
     assert.equal(fake.shipments.size, 0);
   });
   test('unserviceable + Delhivery not configured -> throws', async () => {
     ekartCreate = () => json({ remark: 'Pincode not serviceable' }, 400);
     env.DELHIVERY_API_KEY = '';
-    await assert.rejects(orders.bookOrderShipment('ord1'), /DELHIVERY not configured/);
+    await assert.rejects(orders.bookOrderShipment('ord1'), /Delhivery: not configured/);
   });
   test('already booked -> refuses, no HTTP', async () => {
     fake.shipments.set('ord1', { orderId: 'ord1', delhiveryWaybill: 'OLD', carrier: 'EKART', ekartAccount: 2, status: 'BOOKED' });
@@ -453,6 +473,331 @@ describe('ekart serviceability + estimate clients', () => {
   test('estimateEkartCost network error -> null', async () => {
     ekartPricing = () => { throw new TypeError('x'); };
     assert.equal(await ekart.estimateEkartCost(1, { originPincode: '110085', destPincode: '400001', weight: 500, codAmount: 0, invoiceAmount: 499 }), null);
+  });
+});
+
+const ekartCalls = () => calls.filter((c) => c.url.includes('/package/create'));
+const cancelCalls = () => calls.filter((c) => c.url.includes('/package/cancel') || c.url.includes('/api/p/edit'));
+const put = (orderId: string, over: Partial<FakeShipment>) =>
+  fake.shipments.set(orderId, { orderId, delhiveryWaybill: 'OLD-WB', carrier: 'DELHIVERY', ekartAccount: null, status: 'BOOKED', ...over });
+
+describe('explicit provider choice', () => {
+  test('EKART_2 on a prepaid order books Ekart 2 (admin override of the auto rule)', async () => {
+    const r = await orders.bookOrderShipment('ord1', 'EKART_2');
+    assert.deepEqual(r, { waybill: 'EK-TRACK-1', carrier: 'EKART', ekartAccount: 2 });
+    assert.equal(ekartCalls()[0]!.auth, `Bearer tok-${E2.id}`);
+    assert.equal(fake.shipments.get('ord1')!.bookedVia, E2.user);
+  });
+  test('EKART_1 on a COD order books Ekart 1 and still collects cash', async () => {
+    fake.order = makeOrder('COD');
+    await orders.bookOrderShipment('ord1', 'EKART_1');
+    assert.equal(ekartCalls()[0]!.auth, `Bearer tok-${E1.id}`);
+    assert.equal(JSON.parse(ekartCalls()[0]!.body).cod_amount, 499);
+  });
+  test('DELHIVERY books Delhivery only - no Ekart call, no fallback reason, COD kept', async () => {
+    fake.order = makeOrder('COD');
+    const r = await orders.bookOrderShipment('ord1', 'DELHIVERY');
+    assert.deepEqual(r, { waybill: 'DL-WB-1', carrier: 'DELHIVERY', ekartAccount: null });
+    assert.equal(ekartCalls().length, 0);
+    assert.equal(calls.filter((c) => c.url.includes('/serviceability/')).length, 0);
+    const sh = fake.shipments.get('ord1')!;
+    assert.equal(sh.fallbackReason, null);
+    assert.equal(sh.bookedVia, env.DELHIVERY_CLIENT_NAME);
+    assert.match(decodeURIComponent(delhiveryCalls()[0]!.body), /"payment_mode":"COD"/);
+  });
+  test('chosen Ekart account cannot serve the pincode -> error, NO silent Delhivery fallback', async () => {
+    serviceability = () => json({ status: false, remark: 'Pincode is not serviceable' });
+    await assert.rejects(orders.bookOrderShipment('ord1', 'EKART_1'), /Ekart 1 - Prepaid: Pincode is not serviceable.*you chose this provider/);
+    assert.equal(delhiveryCalls().length, 0);
+    assert.equal(fake.shipments.size, 0);
+  });
+  test('chosen Delhivery rejects -> error, no Ekart', async () => {
+    delhiveryCreate = () => json({ success: false, packages: [{ waybill: '', remarks: ['Invalid PIN'] }] });
+    await assert.rejects(orders.bookOrderShipment('ord1', 'DELHIVERY'), /Delhivery: Invalid PIN/);
+    assert.equal(ekartCalls().length, 0);
+  });
+  test('chosen Ekart account not configured -> error', async () => {
+    env.EKART_CLIENT_ID = '';
+    await assert.rejects(orders.bookOrderShipment('ord1', 'EKART_2'), /Ekart 2 - COD: not configured/);
+  });
+  test('AUTO is unchanged: unserviceable still falls back to Delhivery', async () => {
+    serviceability = () => json({ status: false, remark: 'Pincode is not serviceable' });
+    assert.equal((await orders.bookOrderShipment('ord1', 'AUTO')).carrier, 'DELHIVERY');
+  });
+});
+
+describe('cancelCarrierShipment', () => {
+  test('Ekart 1 cancels with account 1 credentials', async () => {
+    const r = await orders.cancelCarrierShipment({ carrier: 'EKART', delhiveryWaybill: 'W1', ekartAccount: 1 });
+    assert.equal(r.success, true);
+    assert.equal(cancelCalls()[0]!.auth, `Bearer tok-${E1.id}`);
+    assert.match(cancelCalls()[0]!.url, /tracking_id=W1/);
+  });
+  test('Ekart with no account marker (old rows) cancels as account 2', async () => {
+    await orders.cancelCarrierShipment({ carrier: 'EKART', delhiveryWaybill: 'W1', ekartAccount: null });
+    assert.equal(cancelCalls()[0]!.auth, `Bearer tok-${E2.id}`);
+  });
+  test('Delhivery cancels via /api/p/edit with the waybill and cancellation flag', async () => {
+    const r = await orders.cancelCarrierShipment({ carrier: 'DELHIVERY', delhiveryWaybill: 'DW1', ekartAccount: null });
+    assert.equal(r.success, true);
+    const c = cancelCalls()[0]!;
+    assert.match(c.url, /\/api\/p\/edit$/);
+    assert.deepEqual(JSON.parse(c.body), { waybill: 'DW1', cancellation: 'true' });
+    assert.equal(c.auth, 'Token dl-key');
+  });
+  test('Delhivery refusal (already picked up) surfaces the reason', async () => {
+    delhiveryCancel = () => json({ status: false, remark: 'Shipment cannot be cancelled in this state' });
+    const r = await orders.cancelCarrierShipment({ carrier: 'DELHIVERY', delhiveryWaybill: 'DW1', ekartAccount: null });
+    assert.deepEqual(r, { success: false, error: 'Shipment cannot be cancelled in this state' });
+  });
+  test('Delhivery HTTP error / network error never throw', async () => {
+    delhiveryCancel = () => json({ error: 'nope' }, 500);
+    assert.equal((await orders.cancelCarrierShipment({ carrier: 'DELHIVERY', delhiveryWaybill: 'DW1', ekartAccount: null })).success, false);
+    delhiveryCancel = () => { throw new TypeError('fetch failed'); };
+    const r = await orders.cancelCarrierShipment({ carrier: 'DELHIVERY', delhiveryWaybill: 'DW1', ekartAccount: null });
+    assert.deepEqual(r, { success: false, error: 'fetch failed' });
+  });
+  test('no waybill -> nothing to cancel, no HTTP', async () => {
+    assert.equal((await orders.cancelCarrierShipment({ carrier: 'EKART', delhiveryWaybill: null, ekartAccount: 1 })).success, false);
+    assert.equal(calls.length, 0);
+  });
+});
+
+describe('cancelShipmentForCancelledOrder (order cancelled -> parcel cancelled)', () => {
+  test('booked Delhivery parcel is cancelled and noted', async () => {
+    put('ord1', { carrier: 'DELHIVERY' });
+    await orders.cancelShipmentForCancelledOrder('ord1', 'admin@x.in');
+    assert.equal(cancelCalls().length, 1);
+    assert.match(cancelCalls()[0]!.url, /\/api\/p\/edit/);
+    assert.equal(fake.shipments.get('ord1')!.status, 'FAILED');
+    assert.match(fake.logs.at(-1)!.note, /Delhivery shipment OLD-WB cancelled/);
+  });
+  test('booked Ekart 1 parcel is cancelled with account 1 and named correctly', async () => {
+    put('ord1', { carrier: 'EKART', ekartAccount: 1 });
+    await orders.cancelShipmentForCancelledOrder('ord1', 'admin@x.in');
+    assert.equal(cancelCalls()[0]!.auth, `Bearer tok-${E1.id}`);
+    assert.match(fake.logs.at(-1)!.note, /Ekart 1 - Prepaid shipment OLD-WB cancelled/);
+  });
+  test('booked Ekart 2 parcel is cancelled with account 2', async () => {
+    put('ord1', { carrier: 'EKART', ekartAccount: 2 });
+    await orders.cancelShipmentForCancelledOrder('ord1', 'admin@x.in');
+    assert.equal(cancelCalls()[0]!.auth, `Bearer tok-${E2.id}`);
+  });
+  test('carrier refuses -> shipment left as is and the admin is told to cancel on the dashboard', async () => {
+    put('ord1', { carrier: 'DELHIVERY' });
+    delhiveryCancel = () => json({ status: false, remark: 'Already picked up' });
+    await orders.cancelShipmentForCancelledOrder('ord1', 'admin@x.in');
+    assert.equal(fake.shipments.get('ord1')!.status, 'BOOKED');
+    assert.match(fake.logs.at(-1)!.note, /NOT cancelled: Already picked up.*cancel OLD-WB on the carrier dashboard/);
+  });
+  test('parcel already in transit -> no cancel call, note says arrange RTO', async () => {
+    put('ord1', { carrier: 'EKART', ekartAccount: 1, status: 'IN_TRANSIT' });
+    await orders.cancelShipmentForCancelledOrder('ord1', 'admin@x.in');
+    assert.equal(cancelCalls().length, 0);
+    assert.match(fake.logs.at(-1)!.note, /already IN_TRANSIT.*RTO/);
+  });
+  test('delivered / failed / returned parcels are left alone silently', async () => {
+    for (const status of ['DELIVERED', 'FAILED', 'RETURNED']) {
+      put('ord1', { status });
+      await orders.cancelShipmentForCancelledOrder('ord1', 'a');
+    }
+    assert.equal(cancelCalls().length, 0);
+    assert.equal(fake.logs.length, 0);
+  });
+  test('no shipment / no waybill -> nothing happens', async () => {
+    await orders.cancelShipmentForCancelledOrder('ord1', 'a');
+    put('ord1', { delhiveryWaybill: null, status: 'PENDING' });
+    await orders.cancelShipmentForCancelledOrder('ord1', 'a');
+    assert.equal(calls.length, 0);
+  });
+  test('never throws, even if the carrier call explodes', async () => {
+    put('ord1', { carrier: 'EKART', ekartAccount: 1 });
+    ekartCancel = () => { throw new Error('boom'); };
+    await assert.doesNotReject(orders.cancelShipmentForCancelledOrder('ord1', 'a'));
+  });
+});
+
+describe('rebookOrderShipment (switch provider)', () => {
+  test('Delhivery -> Ekart 1: cancels the Delhivery waybill, books Ekart 1, records everything', async () => {
+    put('ord1', { carrier: 'DELHIVERY', delhiveryWaybill: 'DW-OLD' });
+    const r = await orders.rebookOrderShipment('ord1', 'EKART_1', 'admin@x.in');
+    assert.deepEqual(r, { waybill: 'EK-TRACK-1', carrier: 'EKART', ekartAccount: 1 });
+    assert.equal(cancelCalls().length, 1);
+    assert.deepEqual(JSON.parse(cancelCalls()[0]!.body), { waybill: 'DW-OLD', cancellation: 'true' });
+    const sh = fake.shipments.get('ord1')!;
+    assert.equal(sh.carrier, 'EKART');
+    assert.equal(sh.ekartAccount, 1);
+    assert.equal(sh.delhiveryWaybill, 'EK-TRACK-1');
+    assert.equal(sh.status, 'BOOKED');
+    const notes = fake.logs.map((l) => l.note);
+    assert.ok(notes.some((n) => /Shipment DW-OLD \(Delhivery\) cancelled to switch provider/.test(n)));
+    assert.ok(notes.some((n) => /Re-booked on Ekart 1 - Prepaid: waybill EK-TRACK-1/.test(n)));
+    assert.ok(fake.logs.every((l) => l.createdBy === 'admin@x.in'));
+  });
+  test('the cancel happens BEFORE the new booking', async () => {
+    put('ord1', { carrier: 'DELHIVERY' });
+    await orders.rebookOrderShipment('ord1', 'EKART_1', 'a');
+    const iCancel = calls.findIndex((c) => c.url.includes('/api/p/edit'));
+    const iBook = calls.findIndex((c) => c.url.includes('/package/create'));
+    assert.ok(iCancel >= 0 && iBook > iCancel);
+  });
+  test('Ekart 2 -> Delhivery: cancels with account 2, books Delhivery', async () => {
+    put('ord1', { carrier: 'EKART', ekartAccount: 2, delhiveryWaybill: 'EK-OLD' });
+    const r = await orders.rebookOrderShipment('ord1', 'DELHIVERY', 'a');
+    assert.equal(r.carrier, 'DELHIVERY');
+    assert.equal(cancelCalls()[0]!.auth, `Bearer tok-${E2.id}`);
+    assert.equal(fake.shipments.get('ord1')!.ekartAccount, null);
+  });
+  test('Ekart 1 -> Ekart 2 works (account switch)', async () => {
+    put('ord1', { carrier: 'EKART', ekartAccount: 1, delhiveryWaybill: 'EK-OLD' });
+    const r = await orders.rebookOrderShipment('ord1', 'EKART_2', 'a');
+    assert.equal(r.ekartAccount, 2);
+    assert.equal(cancelCalls()[0]!.auth, `Bearer tok-${E1.id}`);
+    assert.equal(ekartCalls()[0]!.auth, `Bearer tok-${E2.id}`);
+  });
+  test('cancel fails -> nothing changes and no new booking is made', async () => {
+    put('ord1', { carrier: 'DELHIVERY', delhiveryWaybill: 'DW-OLD' });
+    delhiveryCancel = () => json({ status: false, remark: 'Cannot cancel' });
+    await assert.rejects(orders.rebookOrderShipment('ord1', 'EKART_1', 'a'), /Could not cancel the existing Delhivery shipment \(Cannot cancel\)\. Nothing was changed/);
+    assert.equal(ekartCalls().length, 0);
+    const sh = fake.shipments.get('ord1')!;
+    assert.equal(sh.delhiveryWaybill, 'DW-OLD');
+    assert.equal(sh.carrier, 'DELHIVERY');
+    assert.equal(fake.logs.length, 0);
+  });
+  test('Ekart cannot serve the pincode -> blocked BEFORE cancelling the working booking', async () => {
+    put('ord1', { carrier: 'DELHIVERY' });
+    serviceability = () => json({ status: false, remark: 'Pincode is not serviceable' });
+    await assert.rejects(orders.rebookOrderShipment('ord1', 'EKART_1', 'a'), /Ekart 1 - Prepaid does not deliver to 110001\. Nothing was changed/);
+    assert.equal(cancelCalls().length, 0);
+    assert.equal(fake.shipments.get('ord1')!.delhiveryWaybill, 'OLD-WB');
+  });
+  test('Ekart serviceability cannot be confirmed -> blocked before cancelling', async () => {
+    put('ord1', { carrier: 'DELHIVERY' });
+    serviceability = () => json({}, 500);
+    await assert.rejects(orders.rebookOrderShipment('ord1', 'EKART_1', 'a'), /Could not confirm.*Nothing was changed/);
+    assert.equal(cancelCalls().length, 0);
+  });
+  test('COD order where the Ekart account has no COD at the pincode -> blocked before cancelling', async () => {
+    fake.order = makeOrder('COD');
+    put('ord1', { carrier: 'DELHIVERY' });
+    serviceability = () => json({ status: true, remark: 'ok', details: { cod: false, forward_drop: true } });
+    await assert.rejects(orders.rebookOrderShipment('ord1', 'EKART_2', 'a'), /does not offer cash on delivery/);
+    assert.equal(cancelCalls().length, 0);
+  });
+  test('new booking fails after the cancel -> clear error, shipment cleared so Book can be retried, failure logged', async () => {
+    put('ord1', { carrier: 'DELHIVERY', delhiveryWaybill: 'DW-OLD' });
+    ekartCreate = () => json({ remark: 'Insufficient wallet balance' }, 400);
+    await assert.rejects(orders.rebookOrderShipment('ord1', 'EKART_1', 'a'), /The old Delhivery shipment was cancelled, but the new booking failed.*wallet.*Book again/);
+    const sh = fake.shipments.get('ord1')!;
+    assert.equal(sh.delhiveryWaybill, null);
+    assert.equal(sh.status, 'PENDING');
+    assert.ok(fake.logs.some((l) => /New booking after switch failed/.test(l.note)));
+    // ...and the admin can now book normally.
+    ekartCreate = () => json({ status: true, tracking_id: 'EK-RETRY' });
+    assert.equal((await orders.bookOrderShipment('ord1', 'EKART_1')).waybill, 'EK-RETRY');
+  });
+  test('after a switch the new booking uses a -R1 reference (carriers reject reused references)', async () => {
+    put('ord1', { carrier: 'DELHIVERY' });
+    await orders.rebookOrderShipment('ord1', 'EKART_1', 'a');
+    assert.equal(JSON.parse(ekartCalls()[0]!.body).order_number, 'DOSH-TEST-0001-R1');
+  });
+  test('a first, normal booking keeps the plain order number', async () => {
+    await orders.bookOrderShipment('ord1', 'EKART_1');
+    assert.equal(JSON.parse(ekartCalls()[0]!.body).order_number, 'DOSH-TEST-0001');
+  });
+  test('parcel already picked up (not BOOKED) cannot be switched', async () => {
+    put('ord1', { carrier: 'DELHIVERY', status: 'IN_TRANSIT' });
+    await assert.rejects(orders.rebookOrderShipment('ord1', 'EKART_1', 'a'), /already in transit.*NDR \/ RTO/);
+    assert.equal(cancelCalls().length, 0);
+  });
+  test('cancelled / delivered orders cannot be switched', async () => {
+    for (const status of ['CANCELLED', 'DELIVERED', 'REFUNDED', 'PENDING_PAYMENT']) {
+      fake.order = makeOrder('PREPAID', { status });
+      put('ord1', { carrier: 'DELHIVERY' });
+      await assert.rejects(orders.rebookOrderShipment('ord1', 'EKART_1', 'a'), /Cannot switch/, status);
+    }
+    assert.equal(cancelCalls().length, 0);
+  });
+  test('order with no shipment yet just books on the chosen provider', async () => {
+    const r = await orders.rebookOrderShipment('ord1', 'EKART_2', 'a');
+    assert.equal(r.ekartAccount, 2);
+    assert.equal(cancelCalls().length, 0);
+  });
+  test('stale booking cost is cleared on switch and re-quoted for the new provider', async () => {
+    put('ord1', { carrier: 'DELHIVERY' });
+    await orders.rebookOrderShipment('ord1', 'EKART_1', 'a');
+    assert.equal(fake.orderUpdates[0]!.bookingShippingCost, null);
+    assert.equal(fake.orderUpdates.at(-1)!.bookingShippingCost, 50.74);
+  });
+});
+
+describe('switchDelhiveryBookingsToEkart (bulk)', () => {
+  const addOrder = (id: string, over: { cod?: boolean; pincode?: string; status?: string } = {}) => {
+    const o = { ...makeOrder(over.cod ? 'COD' : 'PREPAID', { status: over.status ?? 'PAID', shippingAddress: { line1: 'a', city: 'c', state: 's', pincode: over.pincode ?? '110001' } }), id, orderNumber: `DOSH-${id}` };
+    fake.orderMap.set(id, o);
+    put(id, { carrier: 'DELHIVERY', delhiveryWaybill: `DW-${id}` });
+  };
+
+  test('dry run reports eligible / skipped and changes nothing', async () => {
+    addOrder('a'); addOrder('b', { cod: true }); addOrder('c', { pincode: '744101' });
+    serviceability = (pin) => (pin === '744101' ? json({ status: false, remark: 'Pincode is not serviceable' }) : json({ status: true, remark: 'ok', details: { cod: true, forward_drop: true } }));
+    const r = await orders.switchDelhiveryBookingsToEkart({ dryRun: true, limit: 15, admin: 'a' });
+    assert.equal(r.eligible, 3);
+    assert.equal(r.switched, 2);
+    assert.equal(r.skipped.length, 1);
+    assert.match(r.skipped[0]!.reason, /does not deliver to 744101/);
+    assert.equal(cancelCalls().length, 0);
+    assert.equal(fake.shipments.get('a')!.carrier, 'DELHIVERY');
+  });
+  test('apply: prepaid -> Ekart 1, COD -> Ekart 2, unserviceable stays on Delhivery', async () => {
+    addOrder('a'); addOrder('b', { cod: true }); addOrder('c', { pincode: '744101' });
+    serviceability = (pin) => (pin === '744101' ? json({ status: false, remark: 'Pincode is not serviceable' }) : json({ status: true, remark: 'ok', details: { cod: true, forward_drop: true } }));
+    const r = await orders.switchDelhiveryBookingsToEkart({ dryRun: false, limit: 15, admin: 'a' });
+    assert.equal(r.switched, 2);
+    assert.equal(r.failed.length, 0);
+    assert.equal(fake.shipments.get('a')!.ekartAccount, 1);
+    assert.equal(fake.shipments.get('b')!.ekartAccount, 2);
+    assert.equal(fake.shipments.get('c')!.carrier, 'DELHIVERY');
+    assert.equal(fake.shipments.get('c')!.delhiveryWaybill, 'DW-c');
+  });
+  test('batch limit: processes only `limit` and reports the rest', async () => {
+    for (const id of ['a', 'b', 'c']) addOrder(id);
+    const r = await orders.switchDelhiveryBookingsToEkart({ dryRun: false, limit: 2, admin: 'a' });
+    assert.equal(r.switched, 2);
+    assert.equal(r.remaining, 1);
+    const again = await orders.switchDelhiveryBookingsToEkart({ dryRun: false, limit: 2, admin: 'a' });
+    assert.equal(again.eligible, 1);
+    assert.equal(again.switched, 1);
+    assert.equal(again.remaining, 0);
+  });
+  test('orders already picked up / shipped / cancelled are not touched', async () => {
+    addOrder('a', { status: 'SHIPPED' }); addOrder('b', { status: 'CANCELLED' }); addOrder('c');
+    put('c', { carrier: 'DELHIVERY', status: 'IN_TRANSIT' });
+    const r = await orders.switchDelhiveryBookingsToEkart({ dryRun: false, limit: 15, admin: 'a' });
+    assert.equal(r.eligible, 0);
+    assert.equal(cancelCalls().length, 0);
+  });
+  test('Ekart parcels are never touched by the bulk switch', async () => {
+    addOrder('a');
+    put('a', { carrier: 'EKART', ekartAccount: 1 });
+    assert.equal((await orders.switchDelhiveryBookingsToEkart({ dryRun: false, limit: 15, admin: 'a' })).eligible, 0);
+  });
+  test('one failure does not stop the rest; it is reported', async () => {
+    addOrder('a'); addOrder('b');
+    let n = 0;
+    delhiveryCancel = () => (++n === 1 ? json({ status: false, remark: 'Cannot cancel' }) : json({ status: true }));
+    const r = await orders.switchDelhiveryBookingsToEkart({ dryRun: false, limit: 15, admin: 'a' });
+    assert.equal(r.failed.length, 1);
+    assert.equal(r.switched, 1);
+    assert.match(r.failed[0]!.error, /Nothing was changed/);
+  });
+  test('serviceability unknown -> skipped, never cancelled', async () => {
+    addOrder('a');
+    serviceability = () => json({}, 500);
+    const r = await orders.switchDelhiveryBookingsToEkart({ dryRun: false, limit: 15, admin: 'a' });
+    assert.equal(r.skipped.length, 1);
+    assert.equal(cancelCalls().length, 0);
   });
 });
 

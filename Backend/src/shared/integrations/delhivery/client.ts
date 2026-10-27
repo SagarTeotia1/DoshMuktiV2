@@ -192,6 +192,32 @@ export async function raisePickupRequest(params: {
 
 export type NdrAction = 'REATTEMPT' | 'RTO';
 
+// Cancels a manifested (not yet picked up) waybill. Delhivery answers {status: true, ...} on success
+// and an `error`/`remark` text otherwise (e.g. already picked up). Never throws.
+export async function cancelDelhiveryShipment(waybill: string): Promise<{ success: boolean; error?: string }> {
+  if (!env.DELHIVERY_API_KEY) return { success: false, error: 'Delhivery not configured' };
+  try {
+    const res = await fetch(`${env.DELHIVERY_BASE_URL}/api/p/edit`, {
+      method: 'POST',
+      headers: { Authorization: `Token ${env.DELHIVERY_API_KEY}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ waybill, cancellation: 'true' }),
+    });
+    const body = (await res.json().catch(() => null)) as {
+      status?: boolean | string;
+      success?: boolean;
+      error?: string;
+      remark?: string | string[];
+      message?: string;
+    } | null;
+    const failed = !res.ok || !body || Boolean(body.error) || body.status === false || body.status === 'false' || body.success === false;
+    if (!failed) return { success: true };
+    const remark = Array.isArray(body?.remark) ? body?.remark.join('; ') : body?.remark;
+    return { success: false, error: body?.error || remark || body?.message || `Delhivery returned ${res.status}` };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Delhivery cancel failed' };
+  }
+}
+
 export async function takeNdrAction(params: {
   waybill: string;
   action: NdrAction;

@@ -14,6 +14,8 @@ import {
   riskFlagSchema,
   packageWeightSchema,
   labelSizeQuerySchema,
+  bookShipmentBodySchema,
+  rebookShipmentBodySchema,
 } from './schema';
 import {
   getOrderByPublicToken,
@@ -31,6 +33,8 @@ import {
   setShipmentRiskFlag,
   updateOrderPackageWeight,
   bookOrderShipment,
+  rebookOrderShipment,
+  switchDelhiveryBookingsToEkart,
   resumeOrder,
   OrderNotResumableError,
   NoWaybillError,
@@ -217,11 +221,30 @@ export async function bookShipmentHandler(req: FastifyRequest, reply: FastifyRep
   const parsed = idParamSchema.safeParse(req.params);
   if (!parsed.success) return reply.code(400).send({ error: 'Invalid id' });
 
+  const body = bookShipmentBodySchema.safeParse(req.body ?? {});
+  if (!body.success) return reply.code(400).send({ error: 'Invalid provider' });
+
   try {
-    const shipment = await bookOrderShipment(parsed.data.id);
+    const shipment = await bookOrderShipment(parsed.data.id, body.data.provider);
     return reply.send(shipment);
   } catch (err) {
     return reply.code(502).send({ error: err instanceof Error ? err.message : 'Booking failed' });
+  }
+}
+
+// Admin "Switch provider": cancels the booked parcel at its carrier and books a new one on the
+// chosen provider (Ekart 1 - Prepaid / Ekart 2 - COD / Delhivery). Only before pickup.
+export async function rebookShipmentHandler(req: FastifyRequest, reply: FastifyReply) {
+  const parsed = idParamSchema.safeParse(req.params);
+  if (!parsed.success) return reply.code(400).send({ error: 'Invalid id' });
+  const body = rebookShipmentBodySchema.safeParse(req.body);
+  if (!body.success) return reply.code(400).send({ error: 'Choose a provider' });
+
+  const admin = (req.user as { sub?: string }).sub ?? 'admin';
+  try {
+    return reply.send(await rebookOrderShipment(parsed.data.id, body.data.provider, admin));
+  } catch (err) {
+    return reply.code(502).send({ error: err instanceof Error ? err.message : 'Switching provider failed' });
   }
 }
 
@@ -293,5 +316,22 @@ export async function ewaybillUpdateHandler(req: FastifyRequest, reply: FastifyR
     return reply.code(204).send();
   } catch (err) {
     return shippingErrorReply(reply, err);
+  }
+}
+
+// Admin "Switch Delhivery bookings to Ekart". ?dryRun=true (default) only previews; dryRun=false
+// moves up to BATCH parcels (prepaid -> Ekart 1, COD -> Ekart 2) and reports what is left.
+const SWITCH_BATCH = 15;
+const switchQuerySchema = z.object({ dryRun: z.enum(['true', 'false']).default('true') });
+
+export async function switchToEkartHandler(req: FastifyRequest, reply: FastifyReply) {
+  const q = switchQuerySchema.safeParse(req.query);
+  if (!q.success) return reply.code(400).send({ error: 'dryRun must be true or false' });
+  const admin = (req.user as { sub?: string }).sub ?? 'admin';
+  try {
+    return reply.send(await switchDelhiveryBookingsToEkart({ dryRun: q.data.dryRun === 'true', limit: SWITCH_BATCH, admin }));
+  } catch (err) {
+    req.log.error({ err }, 'Bulk switch to Ekart failed');
+    return reply.code(502).send({ error: err instanceof Error ? err.message : 'Switch failed' });
   }
 }

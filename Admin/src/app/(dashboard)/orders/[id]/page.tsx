@@ -10,6 +10,7 @@ import { ShippingActions } from '@/components/orders/ShippingActions';
 import { useOrder, useResendWhatsApp, useUpdateOrderStatus, useUpdatePackageWeight } from '@/hooks/use-orders';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ApiError } from '@/lib/api-client';
+import { providerName } from '@/lib/constants';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL!;
 
@@ -103,12 +104,8 @@ export default function OrderDetailPage() {
 
   const shipment = order.shipment;
   const isEkart = shipment?.carrier === 'EKART';
-  const carrierName = shipment ? (isEkart ? 'Ekart' : 'Delhivery') : null;
-  const courierLabel = !shipment
-    ? null
-    : isEkart
-      ? `Ekart · ${shipment.ekartAccount === 1 ? 'Prepaid account (1)' : shipment.ekartAccount === 2 ? 'COD account (2)' : 'Account unknown'}`
-      : 'Delhivery';
+  const courierLabel = shipment ? providerName(shipment.carrier, shipment.ekartAccount) : null;
+  const carrierName = courierLabel;
   const customerPaidShipping = Number(order.shippingFee) + Number(order.codFee);
   const shippingMargin = order.bookingShippingCost !== null ? customerPaidShipping - Number(order.bookingShippingCost) : null;
 

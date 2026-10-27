@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { FileText, Truck, AlertTriangle, Receipt } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { useGenerateLabel, useBookShipment, useNdrAction, useUpdateEwaybill, useSetRiskFlag } from '@/hooks/use-orders';
+import { useGenerateLabel, useBookShipment, useRebookShipment, useNdrAction, useUpdateEwaybill, useSetRiskFlag } from '@/hooks/use-orders';
+import { PROVIDER_OPTIONS, providerName, providerValue, type PickableProvider, type ShipmentProvider } from '@/lib/constants';
 import { ApiError } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { getStoredLabelSize, setStoredLabelSize, openLabelWindow, writeLabelToWindow, base64ToBlobUrl, type LabelSize } from '@/lib/print-label';
@@ -29,6 +30,7 @@ export function ShippingActions({ order }: { order: Order }) {
   const ndrAction = useNdrAction(order.id);
   const updateEwaybill = useUpdateEwaybill(order.id);
   const setRiskFlag = useSetRiskFlag(order.id);
+  const rebook = useRebookShipment(order.id);
   const riskFlag = order.shipment?.riskFlag ?? null;
 
   function handleToggleRiskFlag(flag: 'BAD_ADDRESS' | 'HIGH_RISK') {
@@ -46,6 +48,10 @@ export function ShippingActions({ order }: { order: Order }) {
   const [ndrComment, setNdrComment] = useState('');
   const [confirmNdr, setConfirmNdr] = useState(false);
 
+  const [bookProvider, setBookProvider] = useState<ShipmentProvider>('AUTO');
+  const [switchTo, setSwitchTo] = useState<PickableProvider | ''>('');
+  const [confirmSwitch, setConfirmSwitch] = useState(false);
+
   const [ewaybillNumber, setEwaybillNumber] = useState(order.shipment?.ewaybillNumber ?? '');
 
   const [labelSize, setLabelSize] = useState<LabelSize>('4x6');
@@ -56,7 +62,7 @@ export function ShippingActions({ order }: { order: Order }) {
   }
 
   function handleBookShipment() {
-    bookShipment.mutate(undefined, {
+    bookShipment.mutate(bookProvider, {
       onSuccess: () => toast.success('Shipment booked'),
       onError: (err) => toast.error(errMsg(err, 'Could not book shipment')),
     });
@@ -68,6 +74,22 @@ export function ShippingActions({ order }: { order: Order }) {
         <p className="text-xs text-slate-400">
           No waybill yet — the automatic booking (Delhivery or Ekart) on payment either hasn&apos;t run yet or failed.
         </p>
+        <select
+          value={bookProvider}
+          onChange={(e) => setBookProvider(e.target.value as ShipmentProvider)}
+          className={inputClass}
+          aria-label="Shipping provider"
+        >
+          <option value="AUTO">Auto (prepaid → Ekart 1, COD → Ekart 2)</option>
+          {PROVIDER_OPTIONS.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+        {bookProvider !== 'AUTO' && (
+          <p className="text-[11px] text-slate-400">Books exactly on {PROVIDER_OPTIONS.find((p) => p.value === bookProvider)?.label} - no fallback to another carrier.</p>
+        )}
         <button
           onClick={handleBookShipment}
           disabled={bookShipment.isPending}
@@ -125,6 +147,21 @@ export function ShippingActions({ order }: { order: Order }) {
     );
   }
 
+  const currentProvider = providerValue(order.shipment!.carrier, order.shipment!.ekartAccount);
+  const canSwitch = order.shipment?.status === 'BOOKED' && ['PAID', 'PROCESSING', 'PACKED', 'SHIPPED'].includes(order.status);
+
+  function handleSwitchProvider() {
+    if (!switchTo) return;
+    rebook.mutate(switchTo, {
+      onSuccess: (r) => {
+        toast.success(`Switched - new waybill ${r.waybill}`);
+        setSwitchTo('');
+      },
+      onError: (err) => toast.error(errMsg(err, 'Could not switch provider')),
+      onSettled: () => setConfirmSwitch(false),
+    });
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex gap-2">
@@ -152,6 +189,36 @@ export function ShippingActions({ order }: { order: Order }) {
           In a pickup batch — see the <a href="/pickup-requests" className="underline">Pickup Requests</a> page.
         </p>
       )}
+
+      <div className="border-t border-slate-100 pt-4">
+        <p className="text-xs font-semibold text-slate-600 mb-2 flex items-center gap-1.5">
+          <Truck className="w-3.5 h-3.5" /> Shipping provider
+        </p>
+        <p className="text-xs text-slate-500 mb-2">
+          Booked on <strong>{providerName(order.shipment!.carrier, order.shipment!.ekartAccount)}</strong>.
+        </p>
+        {canSwitch ? (
+          <div className="flex gap-2">
+            <select value={switchTo} onChange={(e) => setSwitchTo(e.target.value as PickableProvider | '')} className={inputClass} aria-label="Switch to provider">
+              <option value="">Switch to…</option>
+              {PROVIDER_OPTIONS.filter((p) => p.value !== currentProvider).map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => setConfirmSwitch(true)}
+              disabled={!switchTo || rebook.isPending}
+              className="flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 border border-slate-300 hover:border-slate-400 disabled:opacity-40 transition-colors"
+            >
+              {rebook.isPending ? 'Switching…' : 'Switch'}
+            </button>
+          </div>
+        ) : (
+          <p className="text-xs text-slate-400">The parcel is already with the courier, so it can&apos;t be switched. Use the NDR / RTO actions below.</p>
+        )}
+      </div>
 
       <div className="border-t border-slate-100 pt-4">
         <p className="text-xs font-semibold text-slate-600 mb-2 flex items-center gap-1.5">
@@ -252,6 +319,17 @@ export function ShippingActions({ order }: { order: Order }) {
         }
         onConfirm={handleNdrAction}
         onCancel={() => setConfirmNdr(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmSwitch}
+        title="Switch shipping provider"
+        message={`This cancels waybill ${waybill} on ${providerName(order.shipment!.carrier, order.shipment!.ekartAccount)} and books a new one on ${
+          PROVIDER_OPTIONS.find((p) => p.value === switchTo)?.label ?? ''
+        }. Print the new label afterwards - the old one will not work.`}
+        onConfirm={handleSwitchProvider}
+        onCancel={() => setConfirmSwitch(false)}
+        confirmDisabled={rebook.isPending}
       />
     </div>
   );

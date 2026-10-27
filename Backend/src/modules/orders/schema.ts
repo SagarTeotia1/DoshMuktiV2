@@ -33,6 +33,12 @@ export const listOrdersQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
+// Which provider to book on. AUTO = the normal rule (prepaid -> Ekart 1, COD -> Ekart 2, Delhivery only
+// when Ekart can't serve the pincode); the others book exactly there with no fallback.
+export const shipmentProviderSchema = z.enum(['AUTO', 'EKART_1', 'EKART_2', 'DELHIVERY']);
+export const bookShipmentBodySchema = z.object({ provider: shipmentProviderSchema.default('AUTO') }).default({ provider: 'AUTO' });
+export const rebookShipmentBodySchema = z.object({ provider: shipmentProviderSchema });
+
 export const updateOrderStatusSchema = z.object({
   status: z.enum(['PENDING_PAYMENT', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'REFUNDED', 'PACKED']),
   note: z.string().max(500).optional(),

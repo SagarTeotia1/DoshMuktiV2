@@ -521,3 +521,12 @@ export interface AdminHomepageSection {
   isActive: boolean;
   items: AdminHomepageSectionItem[];
 }
+
+export interface BulkSwitchResult {
+  dryRun: boolean;
+  eligible: number;
+  switched: number;
+  skipped: Array<{ orderNumber: string; reason: string }>;
+  failed: Array<{ orderNumber: string; error: string }>;
+  remaining: number;
+}
