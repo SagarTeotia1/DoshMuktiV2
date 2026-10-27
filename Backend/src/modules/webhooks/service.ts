@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { db } from '../../shared/db/client';
 import { logger } from '../../shared/logger/pino';
 import { sendOrderConfirmation, sendShipmentNotification } from '../../shared/integrations/resend/client';
+import { sendOrderWhatsAppConfirmation } from '../../shared/notifications/orderWhatsApp';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
 import { syncOrderStatusFromShipment, applyWeightDiscrepancyCost, bookOrderShipment } from '../orders/service';
@@ -108,6 +109,9 @@ export async function handlePaymentCaptured(razorpayOrderId: string, razorpayPay
 // the moment it's placed (see checkout/service.ts). Fire-and-forget: never blocks the
 // caller's response on email/shipment calls.
 export function onOrderConfirmed(order: { id: string; orderNumber: string; customerEmail: string | null; total: Prisma.Decimal | number }): void {
+  // WhatsApp "order confirmed" (order no., estimated delivery, tracking link). Sent at most once
+  // per order and never throws, so a replayed webhook or a MSG91 outage can't affect the order.
+  void sendOrderWhatsAppConfirmation(order.id);
   if (order.customerEmail) {
     void sendOrderConfirmation(order.customerEmail, order.orderNumber, Number(order.total));
   }

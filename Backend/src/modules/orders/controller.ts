@@ -37,6 +37,7 @@ import {
   type GstReportOrderRow,
 } from './service';
 import { generateInvoicePdf } from './invoice';
+import { sendOrderWhatsAppConfirmation } from '../../shared/notifications/orderWhatsApp';
 import { estimateDeliveryWindow } from '../../shared/shipping/deliveryEstimate';
 
 export async function trackOrderHandler(req: FastifyRequest, reply: FastifyReply) {
@@ -197,6 +198,19 @@ export async function shipmentLabelHandler(req: FastifyRequest, reply: FastifyRe
   } catch (err) {
     return shippingErrorReply(reply, err);
   }
+}
+
+// Admin "Resend WhatsApp confirmation": clears the sent marker and sends again (e.g. the first send
+// failed, or the customer changed number). Returns 502 with the reason if MSG91 rejects it.
+export async function resendWhatsAppConfirmationHandler(req: FastifyRequest, reply: FastifyReply) {
+  const parsed = idParamSchema.safeParse(req.params);
+  if (!parsed.success) return reply.code(400).send({ error: 'Invalid id' });
+
+  const result = await sendOrderWhatsAppConfirmation(parsed.data.id, { force: true });
+  if (result.outcome === 'sent') return reply.send({ sent: true });
+  if (result.outcome === 'order_not_found') return reply.code(404).send({ error: 'Order not found' });
+  if (result.outcome === 'disabled') return reply.code(503).send({ error: 'WhatsApp is not configured on the server' });
+  return reply.code(502).send({ error: result.error ?? 'WhatsApp send failed' });
 }
 
 export async function bookShipmentHandler(req: FastifyRequest, reply: FastifyReply) {

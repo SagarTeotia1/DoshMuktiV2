@@ -1,6 +1,12 @@
+import dns from 'node:dns';
 import { buildApp } from './app';
 import { env } from './config/env';
 import { warmCache } from './jobs/warm-cache';
+
+// Dual-stack hosts (api.msg91.com sits behind Cloudflare IPv6) would otherwise be reached over
+// the server's IPv6 address. Carrier/MSG91 allow-lists are IPv4 lists, so prefer IPv4 egress -
+// the outgoing address then matches what was allow-listed.
+dns.setDefaultResultOrder('ipv4first');
 
 async function main() {
   const app = await buildApp();

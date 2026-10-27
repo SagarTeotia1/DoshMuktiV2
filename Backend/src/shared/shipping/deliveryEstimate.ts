@@ -33,3 +33,11 @@ export function estimateDeliveryWindow(placedAt: Date, status: string): Delivery
     to: addDays(placedAt, MAX_DAYS_FROM_ORDER).toISOString(),
   };
 }
+
+// "3 Nov - 6 Nov 2026" in IST, for customer messages (WhatsApp confirmation). Dates are shown
+// in India time regardless of the server's timezone.
+export function formatDeliveryWindowText(window: DeliveryWindow): string {
+  const day = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' });
+  const full = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
+  return `${day.format(new Date(window.from))} - ${full.format(new Date(window.to))}`;
+}

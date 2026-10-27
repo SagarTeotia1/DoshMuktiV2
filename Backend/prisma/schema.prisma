@@ -293,6 +293,9 @@ model Order {
   // COD handling charge — COD_FEE on a COD order that gets free delivery, else 0. Already
   // included in `total` (and so in codAmountDue); shown as its own invoice line.
   codFee               Decimal          @default(0) @db.Decimal(10, 2)
+  // Set (atomically, before sending) when the WhatsApp order confirmation goes out, so a
+  // webhook replay or retry can never message the customer twice. Cleared again if the send fails.
+  whatsappConfirmSentAt DateTime?
   items                OrderItem[]
   payment              Payment?
   shipment             Shipment?
