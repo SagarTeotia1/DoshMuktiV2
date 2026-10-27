@@ -38,11 +38,11 @@ Backups contain customer phones, addresses and orders. That is why the bucket mu
    ```
    gcloud scheduler jobs create http db-backup \
      --schedule="30 2 * * *" --time-zone="Asia/Kolkata" \
-     --uri="https://api.doshmukti.com/jobs/db-backup" --http-method=POST \
+     --uri="https://api.doshmukti.com/api/jobs/db-backup" --http-method=POST \
      --headers="Authorization=Bearer <CRON_SECRET>" --attempt-deadline=300s
    ```
 5. **Run it once by hand** and confirm a file appears:
-   `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://api.doshmukti.com/jobs/db-backup`
+   `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://api.doshmukti.com/api/jobs/db-backup`
    then `npx tsx --env-file=.env scripts/restore-backup.ts list`.
 6. Do a restore drill (below) before you ever need it.
 

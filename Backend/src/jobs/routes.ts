@@ -5,7 +5,7 @@ import { releaseExpiredHolds } from './release-holds';
 import { syncOpenShipments, SyncBusyError, CRON_SYNC_LIMIT } from './tracking-sync';
 import { sendLowStockDigest } from './low-stock-digest';
 import { warmCache } from './warm-cache';
-import { runDbBackup } from './db-backup';
+import { runDbBackup, BackupBusyError } from './db-backup';
 
 function verifyCronSecret(req: FastifyRequest, reply: FastifyReply): boolean {
   const auth = req.headers.authorization ?? '';
@@ -45,7 +45,13 @@ export async function jobRoutes(app: FastifyInstance) {
   // Nightly encrypted DB backup. A failure surfaces as a 500 so Cloud Scheduler marks the run failed.
   app.post('/jobs/db-backup', async (req, reply) => {
     if (!verifyCronSecret(req, reply)) return;
-    return reply.send(await runDbBackup());
+    try {
+      return reply.send(await runDbBackup());
+    } catch (err) {
+      // An Admin-triggered backup is mid-run: not a failure, the scheduler shouldn't retry-storm.
+      if (err instanceof BackupBusyError) return reply.code(200).send({ skipped: true, reason: err.message });
+      throw err;
+    }
   });
 
   app.post('/jobs/warm-cache', async (req, reply) => {

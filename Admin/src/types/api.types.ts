@@ -394,6 +394,27 @@ export interface PaginatedUsers {
   page: number;
 }
 
+export interface BackupSummary {
+  key: string;
+  takenAt: string;
+  sizeBytes: number;
+}
+
+export interface BackupOverview {
+  configured: boolean;
+  missing: string[];
+  retentionDays: number;
+  backups: BackupSummary[];
+}
+
+export interface BackupRunResult {
+  key: string;
+  bytes: number;
+  tables: number;
+  rows: number;
+  deleted: number;
+}
+
 export interface DashboardSummary {
   todayOrderCount: number;
   todayCodCount: number;

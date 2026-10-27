@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, Boxes, ShoppingBag, Gem, Star, Tag, Ticket, Image as ImageIcon, Receipt, Truck, PackageCheck, Rows3, LayoutGrid, MessageCircle, Users, X } from 'lucide-react';
+import { LayoutDashboard, Package, Boxes, ShoppingBag, Gem, Star, Tag, Ticket, Image as ImageIcon, Receipt, Truck, PackageCheck, Rows3, LayoutGrid, MessageCircle, Users, Database, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSidebar } from './SidebarContext';
 
@@ -22,6 +22,7 @@ const NAV = [
   { href: '/gst-report', label: 'GST Report', icon: Receipt },
   { href: '/reviews', label: 'Reviews', icon: Star },
   { href: '/chat-sessions', label: 'Chat Sessions', icon: MessageCircle },
+  { href: '/backups', label: 'Backups', icon: Database },
 ];
 
 export function Sidebar() {

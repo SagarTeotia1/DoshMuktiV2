@@ -7,6 +7,11 @@ export async function verifyAdmin(req: FastifyRequest, reply: FastifyReply) {
   } catch {
     return reply.code(401).send({ error: 'Unauthorized' });
   }
+  // Customer logins (phone OTP) are signed with the same key, so a valid signature alone is
+  // not proof of an admin: only tokens issued by the admin login carry role "admin".
+  if ((req.user as { role?: string }).role !== 'admin') {
+    return reply.code(403).send({ error: 'Forbidden' });
+  }
 }
 
 export async function verifyCustomer(req: FastifyRequest, reply: FastifyReply) {

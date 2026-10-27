@@ -1,4 +1,6 @@
 import { env } from '../config/env';
+import { redis } from '../shared/cache/client';
+import { cacheKeys } from '../shared/cache/keys';
 import { logger } from '../shared/logger/pino';
 import { resend } from '../shared/integrations/resend/client';
 import { decryptBackup, encryptBackup, parseBackupKey } from '../shared/backup/format';
@@ -15,13 +17,36 @@ export interface BackupResult {
 }
 
 const MIN_KEEP = 7;
+const LOCK_TTL_SECONDS = 600;
+
+export class BackupBusyError extends Error {
+  constructor() {
+    super('A backup is already running - try again in a minute');
+  }
+}
+
+// incr() is atomic so exactly one caller (the nightly cron OR the Admin button) gets count 1;
+// the TTL frees the lock if the process dies mid-run.
+async function withBackupLock<T>(fn: () => Promise<T>): Promise<T> {
+  const key = cacheKeys.cronLock('db-backup');
+  if ((await redis.incr(key, LOCK_TTL_SECONDS)) !== 1) throw new BackupBusyError();
+  try {
+    return await fn();
+  } finally {
+    await redis.del(key).catch(() => undefined);
+  }
+}
 
 // Nightly logical backup: consistent snapshot -> gzip -> AES-256-GCM -> private R2 bucket, then
 // prune old ones. Order matters: nothing is deleted until the new backup is uploaded AND verified
 // (size check on upload + a full decrypt of the exact bytes sent), and the newest MIN_KEEP are
 // never pruned. On any failure the admin is emailed and the error is rethrown so the scheduler
 // shows the run as failed - a silently broken backup job is the real risk.
-export async function runDbBackup(): Promise<BackupResult> {
+export function runDbBackup(): Promise<BackupResult> {
+  return withBackupLock(runDbBackupUnlocked);
+}
+
+async function runDbBackupUnlocked(): Promise<BackupResult> {
   try {
     const key = parseBackupKey(env.BACKUP_ENCRYPTION_KEY);
     const snapshot = await collectSnapshot();
