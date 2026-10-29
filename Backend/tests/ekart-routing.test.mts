@@ -153,9 +153,10 @@ describe('pure routing helpers', () => {
     assert.equal(accounts.ekartConfig(2).webhookToken, E2.hook);
   });
   test('COD fee + payment breakdown unchanged', () => {
-    assert.equal(carrier.computeCodFee('COD', 0), 50);
-    assert.equal(carrier.computeCodFee('COD', 90), 0);
-    assert.equal(carrier.computeCodFee('PREPAID', 0), 0);
+    assert.equal(carrier.computeCodFee('COD', 500), 50);
+    assert.equal(carrier.computeCodFee('COD', 299), 0);
+    assert.equal(carrier.computeCodFee('COD', 100), 0);
+    assert.equal(carrier.computeCodFee('PREPAID', 500), 0);
     assert.deepEqual(carrier.computePaymentBreakdown('COD', 700), { payNow: 0, codAmountDue: 700 });
     assert.deepEqual(carrier.computePaymentBreakdown('PREPAID', 700), { payNow: 700, codAmountDue: 0 });
   });

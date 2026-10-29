@@ -164,8 +164,7 @@ export default function TermsPage() {
                 <strong className="text-[#2B1B0C]">Cash on Delivery (COD).</strong> Where offered at checkout, you
                 can choose COD and pay nothing online. The full order amount, including any shipping charge, is
                 payable to the courier at the time of delivery, in cash or as otherwise accepted by the courier. A
-                COD order is confirmed as soon as it is placed. On orders that qualify for free delivery (above
-                ₹{FREE_SHIPPING_ABOVE}), a COD handling charge of ₹{COD_FEE} applies; it is shown at checkout before
+                COD order is confirmed as soon as it is placed. On orders above ₹{FREE_SHIPPING_ABOVE}, a COD handling charge of ₹{COD_FEE} applies; it is shown at checkout before
                 you place the order and listed separately on your invoice. Paying online avoids this charge. COD is
                 available on orders up to ₹{MAX_COD_ORDER_TOTAL.toLocaleString('en-IN')} (including the COD charge);
                 larger orders must be paid online.

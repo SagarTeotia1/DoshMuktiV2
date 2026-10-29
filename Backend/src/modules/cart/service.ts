@@ -233,15 +233,15 @@ export interface CartPricing {
   // set above its actual price — the "MRP savings" shown on cart/checkout, computed once
   // here so the number can never drift between the two pages.
   savings: number;
-  // If the customer picks COD: the handling charge it adds (COD_FEE when delivery is free,
-  // see computeCodFee) and the cash the courier collects (full total incl. that charge —
+  // If the customer picks COD: the handling charge it adds (COD_FEE on COD orders above
+  // FREE_SHIPPING_ABOVE, see computeCodFee) and the cash the courier collects (full total incl. that charge —
   // nothing is charged online). Same helpers checkout uses, so preview == charge.
   codFee: number;
   codAmountDue: number;
 }
 
-function codSplit(total: number, shippingFee: number): { codFee: number; codAmountDue: number } {
-  const codFee = computeCodFee('COD', shippingFee);
+function codSplit(total: number, subtotal: number): { codFee: number; codAmountDue: number } {
+  const codFee = computeCodFee('COD', subtotal);
   return { codFee, codAmountDue: computePaymentBreakdown('COD', total + codFee).codAmountDue };
 }
 
@@ -304,7 +304,7 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
       taxableValue: 0,
       gstAmount: 0,
       savings: 0,
-      ...codSplit(subtotal + shippingFee, shippingFee),
+      ...codSplit(subtotal + shippingFee, subtotal),
     };
   }
 
@@ -385,6 +385,6 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
     taxableValue,
     gstAmount,
     savings: computeCartSavings(cart),
-    ...codSplit(Math.max(subtotal + shippingFee - totalDiscount, 0), shippingFee),
+    ...codSplit(Math.max(subtotal + shippingFee - totalDiscount, 0), subtotal),
   };
 }

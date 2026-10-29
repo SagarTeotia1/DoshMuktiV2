@@ -38,6 +38,9 @@ export const cacheKeys = {
   // so this is safe to cache and saves a live Delhivery call on every cart/PDP view.
   shippingRate: (originPincode: string, destPincode: string, weightGrams: number) =>
     `shipping:rate:${originPincode}:${destPincode}:${weightGrams}` as const,
+  // Ekart's live prepaid quote for the same route+weight — kept apart from the Delhivery key above.
+  ekartRate: (originPincode: string, destPincode: string, weightGrams: number) =>
+    `shipping:ekart-rate:${originPincode}:${destPincode}:${weightGrams}` as const,
 } as const;
 
 export const CACHE_TTL = {

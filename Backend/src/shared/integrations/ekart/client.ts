@@ -1,4 +1,5 @@
 import { env } from '../../../config/env';
+import { logger } from '../../logger/pino';
 import { joinAddressLines, sanitizeCarrierText } from '../../shipping/addressText';
 import { ekartConfig, type EkartAccount } from './accounts';
 
@@ -298,7 +299,10 @@ export async function estimateEkartCost(account: EkartAccount, params: {
   codAmount: number;
   invoiceAmount: number;
 }): Promise<EkartCostQuote | null> {
-  if (!isEkartConfigured(account)) return null;
+  if (!isEkartConfigured(account)) {
+    logger.warn({ account }, 'Ekart pricing estimate skipped — account %d not configured', account);
+    return null;
+  }
   try {
     const res = await ekartFetch(account, '/data/v2/pricing/estimate', {
       method: 'POST',
@@ -315,11 +319,19 @@ export async function estimateEkartCost(account: EkartAccount, params: {
         packagingType: 'Regular',
       }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      logger.warn({ account, status: res.status, body: body.slice(0, 500), ...params }, 'Ekart pricing estimate HTTP %d for account %d', res.status, account);
+      return null;
+    }
     const d = (await res.json()) as { preTax?: number; tax?: number; total?: number };
-    if (typeof d.total !== 'number') return null;
+    if (typeof d.total !== 'number') {
+      logger.warn({ account, response: d, ...params }, 'Ekart pricing estimate returned no total for account %d', account);
+      return null;
+    }
     return { preTax: d.preTax ?? d.total - (d.tax ?? 0), tax: d.tax ?? 0, total: d.total };
-  } catch {
+  } catch (err) {
+    logger.warn({ account, err, ...params }, 'Ekart pricing estimate threw for account %d', account);
     return null;
   }
 }

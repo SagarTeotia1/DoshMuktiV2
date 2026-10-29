@@ -1,4 +1,4 @@
-import { COD_FEE } from '../constants/purposes';
+import { COD_FEE, FREE_SHIPPING_ABOVE } from '../constants/purposes';
 import type { EkartAccount } from '../integrations/ekart/accounts';
 
 export type PaymentMethodId = 'PREPAID' | 'COD';
@@ -11,9 +11,10 @@ export function chooseEkartAccount(paymentMethod: PaymentMethodId): EkartAccount
   return paymentMethod === 'COD' ? 2 : 1;
 }
 
-// COD handling charge: COD_FEE when a COD order's delivery is free (shippingFee 0), else 0.
-export function computeCodFee(paymentMethod: PaymentMethodId, shippingFee: number): number {
-  return paymentMethod === 'COD' && shippingFee === 0 ? COD_FEE : 0;
+// COD handling charge: COD_FEE on COD orders above FREE_SHIPPING_ABOVE (same subtotal test as the
+// free-delivery waiver); 0 below that threshold and for prepaid.
+export function computeCodFee(paymentMethod: PaymentMethodId, subtotal: number): number {
+  return paymentMethod === 'COD' && subtotal > FREE_SHIPPING_ABOVE ? COD_FEE : 0;
 }
 
 export interface PaymentBreakdown {

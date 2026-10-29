@@ -414,15 +414,15 @@ function CheckoutPageContent() {
   const preDiscountTotal = subtotal + shippingFee - autoAppliedDiscount;
   const couponDiscount = appliedCoupon?.discountAmount ?? 0;
   // COD is full cash on delivery — nothing charged online, the courier collects `total`.
-  // Display-only; Backend's computeCodFee is authoritative: COD_FEE when delivery is free.
+  // Display-only; Backend's computeCodFee is authoritative: COD_FEE only above FREE_SHIPPING_ABOVE.
   const isCod = paymentMethod === 'COD';
-  const codFeeFor = (fee: number) => (fee === 0 ? COD_FEE : 0);
-  const codFee = isCod ? codFeeFor(shippingFee) : 0;
+  const codAppliesToCart = subtotal > FREE_SHIPPING_ABOVE;
+  const codFee = isCod && codAppliesToCart ? COD_FEE : 0;
   const total = Math.max(preDiscountTotal + codFee - couponDiscount, 0);
   // Per-option totals for the payment radio labels (independent of the selected method).
   const totalWithFee = (fee: number) => Math.max(subtotal + fee - autoAppliedDiscount - couponDiscount, 0);
   const prepaidOptionTotal = totalWithFee(prepaidShipping.data?.fee ?? shippingFee);
-  const codOptionFee = codFeeFor(codShipping.data?.fee ?? shippingFee);
+  const codOptionFee = codAppliesToCart ? COD_FEE : 0;
   const codOptionTotal = totalWithFee(codShipping.data?.fee ?? shippingFee) + codOptionFee;
   const codUnavailable = codOptionTotal > MAX_COD_ORDER_TOTAL;
   // Cart grew past the COD limit (or a coupon was removed) while COD was picked — fall back

@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "../../shared/db/client";
 import { razorpay } from "../../shared/integrations/razorpay/client";
 import { redis } from "../../shared/cache/client";
-import { cacheKeys } from "../../shared/cache/keys";
+import { cacheKeys, CACHE_TTL } from "../../shared/cache/keys";
 import {
   SHIPPING_FEE,
   FREE_SHIPPING_ABOVE,
@@ -11,6 +11,8 @@ import {
   PACKAGING_WEIGHT_GRAMS,
   MAX_COD_ORDER_TOTAL,
 } from "../../shared/constants/purposes";
+import { env } from "../../config/env";
+import { estimateEkartCost } from "../../shared/integrations/ekart/client";
 import { logger } from "../../shared/logger/pino";
 import { cancelPendingOrderTx } from "../orders/service";
 import { invalidateProductCaches } from "../products/service";
@@ -21,7 +23,7 @@ import {
   reserveCouponUsageTx,
   CouponExhaustedError,
 } from "../coupons/service";
-import { computeCodFee, computePaymentBreakdown, type PaymentMethodId } from "../../shared/shipping/carrier";
+import { chooseEkartAccount, computeCodFee, computePaymentBreakdown, type PaymentMethodId } from "../../shared/shipping/carrier";
 import { onOrderConfirmed } from "../webhooks/service";
 import type { CheckoutInput } from "./schema";
 
@@ -154,12 +156,41 @@ export async function calculateShippingFee(
   destPincode: string,
   paymentMethod: PaymentMethodId = "PREPAID",
 ): Promise<{ fee: number; originalFee: number }> {
-  // Every parcel ships Ekart first (see shared/shipping/carrier.ts), so the quote is the flat
-  // SHIPPING_FEE (Rs90, Ekart's flat rate up to 2kg), no lookup. Waived above
-  // FREE_SHIPPING_ABOVE (we bear it) - originalFee stays the true cost so the UI can show it
-  // struck through.
-  const originalFee = SHIPPING_FEE;
+  // Prepaid pays Ekart's live rate for the real weight; COD keeps the flat SHIPPING_FEE.
+  // Waived above FREE_SHIPPING_ABOVE (we bear it) - originalFee stays the true cost so the UI
+  // can show it struck through.
+  const originalFee =
+    paymentMethod === "PREPAID"
+      ? await ekartPrepaidRate(subtotal, weightGrams, destPincode)
+      : SHIPPING_FEE;
   return { fee: subtotal > FREE_SHIPPING_ABOVE ? 0 : originalFee, originalFee };
+}
+
+// Ekart's GST-inclusive rate on account 1 (prepaid), rounded up to the rupee. Cached per
+// route+weight like the Delhivery rate. A failed quote falls back to the flat SHIPPING_FEE
+// (uncached, so the next call retries Ekart) — the carrier never blocks checkout.
+async function ekartPrepaidRate(subtotal: number, weightGrams: number, destPincode: string): Promise<number> {
+  const originPincode = env.DELHIVERY_WAREHOUSE_PINCODE;
+  const key = cacheKeys.ekartRate(originPincode, destPincode, weightGrams);
+  const cached = await redis.get<number>(key).catch(() => null);
+  if (typeof cached === "number") return cached;
+
+  const quote = await estimateEkartCost(chooseEkartAccount("PREPAID"), {
+    originPincode,
+    destPincode,
+    weight: weightGrams,
+    codAmount: 0,
+    invoiceAmount: subtotal,
+  });
+  if (!quote) {
+    logger.warn({ originPincode, destPincode, weightGrams }, 'Ekart prepaid rate quote failed — falling back to flat SHIPPING_FEE ₹%d', SHIPPING_FEE);
+    return SHIPPING_FEE;
+  }
+
+  const rate = Math.ceil(quote.total);
+  logger.info({ originPincode, destPincode, weightGrams, rate }, 'Ekart prepaid rate quote: ₹%d', rate);
+  await redis.set(key, rate, { ex: CACHE_TTL.SHIPPING_RATE }).catch(() => undefined);
+  return rate;
 }
 
 export async function initiateCheckout(input: CheckoutInput, userId: string) {
@@ -273,7 +304,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
   // confirmed (and its stock deducted for good) the moment it's placed.
   const reservedUntil = isCod ? null : new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
-  const codFee = computeCodFee(paymentMethod, shippingFee);
+  const codFee = computeCodFee(paymentMethod, subtotal);
   const orderTotal = subtotal + shippingFee + codFee - totalDiscount;
   if (orderTotal < MIN_ONLINE_ORDER_TOTAL) throw new InvalidOrderTotalError(orderTotal);
 

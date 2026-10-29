@@ -1,7 +1,7 @@
 // Mirrors Backend/src/shared/constants/purposes.ts — update both when this changes.
 export const SHIPPING_FEE = 90; // flat shipping & packaging fee — mirrors Backend
 export const FREE_SHIPPING_ABOVE = 299;
-// COD handling charge on orders that get free delivery — mirrors Backend's COD_FEE.
+// COD handling charge on COD orders above FREE_SHIPPING_ABOVE — mirrors Backend's COD_FEE.
 export const COD_FEE = 50;
 // Largest order total (incl. COD_FEE) accepted as COD — mirrors Backend's MAX_COD_ORDER_TOTAL.
 export const MAX_COD_ORDER_TOTAL = 1499;
