@@ -1,6 +1,7 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Topbar } from '@/components/layout/Topbar';
@@ -11,6 +12,9 @@ import { useOrder, useResendWhatsApp, useUpdateOrderStatus, useUpdatePackageWeig
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ApiError } from '@/lib/api-client';
 import { providerName } from '@/lib/constants';
+import { api } from '@/lib/api-client';
+import { loadSnapshot, saveSnapshot, type OrdersSnapshot } from '@/lib/orders-nav';
+import type { PaginatedOrders } from '@/types/api.types';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL!;
 
@@ -32,6 +36,40 @@ export default function OrderDetailPage() {
   const updateStatus = useUpdateOrderStatus(id);
   const updatePackageWeight = useUpdatePackageWeight(id);
   const resendWhatsApp = useResendWhatsApp(id);
+  const router = useRouter();
+  const [snap, setSnap] = useState<OrdersSnapshot | null>(null);
+  const [navBusy, setNavBusy] = useState(false);
+  useEffect(() => setSnap(loadSnapshot()), []);
+
+  const idx = snap ? snap.ids.indexOf(id) : -1;
+  const hasPrev = !!snap && idx >= 0 && (idx > 0 || snap.page > 1);
+  const hasNext = !!snap && idx >= 0 && (idx < snap.ids.length - 1 || snap.page < snap.pages);
+  const listHref = snap ? `/orders?${new URLSearchParams(snap.baseQs).toString()}${snap.page > 1 ? `${snap.baseQs ? '&' : ''}page=${snap.page}` : ''}` : '/orders';
+
+  async function step(dir: -1 | 1) {
+    if (!snap || idx < 0) return;
+    const target = snap.ids[idx + dir];
+    if (target) return router.push(`/orders/${target}`);
+    // Edge of the page: pull the neighbouring page and continue from its first/last order.
+    const page = snap.page + dir;
+    setNavBusy(true);
+    try {
+      const params = new URLSearchParams(snap.baseQs);
+      params.set('page', String(page));
+      params.set('limit', '20');
+      const res = await api.get<PaginatedOrders>(`/api/admin/orders?${params.toString()}`);
+      if (res.orders.length === 0) return;
+      const next: OrdersSnapshot = { baseQs: snap.baseQs, page: res.page, pages: res.pages, ids: res.orders.map((o) => o.id) };
+      saveSnapshot(next);
+      setSnap(next);
+      router.push(`/orders/${dir === 1 ? next.ids[0] : next.ids[next.ids.length - 1]}`);
+    } catch {
+      toast.error('Could not load neighbouring orders');
+    } finally {
+      setNavBusy(false);
+    }
+  }
+
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [weightInput, setWeightInput] = useState('');
   const [weightEdited, setWeightEdited] = useState(false);
@@ -112,6 +150,22 @@ export default function OrderDetailPage() {
   return (
     <>
       <Topbar title={order.orderNumber} />
+      <div className="px-6 pt-4 flex items-center gap-2">
+        <Link href={listHref} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">
+          ← Back to list
+        </Link>
+        {snap && idx >= 0 && (
+          <>
+            <button onClick={() => step(-1)} disabled={!hasPrev || navBusy} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">
+              ← Previous
+            </button>
+            <button onClick={() => step(1)} disabled={!hasNext || navBusy} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">
+              Next →
+            </button>
+            <span className="text-xs text-slate-400">Page {snap.page} · {idx + 1} of {snap.ids.length}</span>
+          </>
+        )}
+      </div>
       <div className="p-6 grid lg:grid-cols-[1.5fr_1fr] gap-6">
         <div className="flex flex-col gap-6">
           <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">

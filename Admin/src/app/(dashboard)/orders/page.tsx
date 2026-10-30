@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import { loadListQs, saveListQs, saveSnapshot } from '@/lib/orders-nav';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Topbar } from '@/components/layout/Topbar';
@@ -141,23 +142,52 @@ function SyncButton({ mode, label }: { mode: SyncMode; label: string }) {
 function OrdersPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState(searchParams.get('status') ?? '');
-  // "from" defaults to DEFAULT_FROM_DATE only when the URL doesn't already specify one —
-  // this is a UI default, not a hard block: the admin can clear/change it to see any date.
-  const [from, setFrom] = useState(searchParams.get('from') ?? DEFAULT_FROM_DATE);
-  const [to, setTo] = useState(searchParams.get('to') ?? '');
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'' | 'COD' | 'PREPAID'>('');
+  const spString = searchParams.toString();
+
+  // All filters + page live in the URL so back/forward, refresh and detail->list restore them.
+  const status = searchParams.get('status') ?? '';
+  // "from" defaults to DEFAULT_FROM_DATE only when the URL doesn't specify one (an explicit
+  // empty `from=` means the admin cleared it).
+  const from = searchParams.has('from') ? (searchParams.get('from') ?? '') : DEFAULT_FROM_DATE;
+  const to = searchParams.get('to') ?? '';
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const q = searchParams.get('q') ?? '';
+  const paymentMethod = (searchParams.get('pm') ?? '') as '' | 'COD' | 'PREPAID';
+
+  const [search, setSearch] = useState(q);
+
+  const update = (patch: Record<string, string | null>) => {
+    const next = new URLSearchParams(searchParams.toString());
+    for (const [k, v] of Object.entries(patch)) {
+      if (v === null || (v === '' && k !== 'from')) next.delete(k);
+      else next.set(k, v);
+    }
+    router.replace(`/orders?${next.toString()}`, { scroll: false });
+  };
+
+  // Sidebar link opens /orders bare — bring back the last-used filters/page.
+  useEffect(() => {
+    if (spString === '') {
+      const saved = loadListQs();
+      if (saved) router.replace(`/orders?${saved}`, { scroll: false });
+    } else {
+      saveListQs(spString);
+    }
+  }, [spString, router]);
+
+  // Keep the box in step with URL changes made elsewhere (restore, back button).
+  useEffect(() => {
+    setSearch((cur) => (cur.trim() === q ? cur : q));
+  }, [q]);
 
   // Wait for a pause in typing before hitting the API; a new search always starts at page 1.
   useEffect(() => {
     const t = setTimeout(() => {
-      setDebouncedSearch(search.trim());
-      setPage(1);
+      const trimmed = search.trim();
+      if (trimmed !== q) update({ q: trimmed, page: null });
     }, 300);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
   const { data, isLoading } = useOrders(
@@ -165,22 +195,22 @@ function OrdersPageContent() {
     { from: from || undefined, to: to || undefined },
     page,
     20,
-    debouncedSearch || undefined,
+    q || undefined,
     paymentMethod || undefined,
   );
 
-  const setStatusAndResetPage = (s: string) => {
-    setStatus(s);
-    setPage(1);
-  };
-  const setFromAndResetPage = (v: string) => {
-    setFrom(v);
-    setPage(1);
-  };
-  const setToAndResetPage = (v: string) => {
-    setTo(v);
-    setPage(1);
-  };
+  // Snapshot of this page's order ids so the detail page can step prev/next.
+  useEffect(() => {
+    if (!data) return;
+    const base = new URLSearchParams(spString);
+    base.delete('page');
+    saveSnapshot({ baseQs: base.toString(), page: data.page, pages: data.pages, ids: data.orders.map((o) => o.id) });
+  }, [data, spString]);
+
+  const setStatusAndResetPage = (s: string) => update({ status: s, page: null });
+  const setFromAndResetPage = (v: string) => update({ from: v, page: null });
+  const setToAndResetPage = (v: string) => update({ to: v, page: null });
+  const setPage = (fn: (p: number) => number) => update({ page: String(fn(page)) });
 
   return (
     <>
@@ -199,8 +229,7 @@ function OrdersPageContent() {
               <button
                 key={value}
                 onClick={() => {
-                  setPaymentMethod(value);
-                  setPage(1);
+                  update({ pm: value, page: null });
                 }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                   paymentMethod === value ? 'bg-[#9C5A26] text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
