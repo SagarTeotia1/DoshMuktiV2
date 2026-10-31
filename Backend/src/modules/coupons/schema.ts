@@ -41,6 +41,8 @@ const couponFieldsSchema = z.object({
   // not-everything rule as Offer.showInSuggestions. Lets a standalone coupon (no linked
   // Offer) surface there directly.
   showInSuggestions: z.boolean().optional(),
+  // ALL = redeemable on COD and prepaid orders; PREPAID_ONLY = prepaid orders only.
+  paymentScope: z.enum(["ALL", "PREPAID_ONLY"]).optional(),
 });
 
 // Full-object create can enforce the percent bound directly (type is always present).
@@ -78,6 +80,9 @@ export type ListCouponsQuery = z.infer<typeof listCouponsQuerySchema>;
 // preview as ineligible (fail-closed, see findValidatedCoupon).
 export const previewCouponSchema = z.object({
   code: z.string().min(1),
+  // Payment method the customer currently has selected — a PREPAID_ONLY coupon is rejected
+  // for COD. Omitted = PREPAID (the default checkout method).
+  paymentMethod: z.enum(["PREPAID", "COD"]).optional(),
   items: z
     .array(
       z.object({

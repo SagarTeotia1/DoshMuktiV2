@@ -133,6 +133,11 @@ export default function CouponsPage() {
         cell: ({ row }) => (
           <span className={row.original.isActive ? 'font-semibold text-slate-900' : 'font-semibold text-slate-400 line-through'}>
             {row.original.code}
+            {row.original.paymentScope === 'PREPAID_ONLY' && (
+              <span className="ml-2 rounded-full bg-[#9C5A26]/10 px-2 py-0.5 text-[10px] font-bold uppercase text-[#6B3D19] no-underline">
+                Prepaid only
+              </span>
+            )}
           </span>
         ),
       },

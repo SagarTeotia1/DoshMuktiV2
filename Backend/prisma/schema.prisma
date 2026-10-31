@@ -505,9 +505,18 @@ model Coupon {
   // coupon (no linked Offer) can also surface in the suggestions widget on its own.
   showInSuggestions Boolean @default(false)
 
+  // Which payment methods may redeem this coupon. ALL = COD and prepaid; PREPAID_ONLY nudges
+  // customers toward paying online (enforced in coupons/service.ts findValidatedCoupon).
+  paymentScope CouponPaymentScope @default(ALL)
+
   @@index([code])
   @@index([isActive, expiresAt])
   @@index([showInSuggestions])
+}
+
+enum CouponPaymentScope {
+  ALL
+  PREPAID_ONLY
 }
 
 enum CouponType {

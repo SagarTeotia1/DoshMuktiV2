@@ -124,6 +124,8 @@ export const suggestedCouponSchema = z.object({
   minOrder: z.number().nullable(),
   maxDiscount: z.number().nullable(),
   expiresAt: z.string().nullable(),
+  // Optional so an older Backend (before the paymentScope column) still parses: absent = ALL.
+  paymentScope: z.enum(['ALL', 'PREPAID_ONLY']).optional(),
 });
 export type SuggestedCoupon = z.infer<typeof suggestedCouponSchema>;
 
@@ -235,10 +237,11 @@ export type CouponErrorCode =
   | 'COUPON_USAGE_LIMIT'
   | 'COUPON_MIN_ORDER'
   | 'COUPON_BIRTHDAY_INELIGIBLE'
+  | 'COUPON_PREPAID_ONLY'
   | 'COUPON_EXHAUSTED';
 
 export type CouponPreviewResponse =
-  | { valid: true; discountAmount: number }
+  | { valid: true; discountAmount: number; paymentScope?: 'ALL' | 'PREPAID_ONLY' }
   | { valid: false; error: string; code: CouponErrorCode };
 
 export interface CheckoutResponse {

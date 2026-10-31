@@ -254,6 +254,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
         code: input.couponCode,
         subtotal,
         customerDob: input.customerDob,
+        paymentMethod: input.paymentMethod,
       })
     : null;
   if (coupon) {

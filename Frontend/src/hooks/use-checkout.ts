@@ -32,6 +32,7 @@ const COUPON_ERROR_CODES = new Set([
   'COUPON_USAGE_LIMIT',
   'COUPON_MIN_ORDER',
   'COUPON_BIRTHDAY_INELIGIBLE',
+  'COUPON_PREPAID_ONLY',
   'COUPON_EXHAUSTED',
 ]);
 
@@ -220,7 +221,9 @@ export function useCheckout(scope: CartScope, opts?: { onNavigate?: () => void }
   const [couponInput, setCouponInput] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<
+    { code: string; discountAmount: number; prepaidOnly: boolean } | null
+  >(null);
   const [suggestedCoupons, setSuggestedCoupons] = useState<SuggestedCoupon[]>([]);
   const [couponPanelOpen, setCouponPanelOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -298,9 +301,17 @@ export function useCheckout(scope: CartScope, opts?: { onNavigate?: () => void }
     setCouponLoading(true);
     setCouponError(null);
     try {
-      const result = await api.post<CouponPreviewResponse>('/api/coupon/preview', { code, items: checkoutItems });
+      const result = await api.post<CouponPreviewResponse>('/api/coupon/preview', {
+        code,
+        items: checkoutItems,
+        paymentMethod,
+      });
       if (result.valid) {
-        setAppliedCoupon({ code, discountAmount: result.discountAmount });
+        setAppliedCoupon({
+          code,
+          discountAmount: result.discountAmount,
+          prepaidOnly: result.paymentScope === 'PREPAID_ONLY',
+        });
         setCouponError(null);
       } else {
         setAppliedCoupon(null);
@@ -313,6 +324,15 @@ export function useCheckout(scope: CartScope, opts?: { onNavigate?: () => void }
       setCouponLoading(false);
     }
   }
+
+  // A prepaid-only coupon can't ride along into a COD order: drop it with a clear reason
+  // (the buyer can switch back to prepaid and re-apply) instead of failing at checkout.
+  useEffect(() => {
+    if (paymentMethod === 'COD' && appliedCoupon?.prepaidOnly) {
+      setCouponError(`${appliedCoupon.code} works on prepaid orders only, so it was removed. Pay online to use it.`);
+      setAppliedCoupon(null);
+    }
+  }, [paymentMethod, appliedCoupon]);
 
   function handleRemoveCoupon() {
     setAppliedCoupon(null);

@@ -20,6 +20,20 @@ function couponDescription(c: SuggestedCoupon): string {
   return `${value} off${cap}${minOrder}`;
 }
 
+// Which payment types a coupon works with — shown on every coupon so buyers aren't surprised
+// when a prepaid-only code is refused on COD (and so it nudges them toward paying online).
+function PaymentScopeTag({ prepaidOnly }: { prepaidOnly: boolean }) {
+  return prepaidOnly ? (
+    <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#9C5A26]/12 px-2 py-0.5 font-body text-[10px] font-bold uppercase tracking-wide text-[#6B3D19]">
+      <Sparkles className="h-3 w-3" /> Prepaid orders only
+    </span>
+  ) : (
+    <span className="mt-2 inline-flex items-center rounded-full bg-[#2B1B0C]/8 px-2 py-0.5 font-body text-[10px] font-bold uppercase tracking-wide text-[#6B5539]">
+      Works on COD &amp; Prepaid
+    </span>
+  );
+}
+
 function SectionLabel({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between mb-2">
@@ -220,6 +234,9 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
                   <span className="font-body text-sm text-[#2B1B0C]">
                     <span className="font-bold">{c.appliedCoupon.code}</span> applied · you save{' '}
                     {formatCurrency(c.couponDiscount)}
+                    {c.appliedCoupon.prepaidOnly && (
+                      <span className="mt-0.5 block text-[11px] font-semibold text-[#6B3D19]">Prepaid orders only</span>
+                    )}
                   </span>
                   <button
                     type="button"
@@ -283,6 +300,7 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
                             </button>
                           </div>
                           <p className="mt-1.5 font-body text-xs text-[#6B5539] leading-snug">{couponDescription(s)}</p>
+                          <PaymentScopeTag prepaidOnly={s.paymentScope === 'PREPAID_ONLY'} />
                         </div>
                       ))}
                     </div>

@@ -203,6 +203,8 @@ export interface Coupon {
   isActive: boolean;
   offerCount: number; // how many Offers (behavior=COUPON_BASED) link to this coupon
   showInSuggestions: boolean;
+  // ALL = redeemable on COD and prepaid orders; PREPAID_ONLY = prepaid orders only.
+  paymentScope: 'ALL' | 'PREPAID_ONLY';
   createdAt: string;
 }
 

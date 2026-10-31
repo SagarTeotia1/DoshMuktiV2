@@ -37,6 +37,7 @@ export interface CreateCouponInput {
   expiresAt?: string | null;
   isActive?: boolean;
   showInSuggestions?: boolean;
+  paymentScope?: 'ALL' | 'PREPAID_ONLY';
 }
 
 export function useCreateCoupon() {
@@ -57,6 +58,7 @@ export interface UpdateCouponInput {
   expiresAt?: string | null;
   isActive?: boolean;
   showInSuggestions?: boolean;
+  paymentScope?: 'ALL' | 'PREPAID_ONLY';
 }
 
 export function useUpdateCoupon() {

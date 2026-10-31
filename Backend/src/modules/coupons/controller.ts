@@ -22,6 +22,7 @@ import {
   CouponUsageLimitReachedError,
   CouponMinOrderNotMetError,
   CouponBirthdayNotEligibleError,
+  CouponPrepaidOnlyError,
   CouponExhaustedError,
   CouponPreviewItemsInvalidError,
   InvalidCouponValueError,
@@ -65,6 +66,13 @@ export function mapCouponValidationError(
     return {
       code: "COUPON_MIN_ORDER",
       message: `Minimum order of ₹${err.minOrder} required for this coupon`,
+      status: 400,
+    };
+  }
+  if (err instanceof CouponPrepaidOnlyError) {
+    return {
+      code: "COUPON_PREPAID_ONLY",
+      message: "This coupon works on prepaid orders only. Pay online to use it.",
       status: 400,
     };
   }
@@ -212,12 +220,15 @@ export async function previewCouponHandler(
     const coupon = await findValidatedCoupon({
       code: parsed.data.code,
       subtotal,
+      paymentMethod: parsed.data.paymentMethod,
     });
     const { discountAmount } = await resolveCouponRewardsForCheckout(
       lineItems,
       coupon.id,
     );
-    return reply.code(200).send({ valid: true, discountAmount });
+    return reply
+      .code(200)
+      .send({ valid: true, discountAmount, paymentScope: coupon.paymentScope });
   } catch (err) {
     const mapped = mapCouponValidationError(err);
     if (mapped)

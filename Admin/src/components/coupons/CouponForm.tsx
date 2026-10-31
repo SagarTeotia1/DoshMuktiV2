@@ -48,6 +48,7 @@ const couponFormSchema = z
     maxDiscount: optionalNumber(z.coerce.number().positive('Must be greater than 0')),
     expiresAt: z.string().optional(), // yyyy-mm-dd from <input type="date">, converted to ISO on submit
     showInSuggestions: z.boolean().default(false),
+    paymentScope: z.enum(['ALL', 'PREPAID_ONLY']).default('ALL'),
   })
   .superRefine((data, ctx) => {
     if ((data.type === 'PERCENT' || data.type === 'BIRTHDAY') && data.value > 100) {
@@ -58,7 +59,7 @@ const couponFormSchema = z
 type CouponFormShape = z.infer<typeof couponFormSchema>;
 
 function couponToFormDefaults(coupon?: Coupon): Partial<CouponFormShape> {
-  if (!coupon) return { type: 'FLAT', showInSuggestions: false };
+  if (!coupon) return { type: 'FLAT', showInSuggestions: false, paymentScope: 'ALL' };
   return {
     code: coupon.code,
     type: coupon.type,
@@ -68,6 +69,7 @@ function couponToFormDefaults(coupon?: Coupon): Partial<CouponFormShape> {
     maxDiscount: coupon.maxDiscount ?? undefined,
     expiresAt: coupon.expiresAt ? coupon.expiresAt.slice(0, 10) : undefined,
     showInSuggestions: coupon.showInSuggestions,
+    paymentScope: coupon.paymentScope ?? 'ALL',
   };
 }
 
@@ -102,6 +104,7 @@ export function CouponForm({
 
   const type = watch('type');
   const showInSuggestions = watch('showInSuggestions');
+  const paymentScope = watch('paymentScope');
   const showMaxDiscount = type === 'PERCENT' || type === 'BIRTHDAY';
   const valueLabel = type === 'FLAT' ? 'Discount Amount (₹)' : 'Discount %';
 
@@ -115,6 +118,7 @@ export function CouponForm({
       maxDiscount: values.maxDiscount ?? null,
       expiresAt: values.expiresAt ? new Date(values.expiresAt).toISOString() : null,
       showInSuggestions: values.showInSuggestions,
+      paymentScope: values.paymentScope,
     });
   }
 
@@ -186,6 +190,33 @@ export function CouponForm({
         </label>
         <input type="date" {...register('expiresAt')} className={`${inputClass} max-w-[200px]`} />
         {errors.expiresAt && <p className="text-xs text-red-600 mt-1">{errors.expiresAt.message}</p>}
+      </div>
+
+      <div>
+        <label className="text-xs font-semibold text-slate-600 mb-2 block">Works on</label>
+        <div className="flex flex-col gap-2">
+          {[
+            { value: 'ALL', label: 'COD & Prepaid', helper: 'Redeemable on any order.' },
+            {
+              value: 'PREPAID_ONLY',
+              label: 'Prepaid orders only',
+              helper: 'Refused on Cash on Delivery — use it to push customers to pay online.',
+            },
+          ].map((o) => (
+            <label
+              key={o.value}
+              className={`flex flex-col gap-0.5 px-3 py-2.5 rounded-lg border cursor-pointer transition-colors ${
+                paymentScope === o.value ? 'border-[#9C5A26] bg-[#9C5A26]/5' : 'border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <input type="radio" value={o.value} {...register('paymentScope')} className="w-4 h-4 accent-[#9C5A26]" />
+                <span className="text-sm font-semibold text-slate-800">{o.label}</span>
+              </span>
+              <span className="text-[11px] text-slate-400 pl-6">{o.helper}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
       <div className="border-t border-slate-100 pt-4">

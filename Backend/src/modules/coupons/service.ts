@@ -63,6 +63,13 @@ export class CouponMinOrderNotMetError extends Error {
   }
 }
 
+export class CouponPrepaidOnlyError extends Error {
+  constructor(public code: string) {
+    super(`Coupon is valid on prepaid orders only: ${code}`);
+    this.name = "CouponPrepaidOnlyError";
+  }
+}
+
 export class CouponBirthdayNotEligibleError extends Error {
   constructor(public code: string) {
     super(`Coupon is only valid on the customer's birthday: ${code}`);
@@ -185,6 +192,7 @@ export async function createCoupon(input: CreateCouponInput) {
         maxDiscount: input.maxDiscount ?? null,
         expiresAt: input.expiresAt ?? null,
         showInSuggestions: input.showInSuggestions ?? false,
+        paymentScope: input.paymentScope ?? "ALL",
       },
       include: withCountInclude,
     });
@@ -222,6 +230,7 @@ export async function updateCoupon(id: string, input: UpdateCouponInput) {
           : {}),
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
         ...(input.showInSuggestions !== undefined ? { showInSuggestions: input.showInSuggestions } : {}),
+        ...(input.paymentScope !== undefined ? { paymentScope: input.paymentScope } : {}),
       },
       include: withCountInclude,
     });
@@ -263,6 +272,8 @@ export async function findValidatedCoupon(input: {
   code: string;
   subtotal: number;
   customerDob?: Date;
+  // Omitted = PREPAID, so any caller that doesn't pass it can never wrongly block a coupon.
+  paymentMethod?: "PREPAID" | "COD";
 }): Promise<Coupon> {
   const normalizedCode = input.code.trim().toUpperCase();
 
@@ -275,6 +286,9 @@ export async function findValidatedCoupon(input: {
     throw new CouponExpiredError(normalizedCode);
   if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) {
     throw new CouponUsageLimitReachedError(normalizedCode);
+  }
+  if (coupon.paymentScope === "PREPAID_ONLY" && input.paymentMethod === "COD") {
+    throw new CouponPrepaidOnlyError(normalizedCode);
   }
   if (coupon.minOrder !== null && input.subtotal < Number(coupon.minOrder)) {
     throw new CouponMinOrderNotMetError(
