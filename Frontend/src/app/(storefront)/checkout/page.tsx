@@ -241,9 +241,7 @@ function CheckoutPageContent() {
       <div className="flex justify-between font-heading font-bold text-lg text-[#2B1B0C] pt-2 border-t border-[#2B1B0C]/10">
         <span>Total</span>
         <span>
-          {hasResolvedPincodeRate
-            ? formatCurrency(total)
-            : formatCurrency(Math.max(subtotal - autoAppliedDiscount - couponDiscount, 0))}
+          {hasResolvedPincodeRate ? formatCurrency(total) : /^\d{6}$/.test(form.pincode) ? 'Checking…' : 'Enter pincode'}
         </span>
       </div>
       {deliveryEstimate && (

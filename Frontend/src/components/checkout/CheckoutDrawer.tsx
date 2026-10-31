@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { X, Minus, Plus, ChevronDown, ShieldCheck, Ticket, Copy, Check, Sparkles, ArrowRight } from 'lucide-react';
+import { X, Minus, Plus, ChevronDown, Ticket, Copy, Check, Sparkles, ArrowRight } from 'lucide-react';
 import { useCheckout, normalizePhone } from '@/hooks/use-checkout';
 import type { CartScope } from '@/hooks/use-cart';
 import { CodWarningModal } from '@/components/checkout/CodWarningModal';
@@ -11,7 +11,7 @@ import { MAX_COD_ORDER_TOTAL } from '@/lib/constants';
 import type { SuggestedCoupon } from '@/types/api.types';
 
 const field =
-  'w-full bg-white border border-[#2B1B0C]/25 rounded-xl px-4 py-3 text-base sm:text-sm focus:ring-2 focus:ring-[#9C5A26] focus:border-[#9C5A26] focus:outline-none font-body placeholder:text-[#8A7A63] transition-colors';
+  'w-full bg-white border border-[#2B1B0C]/20 rounded-xl px-4 py-3 min-h-[54px] text-base sm:text-sm focus:ring-2 focus:ring-[#9C5A26] focus:border-[#9C5A26] focus:outline-none font-body placeholder:text-[#8A7A63] transition-colors';
 
 function couponDescription(c: SuggestedCoupon): string {
   const value = c.type === 'FLAT' ? formatCurrency(c.value) : `${c.value}%`;
@@ -22,8 +22,8 @@ function couponDescription(c: SuggestedCoupon): string {
 
 function SectionLabel({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between mb-2">
-      <h3 className="font-body text-[11px] font-bold uppercase tracking-[0.14em] text-[#2B1B0C]">{children}</h3>
+    <div className="flex items-center justify-between mb-3">
+      <h3 className="font-body text-xs font-bold uppercase tracking-[0.14em] text-[#2B1B0C]">{children}</h3>
       {right}
     </div>
   );
@@ -37,6 +37,7 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
   const emptyCart = !!c.cart && c.items.length === 0;
   const formRef = useRef<HTMLFormElement>(null);
   const [billOpen, setBillOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -56,6 +57,10 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
     : Math.max(c.subtotal - c.autoAppliedDiscount - c.couponDiscount, 0);
   const isCod = c.isCod;
   const shownAmount = isCod ? c.codOptionTotal : payOnlineAmount;
+  // Under the free-shipping threshold the delivery fee depends on the pincode, so any price
+  // shown before it resolves would be wrong — show a prompt instead of an amount.
+  const pincodeComplete = /^\d{6}$/.test(c.form.pincode);
+  const pincodeHint = pincodeComplete ? 'Checking…' : 'Enter pincode';
   const busy = c.submitting || c.rzpLoading || c.items.length === 0;
 
   function validOrFocus(): boolean {
@@ -93,15 +98,15 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
         role="dialog"
         aria-modal="true"
         aria-label="Your cart"
-        className={`absolute right-0 top-0 h-[100dvh] w-full sm:max-w-[440px] bg-[#FFFDF8] flex flex-col shadow-2xl transition-transform duration-300 ease-out ${
-          open ? 'translate-x-0' : 'translate-x-full'
+        className={`absolute bottom-0 right-0 top-0 flex w-[88%] max-w-[460px] flex-col overflow-hidden bg-[#FFFDF8] shadow-2xl transition-transform duration-300 ease-out sm:w-full ${
+          open ? 'translate-x-0' : 'translate-x-[110%]'
         }`}
       >
         {/* Header */}
-        <header className="flex items-center justify-between bg-[#2B1B0C] px-5 py-4 text-[#E6D3AE]">
+        <header className="flex items-center justify-between bg-[#2B1B0C] px-5 py-5 text-[#E6D3AE]">
           <div>
-            <p className="font-heading text-lg font-bold leading-tight">Your Cart</p>
-            <p className="font-body text-xs opacity-80">
+            <p className="font-heading text-xl font-bold leading-tight">Your Cart</p>
+            <p className="mt-0.5 font-body text-sm opacity-80">
               {c.items.length} item{c.items.length === 1 ? '' : 's'}
             </p>
           </div>
@@ -109,14 +114,14 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 hover:bg-white/25"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 hover:bg-white/25"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </header>
 
         {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-6">
           {emptyCart && (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <p className="font-heading text-lg font-bold text-[#2B1B0C]">Your cart is empty</p>
@@ -136,40 +141,40 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
               e.preventDefault();
               payNow();
             }}
-            className={`flex flex-col gap-5 ${emptyCart ? 'hidden' : ''}`}
+            className={`flex flex-col gap-8 ${emptyCart ? 'hidden' : ''}`}
           >
             {/* Items */}
             <div className="flex flex-col gap-3">
               {c.items.map((item) => (
-                <div key={item.variantId} className="flex gap-3 rounded-xl border border-[#2B1B0C]/15 bg-white p-3">
+                <div key={item.variantId} className="flex gap-4 rounded-2xl border border-[#2B1B0C]/10 bg-white p-4 shadow-sm">
                   {item.imageUrl && (
                     <Image
                       src={item.imageUrl}
                       alt=""
-                      width={64}
-                      height={64}
-                      className="h-16 w-16 flex-shrink-0 rounded-lg object-cover"
+                      width={88}
+                      height={88}
+                      className="h-[88px] w-[88px] flex-shrink-0 rounded-xl object-cover"
                     />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="font-body text-sm font-semibold text-[#2B1B0C] line-clamp-2">{item.productName}</p>
-                    <div className="mt-1 flex items-baseline gap-2">
-                      <span className="font-body text-sm font-bold text-[#2B1B0C]">{formatCurrency(item.price)}</span>
+                    <p className="font-body text-[15px] font-semibold leading-snug text-[#2B1B0C] line-clamp-2">{item.productName}</p>
+                    <div className="mt-1.5 flex items-baseline gap-2">
+                      <span className="font-body text-lg font-bold text-[#2B1B0C]">{formatCurrency(item.price)}</span>
                       {item.compareAtPrice && item.compareAtPrice > item.price && (
                         <span className="font-body text-xs text-[#8A7A63] line-through">
                           {formatCurrency(item.compareAtPrice)}
                         </span>
                       )}
                     </div>
-                    <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-[#2B1B0C]/20">
+                    <div className="mt-3 inline-flex items-center gap-1 rounded-full border border-[#2B1B0C]/20">
                       <button
                         type="button"
                         onClick={() => c.updateQuantity(item.variantId, item.quantity - 1)}
                         disabled={c.isUpdating}
                         aria-label="Decrease quantity"
-                        className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-[#F6E4C2] disabled:opacity-50"
+                        className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#F6E4C2] disabled:opacity-50"
                       >
-                        <Minus className="w-3 h-3" />
+                        <Minus className="w-4 h-4" />
                       </button>
                       <span className="w-5 text-center font-body text-sm font-semibold tabular-nums">{item.quantity}</span>
                       <button
@@ -177,9 +182,9 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
                         onClick={() => c.updateQuantity(item.variantId, item.quantity + 1)}
                         disabled={c.isUpdating || item.quantity >= item.maxStock}
                         aria-label="Increase quantity"
-                        className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-[#F6E4C2] disabled:opacity-50"
+                        className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#F6E4C2] disabled:opacity-50"
                       >
-                        <Plus className="w-3 h-3" />
+                        <Plus className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -234,7 +239,7 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
                       type="button"
                       onClick={() => c.handleApplyCoupon()}
                       disabled={c.couponLoading || !c.couponInput.trim()}
-                      className="flex-shrink-0 rounded-xl bg-[#2B1B0C] px-5 font-body text-sm font-bold text-white disabled:opacity-40 min-h-[48px]"
+                      className="flex-shrink-0 rounded-xl bg-[#2B1B0C] px-5 font-body text-sm font-bold text-white disabled:opacity-40 min-h-[54px]"
                     >
                       {c.couponLoading ? '...' : 'Apply'}
                     </button>
@@ -243,11 +248,11 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
                     <p className="mt-1.5 font-body text-xs font-semibold text-[#B23A2E]">{c.couponError}</p>
                   )}
                   {c.suggestedCoupons.length > 0 && (
-                    <div className="mt-3 -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 hide-scrollbar">
+                    <div className="mt-4 -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1 hide-scrollbar">
                       {c.suggestedCoupons.map((s) => (
                         <div
                           key={s.id}
-                          className="w-[78%] flex-shrink-0 snap-start rounded-xl border border-[#2B1B0C]/15 bg-white p-3"
+                          className="w-[88%] flex-shrink-0 snap-start rounded-2xl border border-[#2B1B0C]/10 bg-white p-4 shadow-sm"
                         >
                           <div className="flex items-center justify-between gap-2">
                             <span className="inline-flex items-center gap-1.5 rounded border border-dashed border-[#2B1B0C]/50 px-2 py-0.5 font-heading text-xs font-black tracking-wide text-[#2B1B0C]">
@@ -271,7 +276,7 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
                               Apply
                             </button>
                           </div>
-                          <p className="mt-2 font-body text-xs text-[#6B5539] leading-snug">{couponDescription(s)}</p>
+                          <p className="mt-2.5 font-body text-sm text-[#6B5539] leading-snug">{couponDescription(s)}</p>
                         </div>
                       ))}
                     </div>
@@ -315,16 +320,49 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
                 onChange={(e) => c.update('customerName', e.target.value)}
                 className={field}
               />
-              <input
-                type="email"
-                placeholder="Email (optional)"
-                autoComplete="email"
-                value={c.form.customerEmail}
-                onChange={(e) => c.update('customerEmail', e.target.value)}
-                className={field}
-              />
+              {emailOpen || c.form.customerEmail ? (
+                <input
+                  type="email"
+                  placeholder="Email (optional)"
+                  autoComplete="email"
+                  value={c.form.customerEmail}
+                  onChange={(e) => c.update('customerEmail', e.target.value)}
+                  className={field}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEmailOpen(true)}
+                  className="self-start font-body text-xs font-bold text-[#9C5A26]"
+                >
+                  + Add email for order updates (optional)
+                </button>
+              )}
+            </section>
 
+            <section className="flex flex-col gap-3">
               <SectionLabel>Delivery address</SectionLabel>
+              {/* Pincode first: it decides serviceability and the delivery charge shown below. */}
+              <div>
+                <input
+                  required
+                  inputMode="numeric"
+                  autoComplete="postal-code"
+                  placeholder="Pincode *"
+                  value={c.form.pincode}
+                  onChange={(e) => c.update('pincode', e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className={field}
+                />
+                {c.isChecking && <p className="mt-1.5 font-body text-xs text-[#8A7A63]">Checking serviceability...</p>}
+                {c.serviceable === false && (
+                  <p className="mt-1.5 font-body text-xs font-semibold text-[#B23A2E]">Not serviceable at this pincode</p>
+                )}
+                {c.serviceable === true && (
+                  <p className="mt-1.5 font-body text-xs font-semibold text-[#1E7B4A]">
+                    ✓ Deliverable{c.deliveryEstimate ? ` · Estimated delivery ${c.deliveryEstimate}` : ''}
+                  </p>
+                )}
+              </div>
               <input
                 required
                 placeholder="House no., Street, Area *"
@@ -351,26 +389,6 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
                   className={field}
                 />
               </div>
-              <div>
-                <input
-                  required
-                  inputMode="numeric"
-                  autoComplete="postal-code"
-                  placeholder="Pincode *"
-                  value={c.form.pincode}
-                  onChange={(e) => c.update('pincode', e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  className={field}
-                />
-                {c.isChecking && <p className="mt-1.5 font-body text-xs text-[#8A7A63]">Checking serviceability...</p>}
-                {c.serviceable === false && (
-                  <p className="mt-1.5 font-body text-xs font-semibold text-[#B23A2E]">Not serviceable at this pincode</p>
-                )}
-                {c.serviceable === true && (
-                  <p className="mt-1.5 font-body text-xs font-semibold text-[#1E7B4A]">
-                    ✓ Deliverable{c.deliveryEstimate ? ` · Estimated delivery ${c.deliveryEstimate}` : ''}
-                  </p>
-                )}
-              </div>
             </section>
           </form>
         </div>
@@ -380,7 +398,7 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
           <button
             type="button"
             onClick={() => setBillOpen((v) => !v)}
-            className="flex w-full items-center justify-between bg-[#F6E4C2]/50 px-4 py-2 font-body text-xs"
+            className="flex w-full items-center justify-between border-b border-[#2B1B0C]/10 px-5 py-3 font-body text-sm"
             aria-expanded={billOpen}
           >
             <span className="flex items-center gap-1 font-bold text-[#2B1B0C]">
@@ -402,7 +420,7 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
               {isCod && <Row label="COD charges" value={formatCurrency(c.codFee)} />}
               <div className="mt-1 flex justify-between border-t border-[#2B1B0C]/10 pt-2 font-bold text-[#2B1B0C]">
                 <span>{isCod ? 'Pay on delivery' : 'Total'}</span>
-                <span>{formatCurrency(shownAmount)}</span>
+                <span>{resolved ? formatCurrency(shownAmount) : pincodeHint}</span>
               </div>
               {resolved && c.gstAmount > 0 && (
                 <p className="text-[11px] text-[#8A7A63]">Inclusive of GST: {formatCurrency(c.gstAmount)}</p>
@@ -411,7 +429,7 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
           )}
 
           {/* COD picked → nudge straight back to paying online, one tap, no extra screen */}
-          {isCod && (
+          {isCod && resolved && (
             <div className="mx-3 mt-3 overflow-hidden rounded-2xl border border-[#9C5A26]/40 bg-gradient-to-r from-[#F6E4C2] to-[#FFFDF8] shadow-sm min-[340px]:mx-4">
               <div className="flex items-center gap-2.5 px-3 py-2.5">
                 <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#6B3D19] to-[#C9863F] text-[#FFFDF8]">
@@ -432,24 +450,25 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
                   disabled={busy}
                   className="flex h-9 flex-shrink-0 items-center gap-1 rounded-xl bg-gradient-to-r from-[#6B3D19] via-[#9C5A26] to-[#C9863F] px-3 font-body text-xs font-bold text-[#FFFDF8] shadow-[0_3px_10px_rgba(156,90,38,0.45)] transition-all hover:brightness-110 active:scale-[0.96] disabled:opacity-50"
                 >
-                  Continue <ArrowRight className="h-3.5 w-3.5" />
+                  Pay Now <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <p className="border-t border-[#9C5A26]/20 bg-white/60 px-3 py-1 text-center font-body text-[10px] font-semibold text-[#2B1B0C]/60">
-                UPI · Cards · Netbanking · Wallets
-              </p>
             </div>
           )}
 
-          <div className="flex items-center gap-2 px-3 pt-3 pb-2 min-[340px]:gap-2.5 min-[340px]:px-4">
+          <div className="flex items-center gap-2.5 px-4 pt-3.5 pb-1 min-[340px]:px-5">
             <div className="min-w-0 flex-shrink-0">
               <p className="font-body text-[11px] leading-tight text-[#8A7A63]">
                 {isCod ? 'Pay on delivery' : 'Amount to Pay'}
               </p>
-              <p className="font-heading text-[22px] font-extrabold leading-tight text-[#2B1B0C]">
-                {formatCurrency(shownAmount)}
-              </p>
-              {!isCod && (
+              {resolved ? (
+                <p className="font-heading text-2xl font-extrabold leading-tight text-[#2B1B0C]">
+                  {formatCurrency(shownAmount)}
+                </p>
+              ) : (
+                <p className="font-heading text-base font-extrabold leading-tight text-[#9C5A26]">{pincodeHint}</p>
+              )}
+              {!isCod && resolved && (
                 <p className="font-body text-[10px] font-bold leading-tight text-[#1E7B4A]">
                   Prepaid saves {formatCurrency(c.prepaidSavings)}
                 </p>
@@ -462,16 +481,16 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
                 <button
                   type="button"
                   onClick={() => c.setPaymentMethod('PREPAID')}
-                  className="flex h-12 flex-shrink-0 flex-col items-center justify-center rounded-xl border border-[#1E7B4A]/50 bg-white px-2 text-center font-body transition-colors hover:bg-[#1E7B4A]/10 active:scale-[0.97]"
+                  className="flex h-14 flex-shrink-0 flex-col items-center justify-center rounded-2xl border border-[#1E7B4A]/50 bg-white px-3 text-center font-body transition-colors hover:bg-[#1E7B4A]/10 active:scale-[0.97]"
                 >
                   <span className="text-[11px] font-bold leading-none text-[#1E7B4A]">Online</span>
-                  <span className="mt-1 text-xs font-semibold leading-none text-[#2B1B0C]">{formatCurrency(payOnlineAmount)}</span>
+                  <span className="mt-1 text-xs font-semibold leading-none text-[#2B1B0C]">{resolved ? formatCurrency(payOnlineAmount) : '—'}</span>
                 </button>
                 <button
                   type="button"
                   onClick={placeCod}
                   disabled={busy}
-                  className="flex h-12 min-w-0 flex-1 items-center justify-center rounded-xl bg-[#2B1B0C] px-3 font-body text-[15px] font-bold leading-none text-white shadow-[0_4px_14px_rgba(43,27,12,0.35)] transition-colors hover:bg-[#9C5A26] active:scale-[0.98] disabled:opacity-50"
+                  className="flex h-14 min-w-0 flex-1 items-center justify-center rounded-2xl bg-[#2B1B0C] px-3 font-body text-base font-bold leading-none text-white shadow-[0_4px_14px_rgba(43,27,12,0.35)] transition-colors hover:bg-[#9C5A26] active:scale-[0.98] disabled:opacity-50"
                 >
                   {c.submitting ? 'Processing...' : <span className="whitespace-nowrap">Place COD Order</span>}
                 </button>
@@ -481,26 +500,26 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
                 <button
                   type="button"
                   onClick={chooseCod}
-                  disabled={busy || c.codUnavailable}
+                  disabled={busy || c.codUnavailable || !resolved}
                   title={c.codUnavailable ? `COD only up to ${formatCurrency(MAX_COD_ORDER_TOTAL)}` : undefined}
-                  className="flex h-12 flex-shrink-0 flex-col items-center justify-center rounded-xl border border-[#2B1B0C]/70 bg-white px-2 text-center font-body transition-colors hover:bg-[#F6E4C2]/60 active:scale-[0.97] disabled:opacity-40"
+                  className="flex h-14 flex-shrink-0 flex-col items-center justify-center rounded-2xl border border-[#2B1B0C]/70 bg-white px-3 text-center font-body transition-colors hover:bg-[#F6E4C2]/60 active:scale-[0.97] disabled:opacity-40"
                 >
                   <span className="text-[11px] font-bold leading-none text-[#2B1B0C]">COD</span>
                   <span className="mt-1 text-xs font-semibold leading-none text-[#6B5539]">
-                    {resolved ? formatCurrency(c.codOptionTotal) : formatCurrency(c.subtotal + c.codOptionFee)}
+                    {resolved ? formatCurrency(c.codOptionTotal) : '—'}
                   </span>
                 </button>
                 <button
                   type="button"
                   onClick={payNow}
                   disabled={busy}
-                  className="flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-[#2B1B0C] px-3 font-body text-white shadow-[0_4px_14px_rgba(43,27,12,0.35)] transition-colors hover:bg-[#9C5A26] active:scale-[0.98] disabled:opacity-50"
+                  className="flex h-14 min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl bg-[#2B1B0C] px-3 font-body text-white shadow-[0_4px_14px_rgba(43,27,12,0.35)] transition-colors hover:bg-[#9C5A26] active:scale-[0.98] disabled:opacity-50"
                 >
                   {c.submitting ? (
                     <span className="text-sm font-bold">Processing...</span>
                   ) : (
                     <>
-                      <span className="whitespace-nowrap text-[15px] font-bold leading-none">Pay Now</span>
+                      <span className="whitespace-nowrap text-base font-bold leading-none">Pay Now</span>
                       <span className="hidden min-[300px]:inline rounded-md bg-white/15 px-1.5 py-1 text-[9px] font-bold leading-none tracking-wide text-[#E6D3AE]">
                         UPI
                       </span>
@@ -515,9 +534,7 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
               COD is available only up to {formatCurrency(MAX_COD_ORDER_TOTAL)} — pay online for this order.
             </p>
           )}
-          <p className="flex items-center justify-center gap-1.5 pb-2 font-body text-[10px] text-[#8A7A63]">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#9C5A26]" /> Secured by Razorpay
-          </p>
+          <div className="pb-1.5" />
         </footer>
       </aside>
 

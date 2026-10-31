@@ -336,6 +336,14 @@ export function useCheckout(scope: CartScope, opts?: { onNavigate?: () => void }
     const method = methodOverride ?? paymentMethod;
     const codSelected = method === 'COD';
     if (items.length === 0) return toast.error('Your cart is empty');
+    // Last line of defence for every entry point (drawer, /checkout, COD modal buttons):
+    // `required` alone accepts "   ", so check trimmed values here.
+    if (!/^[6-9]\d{9}$/.test(form.customerPhone)) return toast.error('Enter a valid 10-digit mobile number');
+    if (form.customerName.trim().length < 2) return toast.error('Enter your full name');
+    if (form.line1.trim().length < 5) return toast.error('Enter your house no., street and area');
+    if (form.city.trim().length < 2 || form.state.trim().length < 2) return toast.error('Enter your city and state');
+    if (!/^\d{6}$/.test(form.pincode)) return toast.error('Enter a valid 6-digit pincode');
+    if (!hasResolvedPincodeRate) return toast.error('Enter your pincode to see the delivery charge');
     if (serviceable === false) return toast.error('Sorry, we do not deliver to this pincode yet');
     if (codSelected && !confirmCod) {
       setCodWarningOpen(true);
