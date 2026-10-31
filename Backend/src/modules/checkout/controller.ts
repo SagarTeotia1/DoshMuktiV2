@@ -9,6 +9,8 @@ import { clearCart } from '../cart/service';
 import { handlePaymentCaptured } from '../webhooks/service';
 import { logger } from '../../shared/logger/pino';
 import { env } from '../../config/env';
+import { saveGuestAddress } from '../addresses/service';
+import { findOrCreateGuestUser, userExists } from '../users/service';
 import { MAX_COD_ORDER_TOTAL } from '../../shared/constants/purposes';
 
 function sessionIdOf(req: FastifyRequest): string | null {
@@ -22,7 +24,11 @@ export async function checkoutHandler(req: FastifyRequest, reply: FastifyReply) 
     return reply.code(400).send({ error: 'Invalid input', details: parsed.error.flatten().fieldErrors });
   }
 
-  const userId = (req.user as { sub: string }).sub;
+  // Logged-in customer → their account. Guest → account keyed by the phone typed at
+  // checkout (created on first order), so a later phone-OTP login shows these orders.
+  const tokenSub = (req.user as { sub?: string } | undefined)?.sub;
+  const tokenUser = tokenSub && (await userExists(tokenSub)) ? { sub: tokenSub } : undefined;
+  const userId = tokenUser?.sub ?? (await findOrCreateGuestUser(parsed.data.customerPhone)).id;
 
   // Double-click / double-submit guard: only one POST /checkout per customer in flight at
   // a time. TTL is a safety net — the lock is released in `finally` as soon as the request
@@ -42,6 +48,16 @@ export async function checkoutHandler(req: FastifyRequest, reply: FastifyReply) 
 
   try {
     const result = await initiateCheckout(parsed.data, userId);
+
+    // Guest: remember the address under the typed phone (prefill next time / after OTP login).
+    if (!tokenUser?.sub) {
+      saveGuestAddress(parsed.data.customerPhone, {
+        name: parsed.data.customerName,
+        receiverPhone: parsed.data.customerPhone,
+        ...parsed.data.shippingAddress,
+        setDefault: true,
+      }).catch((err) => logger.warn({ err }, 'Failed to save guest address'));
+    }
 
     // COD is confirmed at placement — no payment step left that could fail — so the Buy Now
     // pseudo-cart can go now (prepaid clears it in verifyPaymentHandler instead).

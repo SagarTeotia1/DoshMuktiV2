@@ -8,6 +8,7 @@ import { Search, ShoppingCart, Menu, X, User, LogOut } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { useActiveCartScope } from '@/hooks/use-active-cart-scope';
 import { useAuth } from '@/providers/auth-provider';
+import { useBuyNowDrawer } from '@/providers/buy-now-drawer-provider';
 import { trackSearch } from '@/lib/analytics';
 import logo from '@/assets/Logo.png';
 
@@ -35,6 +36,7 @@ export function Navbar() {
   // lives at /checkout?mode=buyNow, making it look like their items vanished.
   const activeScope = useActiveCartScope();
   const { cart } = useCart(activeScope);
+  const { openCart } = useBuyNowDrawer();
   const { user, isAuthenticated, logout } = useAuth();
 
   useEffect(() => {
@@ -140,8 +142,9 @@ export function Navbar() {
             </Link>
           )}
 
-          <Link
-            href={activeScope === 'buyNow' ? '/checkout?mode=buyNow' : '/cart'}
+          <button
+            type="button"
+            onClick={() => openCart(activeScope)}
             className="relative p-1.5 sm:p-2 rounded-full hover:bg-[#F6E4C2] transition-colors"
             aria-label="Cart"
           >
@@ -151,7 +154,7 @@ export function Navbar() {
                 {cartCount > 9 ? '9+' : cartCount}
               </span>
             )}
-          </Link>
+          </button>
 
           <button
             onClick={() => {

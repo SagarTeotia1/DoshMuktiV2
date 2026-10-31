@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { COD_FEE, FREE_SHIPPING_ABOVE } from '@/lib/constants';
+import { COD_FEE } from '@/lib/constants';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { Reveal } from '@/components/motion/Reveal';
 
@@ -110,6 +110,12 @@ export default function PrivacyPage() {
               </ul>
               <ul className="list-disc pl-5 space-y-1.5">
                 <li>
+                  <strong className="text-[#2B1B0C]">Phone-linked order profile</strong> — when you check out
+                  without logging in, we create a profile keyed to the mobile number you enter and save the
+                  delivery address you used, so your orders can be tracked and your details pre-filled next time.
+                  Anyone who later proves control of that number (by OTP) can see its orders and saved addresses.
+                </li>
+                <li>
                   <strong className="text-[#2B1B0C]">Login data</strong> — if you sign in, your mobile number and a
                   one-time password (OTP) sent by SMS through our OTP provider (2Factor), plus saved addresses
                   and order history linked to that number.
@@ -145,6 +151,12 @@ export default function PrivacyPage() {
                 <li>Measure and run our advertising, including showing ads to people who visited the Site (Meta Pixel).</li>
                 <li>Reply to you through the AI chat and follow up on enquiries you make there.</li>
                 <li>Verify your identity when you log in with an OTP.</li>
+                <li>
+                  Pre-fill your name and delivery address at checkout when you type a mobile number we have
+                  served before. This address is shown to whoever enters that number in the checkout form, without
+                  an OTP, to keep buying fast. If you do not want this, ask us to delete your saved address
+                  (Section 9) and it will no longer be offered.
+                </li>
                 <li>Send promotional updates via WhatsApp/email, only if you opted in (e.g. newsletter signup) — you can opt out at any time.</li>
               </ul>
               <p>We do not sell your personal data to third parties.</p>
@@ -216,7 +228,7 @@ export default function PrivacyPage() {
               </p>
               <p>
                 For Cash on Delivery orders, no payment details are collected online. The amount due (including
-                the ₹{COD_FEE} COD handling charge on orders above ₹{FREE_SHIPPING_ABOVE}) is collected by our
+                the flat ₹{COD_FEE} COD handling charge) is collected by our
                 courier partner at your door, and we only record that the order was paid on delivery.
               </p>
             </Section>

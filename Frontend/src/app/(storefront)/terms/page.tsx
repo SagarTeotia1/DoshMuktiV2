@@ -102,7 +102,10 @@ export default function TermsPage() {
               <p>
                 You must be at least 18 years old, or using the Site under the supervision of a parent/legal
                 guardian, to place an order. You can check out as a guest, or sign in with your mobile number (one-time
-                password) to view your past orders and saved addresses. You are responsible for keeping access to
+                password) to view your past orders and saved addresses. Guest orders are recorded against the mobile
+                number you enter, so please enter your own, working number: it is used for order updates, courier
+                calls and COD confirmation, and an order placed under a number is visible to whoever later logs in
+                with that number. You are responsible for keeping access to
                 your mobile number secure. A session identifier is stored in your browser to associate your cart
                 with your device; it does not identify you personally. By logging in, placing an order or using
                 the Site, you confirm that you are 18 or older (or acting with a parent/guardian&rsquo;s consent) and
@@ -164,7 +167,7 @@ export default function TermsPage() {
                 <strong className="text-[#2B1B0C]">Cash on Delivery (COD).</strong> Where offered at checkout, you
                 can choose COD and pay nothing online. The full order amount, including any shipping charge, is
                 payable to the courier at the time of delivery, in cash or as otherwise accepted by the courier. A
-                COD order is confirmed as soon as it is placed. On orders above ₹{FREE_SHIPPING_ABOVE}, a COD handling charge of ₹{COD_FEE} applies; it is shown at checkout before
+                COD order is confirmed as soon as it is placed. A flat COD handling charge of ₹{COD_FEE} applies on every COD order; it is shown at checkout before
                 you place the order and listed separately on your invoice. Paying online avoids this charge. COD is
                 available on orders up to ₹{MAX_COD_ORDER_TOTAL.toLocaleString('en-IN')} (including the COD charge);
                 larger orders must be paid online.

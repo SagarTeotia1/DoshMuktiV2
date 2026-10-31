@@ -1,6 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { addressSchema, idParamSchema } from './schema';
-import { listAddresses, saveAddress, updateAddress, deleteAddress, AddressNotFoundError } from './service';
+import { z } from 'zod';
+import { findLatestAddressByPhone, listAddresses, saveAddress, updateAddress, deleteAddress, AddressNotFoundError } from './service';
 
 function accountPhone(req: FastifyRequest): string {
   return (req.user as { phone: string }).phone;
@@ -44,4 +45,17 @@ export async function deleteAddressHandler(req: FastifyRequest, reply: FastifyRe
     if (err instanceof AddressNotFoundError) return reply.code(404).send({ error: err.message });
     throw err;
   }
+}
+
+const lookupQuerySchema = z.object({ phone: z.string().regex(/^[6-9]\d{9}$/) });
+
+// Public (guest checkout, no OTP): returns the latest saved address for a phone so a
+// returning buyer's form pre-fills. Rate-limited hard in routes.ts; response carries no
+// phone number or ids.
+export async function lookupAddressHandler(req: FastifyRequest, reply: FastifyReply) {
+  const parsed = lookupQuerySchema.safeParse(req.query);
+  if (!parsed.success) return reply.code(400).send({ error: 'Invalid phone' });
+  // Personal data: never let a browser/proxy/CDN cache it.
+  reply.header('Cache-Control', 'no-store');
+  return reply.send({ address: await findLatestAddressByPhone(parsed.data.phone) });
 }

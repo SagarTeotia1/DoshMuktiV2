@@ -75,3 +75,32 @@ export async function deleteAddress(accountPhone: string, id: string): Promise<v
   const result = await db.customerAddress.deleteMany({ where: { id, phoneHash: hashPhone(accountPhone) } });
   if (result.count === 0) throw new AddressNotFoundError();
 }
+
+// ── Guest checkout (no OTP) ──────────────────────────────────────────────────────────────
+// Most recent address saved under this phone, for pre-filling a returning guest's form.
+// Deliberately omits receiverPhone/ids — only what the form needs.
+export async function findLatestAddressByPhone(rawPhone: string) {
+  const row = await db.customerAddress.findFirst({
+    where: { phoneHash: hashPhone(rawPhone) },
+    orderBy: [{ isDefault: 'desc' }, { updatedAt: 'desc' }],
+    select: { name: true, line1: true, line2: true, city: true, state: true, pincode: true },
+  });
+  return row;
+}
+
+// Called after a successful guest order: remember the address under the typed phone so the
+// next order (and a later OTP login) finds it. An address with the same line1 + pincode is
+// UPDATED in place (name/line2/city/state edits must stick, not be dropped as "duplicates")
+// and becomes the default again; anything else is saved as a new default address.
+export async function saveGuestAddress(rawPhone: string, input: AddressInput): Promise<void> {
+  const phoneHash = hashPhone(rawPhone);
+  const existing = await db.customerAddress.findFirst({
+    where: { phoneHash, line1: input.line1, pincode: input.pincode },
+    select: { id: true },
+  });
+  if (!existing) {
+    await saveAddress(rawPhone, input);
+    return;
+  }
+  await updateAddress(rawPhone, existing.id, { ...input, setDefault: true });
+}

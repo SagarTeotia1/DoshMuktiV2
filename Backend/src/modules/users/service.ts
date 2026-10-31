@@ -1,8 +1,8 @@
+import { normalizePhone } from '../../shared/utils/phone';
 import { db } from '../../shared/db/client';
 
-// Every row here is a real phone+OTP account (see User model — identity is the phone
-// number, login is OTP-only). Guest checkouts never create a User row, so this list is
-// exactly "who has actually logged in", never a superset that needs filtering.
+// Rows here are phone-keyed accounts: either created by OTP login or by a guest checkout
+// (see findOrCreateGuestUser) — identity is the phone number either way.
 export async function listUsers(query: { q?: string; page: number; limit: number }) {
   // Phone is stored normalized (+91XXXXXXXXXX); strip separators so "99515 52047" still matches.
   const digits = query.q?.replace(/[\s-]/g, '');
@@ -61,4 +61,20 @@ export async function getUserById(id: string) {
   const totalSpent = paidOrders.reduce((sum, o) => sum + Number(o.total), 0);
 
   return { ...user, orderCount, totalSpent };
+}
+
+// A validly-signed JWT can outlive its user row (DB reset, deleted account). Checkout must
+// not trust the token's `sub` blindly or Order.userId breaks the foreign key.
+export async function userExists(id: string): Promise<boolean> {
+  const row = await db.user.findUnique({ where: { id }, select: { id: true } });
+  return row !== null;
+}
+
+// Guest checkout: no OTP at purchase time. The account is keyed by the phone number typed at
+// checkout and created on first order; a later phone-OTP login attaches to this same row, so
+// the customer then sees/tracks every order placed under that number. upsert (not
+// find-then-create) so two simultaneous first orders can't collide on the unique phone.
+export async function findOrCreateGuestUser(rawPhone: string) {
+  const phone = normalizePhone(rawPhone);
+  return db.user.upsert({ where: { phone }, update: {}, create: { phone } });
 }

@@ -5,6 +5,7 @@ import { Toaster } from 'sonner';
 import { QueryProvider } from '@/providers/query-provider';
 import { FirebaseProvider } from '@/providers/firebase-provider';
 import { AuthProvider } from '@/providers/auth-provider';
+import { BuyNowDrawerProvider } from '@/providers/buy-now-drawer-provider';
 import { DeferredFontStylesheet } from '@/components/layout/deferred-font-stylesheet';
 import { SITE_URL, SOCIAL_LINKS } from '@/lib/constants';
 
@@ -204,7 +205,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <QueryProvider>
           <AuthProvider>
             <FirebaseProvider />
-            {children}
+            <BuyNowDrawerProvider>{children}</BuyNowDrawerProvider>
             <Toaster richColors position="top-right" />
           </AuthProvider>
         </QueryProvider>

@@ -25,6 +25,19 @@ export async function verifyCustomer(req: FastifyRequest, reply: FastifyReply) {
   }
 }
 
+// Guest checkout: a valid customer JWT is used when present, but its absence is not an
+// error — the handler then identifies the buyer by the phone they typed. A token that is
+// present but invalid/non-customer is simply ignored (req.user stays unset).
+export async function optionalCustomer(req: FastifyRequest) {
+  if (!req.headers.authorization) return;
+  try {
+    await req.jwtVerify();
+    if ((req.user as { role?: string }).role !== 'customer') (req as { user: unknown }).user = undefined;
+  } catch {
+    (req as { user: unknown }).user = undefined;
+  }
+}
+
 // Stub for the future AI bot — not wired to any route yet. When the bot
 // ships, apply this to specific read-only routes only, never blanket access.
 export async function verifyServiceKey(req: FastifyRequest, reply: FastifyReply) {

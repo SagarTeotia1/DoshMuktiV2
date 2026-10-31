@@ -1,24 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ShieldCheck, ChevronDown, Ticket, Copy, Check, Minus, Plus } from 'lucide-react';
-import { useCart, type CartScope } from '@/hooks/use-cart';
-import { usePincodeCheck } from '@/hooks/use-pincode-check';
-import { useRazorpay } from '@/hooks/use-razorpay';
-import { useAuth } from '@/providers/auth-provider';
-import { useAddresses, useSaveAddress, useUpdateAddress } from '@/hooks/use-addresses';
-import { useShippingEstimate } from '@/hooks/use-shipping-estimate';
-import { api, ApiError } from '@/lib/api-client';
-import { getSessionId, getBuyNowSessionId } from '@/lib/session';
-import { getToken } from '@/lib/auth';
-import { formatCurrency, formatDeliveryEstimate } from '@/lib/formatters';
-import { SHIPPING_FEE, FREE_SHIPPING_ABOVE, COD_FEE, MAX_COD_ORDER_TOTAL } from '@/lib/constants';
-import { trackBeginCheckout, trackAddPaymentInfo } from '@/lib/analytics';
-import type { Address, CheckoutInput, PaymentMethod, CheckoutResponse, CouponPreviewResponse, SuggestedCoupon } from '@/types/api.types';
-import type { RazorpayResponse } from '@/hooks/use-razorpay';
+import type { CartScope } from '@/hooks/use-cart';
+import { useCheckout, normalizePhone } from '@/hooks/use-checkout';
+import { CodWarningModal } from '@/components/checkout/CodWarningModal';
+import { formatCurrency } from '@/lib/formatters';
+import { FREE_SHIPPING_ABOVE, MAX_COD_ORDER_TOTAL } from '@/lib/constants';
+import type { SuggestedCoupon } from '@/types/api.types';
 
 const inputClass =
   'bg-white border border-[#2B1B0C]/40 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:border-[#9C5A26] focus:outline-none font-body placeholder:text-[#6B5539] transition-colors';
@@ -33,22 +23,6 @@ function couponDescription(c: SuggestedCoupon): string {
   return `${value} off${cap}${minOrder}`;
 }
 
-const COUPON_ERROR_CODES = new Set([
-  'COUPON_NOT_FOUND',
-  'COUPON_INACTIVE',
-  'COUPON_EXPIRED',
-  'COUPON_USAGE_LIMIT',
-  'COUPON_MIN_ORDER',
-  'COUPON_BIRTHDAY_INELIGIBLE',
-  'COUPON_EXHAUSTED',
-]);
-
-function normalizePhone(raw: string): string {
-  let digits = raw.replace(/\D/g, '');
-  if (digits.length > 10 && digits.startsWith('91')) digits = digits.slice(2);
-  return digits.slice(0, 10);
-}
-
 function StepLabel({ n, title }: { n: number; title: string }) {
   return (
     <div className="flex items-center gap-2.5 mb-4">
@@ -60,550 +34,24 @@ function StepLabel({ n, title }: { n: number; title: string }) {
   );
 }
 
-function sessionIdForScope(scope: CartScope): string {
-  return scope === 'buyNow' ? getBuyNowSessionId() : getSessionId();
-}
-
-type OtpStep = 'phone' | 'otp';
-const RESEND_COOLDOWN_SECONDS = 120;
-
-// Inline phone+OTP login — sits inside the checkout page itself (next to the order
-// summary, which stays visible throughout) instead of bouncing the customer to a
-// separate /login page and back. Mirrors the GoKwik-style "Login to continue" pattern:
-// the product/price context never disappears while the customer authenticates.
-// sendOtp/verifyOtp are passed down from the parent's own single useAuth() call rather
-// than calling useAuth() again here — useAuth is a plain hook (its own useState), not a
-// shared context, so a second call here would get its own independent isAuthenticated
-// state. verifyOtp would succeed, but the parent's copy of isAuthenticated would never
-// flip, and the page would silently never advance past the login card.
-function InlineLogin({
-  sendOtp,
-  verifyOtp,
-}: {
-  sendOtp: (phone: string) => Promise<void>;
-  verifyOtp: (phone: string, otp: string) => Promise<unknown>;
-}) {
-  const [step, setStep] = useState<OtpStep>('phone');
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
-  const cooldownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  function startResendCooldown() {
-    if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
-    setResendCooldown(RESEND_COOLDOWN_SECONDS);
-    cooldownIntervalRef.current = setInterval(() => {
-      setResendCooldown((prev) => {
-        if (prev <= 1) {
-          if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }
-
-  useEffect(() => () => {
-    if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
-  }, []);
-
-  async function handlePhoneSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!/^\d{10}$/.test(phone)) return toast.error('Enter a valid 10-digit mobile number');
-    if (step === 'otp' && resendCooldown > 0) return;
-
-    setSubmitting(true);
-    try {
-      await sendOtp(phone);
-      setStep('otp');
-      startResendCooldown();
-      toast.success('OTP sent');
-    } catch {
-      toast.error('Could not send OTP — try again');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleOtpSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!/^\d{4,6}$/.test(otp)) return toast.error('Enter the OTP');
-
-    setSubmitting(true);
-    try {
-      await verifyOtp(phone, otp);
-      // No router.push — useAuth's isAuthenticated flips true and CheckoutPageContent
-      // re-renders the real form in place, same page, same scroll position.
-    } catch {
-      toast.error('Invalid or expired OTP');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
-      <StepLabel n={1} title="Login to Continue" />
-      <form onSubmit={step === 'phone' ? handlePhoneSubmit : handleOtpSubmit} className="flex flex-col gap-3">
-        <input
-          type="tel"
-          inputMode="numeric"
-          autoFocus={step === 'phone'}
-          disabled={step === 'otp'}
-          value={phone}
-          onChange={(e) => setPhone(normalizePhone(e.target.value))}
-          placeholder="10-digit mobile number"
-          className={`${inputClass} disabled:opacity-60 disabled:bg-[#2B1B0C]/5`}
-        />
-
-        {step === 'otp' && (
-          <>
-            <button
-              type="button"
-              onClick={() => {
-                setStep('phone');
-                setOtp('');
-              }}
-              className="font-body text-xs text-[#8A7A63] hover:text-[#2B1B0C] transition-colors self-start -mt-1"
-            >
-              Change phone number
-            </button>
-            <p className="font-body text-xs text-[#8A7A63] mb-1">OTP sent to +91 {phone}</p>
-            <input
-              type="text"
-              inputMode="numeric"
-              autoFocus
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="Enter OTP"
-              className={inputClass}
-            />
-            <button
-              type="button"
-              onClick={handlePhoneSubmit}
-              disabled={resendCooldown > 0 || submitting}
-              className="font-body text-xs text-[#8A7A63] hover:text-[#2B1B0C] transition-colors self-start disabled:opacity-50 disabled:hover:text-[#8A7A63]"
-            >
-              {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP'}
-            </button>
-          </>
-        )}
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="brutal-border bg-[#2B1B0C] text-white rounded-lg px-6 py-3.5 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200 disabled:opacity-50 mt-1"
-        >
-          {step === 'phone'
-            ? submitting
-              ? 'Sending...'
-              : 'Send OTP'
-            : submitting
-              ? 'Verifying...'
-              : 'Verify & Continue'}
-        </button>
-        <p className="font-body text-[11px] text-[#8A7A63] text-center leading-relaxed">
-          By continuing, you agree to our{' '}
-          <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#9C5A26] underline">Terms &amp; Conditions</a>{' '}
-          and{' '}
-          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#9C5A26] underline">Privacy Policy</a>
-          , and consent to us processing your mobile number to verify your login. Please read them carefully.
-        </p>
-      </form>
-    </div>
-  );
-}
-
 function CheckoutPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const scope: CartScope = searchParams.get('mode') === 'buyNow' ? 'buyNow' : 'cart';
-  const queryClient = useQueryClient();
-  const { cart, updateQuantity, isUpdating } = useCart(scope);
-  const { openCheckout, loading: rzpLoading } = useRazorpay();
-  const { user, loading: authLoading, isAuthenticated, sendOtp, verifyOtp } = useAuth();
-  const [submitting, setSubmitting] = useState(false);
-
-  const [form, setForm] = useState({
-    customerName: '',
-    customerPhone: '',
-    customerEmail: '',
-    line1: '',
-    line2: '',
-    city: '',
-    state: '',
-    pincode: '',
-  });
-
-  useEffect(() => {
-    if (!user) return;
-    setForm((f) => ({
-      ...f,
-      customerName: f.customerName || user.name || '',
-      customerPhone: f.customerPhone || user.phone.replace(/^\+91/, ''),
-    }));
-  }, [user]);
-
-  const { isChecking, serviceable } = usePincodeCheck(form.pincode);
-
-  // Saved-address book — a returning customer sees their last delivery address by
-  // default instead of retyping name/phone/address every single order. Receiver phone
-  // pre-fills to the login number (most orders ship to whoever's placing them) but stays
-  // a plain editable field — no separate "same as login" toggle to fuss with.
-  const { data: savedAddresses } = useAddresses(isAuthenticated);
-  const saveAddress = useSaveAddress();
-  const updateAddress = useUpdateAddress();
-  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
-  const [addressFormOpen, setAddressFormOpen] = useState(false);
-  // Set while editing an existing saved address — Pay Now PATCHes this id instead of
-  // creating a new row. null means the open form (if any) is either a fresh "Add New
-  // Address" or just the summary/picker, not an edit.
-  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
-  // True only in the sliver of time between clicking "Edit Address" (with more than one
-  // saved address) and actually picking which one — shows the list with nothing else.
-  const [pickingAddressToEdit, setPickingAddressToEdit] = useState(false);
-  // Distinguishes "no addresses saved yet" from "still loading" — avoids a flash of the
-  // blank form before the saved-address fetch resolves.
-  const addressesLoaded = savedAddresses !== undefined;
-
-  // Once saved addresses load, auto-select the default one (list is sorted
-  // default-first) instead of showing a blank form to a returning customer.
-  useEffect(() => {
-    if (!savedAddresses || savedAddresses.length === 0 || selectedAddressId !== null) return;
-    applySavedAddress(savedAddresses[0]!);
-  }, [savedAddresses]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  function applySavedAddress(addr: Address) {
-    setSelectedAddressId(addr.id);
-    setEditingAddressId(null);
-    setAddressFormOpen(false);
-    setPickingAddressToEdit(false);
-    setForm((f) => ({
-      ...f,
-      customerName: addr.name,
-      customerPhone: addr.receiverPhone.replace(/^\+91/, ''),
-      line1: addr.line1,
-      line2: addr.line2 ?? '',
-      city: addr.city,
-      state: addr.state,
-      pincode: addr.pincode,
-    }));
-  }
-
-  // Opens the form pre-filled with an existing saved address, in edit mode — Pay Now
-  // will PATCH this address instead of creating a new one. Also makes it the active
-  // address for this order, so picking one to edit doubles as "use this one."
-  function startEditAddress(addr: Address) {
-    setSelectedAddressId(addr.id);
-    setEditingAddressId(addr.id);
-    setAddressFormOpen(true);
-    setPickingAddressToEdit(false);
-    setForm((f) => ({
-      ...f,
-      customerName: addr.name,
-      customerPhone: addr.receiverPhone.replace(/^\+91/, ''),
-      line1: addr.line1,
-      line2: addr.line2 ?? '',
-      city: addr.city,
-      state: addr.state,
-      pincode: addr.pincode,
-    }));
-  }
-
-  // "Edit Address" button — skips straight to the edit form when there's only one
-  // saved address (nothing to pick), otherwise shows the list first.
-  function handleEditClick() {
-    if (!savedAddresses || savedAddresses.length === 0) return startNewAddress();
-    if (savedAddresses.length === 1) return startEditAddress(savedAddresses[0]!);
-    setPickingAddressToEdit(true);
-    setAddressFormOpen(true);
-  }
-
-  function startNewAddress() {
-    setSelectedAddressId(null);
-    setEditingAddressId(null);
-    setAddressFormOpen(true);
-    setPickingAddressToEdit(false);
-    setForm((f) => ({
-      ...f,
-      customerName: user?.name ?? '',
-      customerPhone: user?.phone.replace(/^\+91/, '') ?? '',
-      line1: '',
-      line2: '',
-      city: '',
-      state: '',
-      pincode: '',
-    }));
-  }
-
-  const selectedAddress = savedAddresses?.find((a) => a.id === selectedAddressId) ?? null;
-
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('PREPAID');
-  const [couponInput, setCouponInput] = useState('');
-  const [couponLoading, setCouponLoading] = useState(false);
-  const [couponError, setCouponError] = useState<string | null>(null);
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null);
-
-  // Admin-curated (Coupon.showInSuggestions) — a small set of codes nudged as tappable
-  // chips right where the customer is already looking for a code, instead of making them
-  // go find one. Fetched once on mount; failure just means no chips, never blocks checkout.
-  const [suggestedCoupons, setSuggestedCoupons] = useState<SuggestedCoupon[]>([]);
-  const [couponPanelOpen, setCouponPanelOpen] = useState(false);
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  useEffect(() => {
-    api
-      .get<SuggestedCoupon[]>('/api/coupons/suggestions')
-      .then(setSuggestedCoupons)
-      .catch(() => setSuggestedCoupons([]));
-  }, []);
-
-  async function handleCopyCode(code: string) {
-    try {
-      if (!navigator.clipboard) throw new Error('Clipboard API unavailable');
-      await navigator.clipboard.writeText(code);
-      setCopiedCode(code);
-      setTimeout(() => setCopiedCode(null), 1500);
-    } catch {
-      // Clipboard denied/unavailable — the code is still visible in the row to copy by hand.
-    }
-  }
-
-  const items = cart?.items ?? [];
-  const checkoutItems = items.map((i) => ({ variantId: i.variantId, quantity: i.quantity }));
-  const subtotal = cart?.subtotal ?? 0;
-
-  // The cart preview only ever has an origin-to-origin shipping estimate (no destination
-  // known pre-checkout). Once a real 6-digit pincode is entered here, re-quote against
-  // it live — the displayed fee then updates to the actual charge instead of sitting on
-  // that earlier guess. (The real order charge was always computed server-side against
-  // the real pincode regardless — this only affects what's *shown* before paying.)
-  // Free-gift lines still physically ship — must count toward weight the same way
-  // initiateCheckout's paidWeight+freeWeight does, or the live quote here understates
-  // what checkout actually charges once a gift tips the parcel into a heavier rate slab.
-  const cartWeightGrams =
-    items.reduce((sum, item) => sum + (item.weight ?? 500) * item.quantity, 0) +
-    (cart?.freeItems ?? []).reduce((sum, item) => sum + item.weight * item.quantity, 0);
-  // Both carriers' quotes are fetched up front so each payment option can show its OWN
-  // total before the customer picks one — otherwise "Pay online" would display the total
-  // of whichever method is currently selected and only correct itself on click.
-  const destPincode = /^\d{6}$/.test(form.pincode) ? form.pincode : undefined;
-  const prepaidShipping = useShippingEstimate(subtotal, cartWeightGrams, destPincode, 'PREPAID');
-  const codShipping = useShippingEstimate(subtotal, cartWeightGrams, destPincode, 'COD');
-  const liveShipping = paymentMethod === 'COD' ? codShipping : prepaidShipping;
-
-  // Backend-computed — same resolution path checkout itself uses (see cart/service.ts's
-  // computeCartPricing), so this can never drift from what actually gets charged. Previously
-  // this page computed shippingFee locally and never subtracted AUTO_APPLIED offer discounts
-  // at all — the Razorpay charge was always correct, but the customer never saw the price
-  // move before paying, which is exactly the "total isn't going down" gap this closes.
-  const shippingFee =
-    liveShipping.data?.fee ?? cart?.shippingFee ?? (subtotal > FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE);
-  const shippingFeeOriginal = liveShipping.data?.originalFee ?? cart?.shippingFeeOriginal ?? shippingFee;
-  // A real pincode hasn't been entered yet means shippingFee/shippingFeeOriginal above are
-  // still riding the cart-preview's origin-to-origin guess (see useShippingEstimate above) —
-  // never show that guess as if it were the real charge. Free-shipping orders are exempt:
-  // ₹0 is correct regardless of pincode, no guess involved.
-  const hasResolvedPincodeRate = subtotal > FREE_SHIPPING_ABOVE || (/^\d{6}$/.test(form.pincode) && !!liveShipping.data);
-  const optionResolved = (est: typeof prepaidShipping) => subtotal > FREE_SHIPPING_ABOVE || (!!destPincode && !!est.data);
-  const deliveryEstimate = formatDeliveryEstimate({
-    shipment: null,
-    estimatedDeliveryWindow: liveShipping.data?.estimatedDeliveryWindow ?? null,
-  });
-  const autoAppliedDiscount = cart?.autoAppliedDiscount ?? 0;
-  const preDiscountTotal = subtotal + shippingFee - autoAppliedDiscount;
-  const couponDiscount = appliedCoupon?.discountAmount ?? 0;
-  // COD is full cash on delivery — nothing charged online, the courier collects `total`.
-  // Display-only; Backend's computeCodFee is authoritative: COD_FEE only above FREE_SHIPPING_ABOVE.
-  const isCod = paymentMethod === 'COD';
-  const codAppliesToCart = subtotal > FREE_SHIPPING_ABOVE;
-  const codFee = isCod && codAppliesToCart ? COD_FEE : 0;
-  const total = Math.max(preDiscountTotal + codFee - couponDiscount, 0);
-  // Per-option totals for the payment radio labels (independent of the selected method).
-  const totalWithFee = (fee: number) => Math.max(subtotal + fee - autoAppliedDiscount - couponDiscount, 0);
-  const prepaidOptionTotal = totalWithFee(prepaidShipping.data?.fee ?? shippingFee);
-  const codOptionFee = codAppliesToCart ? COD_FEE : 0;
-  const codOptionTotal = totalWithFee(codShipping.data?.fee ?? shippingFee) + codOptionFee;
-  const codUnavailable = codOptionTotal > MAX_COD_ORDER_TOTAL;
-  // Cart grew past the COD limit (or a coupon was removed) while COD was picked — fall back
-  // to paying online rather than let the order fail at the Backend's same check.
-  useEffect(() => {
-    if (codUnavailable && paymentMethod === 'COD') setPaymentMethod('PREPAID');
-  }, [codUnavailable, paymentMethod]);
-  // Inclusive breakup of subtotal (product price already includes GST — never an added
-  // charge), same math the invoice PDF uses. 0 when nothing in the cart carries a GST rate.
-  const gstAmount = cart?.gstAmount ?? 0;
-  const taxableValue = cart?.taxableValue ?? subtotal;
-  const savings = cart?.savings ?? 0;
-
-  async function handleApplyCoupon(codeOverride?: string) {
-    const code = (codeOverride ?? couponInput).trim();
-    if (!code || items.length === 0) return;
-    if (codeOverride) setCouponInput(codeOverride);
-    setCouponLoading(true);
-    setCouponError(null);
-    try {
-      const result = await api.post<CouponPreviewResponse>('/api/coupon/preview', { code, items: checkoutItems });
-      if (result.valid) {
-        setAppliedCoupon({ code, discountAmount: result.discountAmount });
-        setCouponError(null);
-      } else {
-        setAppliedCoupon(null);
-        setCouponError(result.error);
-      }
-    } catch (err) {
-      setAppliedCoupon(null);
-      setCouponError(err instanceof ApiError ? err.body.error : 'Something went wrong. Please try again.');
-    } finally {
-      setCouponLoading(false);
-    }
-  }
-
-  function handleRemoveCoupon() {
-    setAppliedCoupon(null);
-    setCouponInput('');
-    setCouponError(null);
-  }
-
-  useEffect(() => {
-    if (items.length > 0) trackBeginCheckout(total, items.length);
-  }, [items.length, total]);
-
-  function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
-    setForm((f) => ({ ...f, [key]: value }));
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (items.length === 0) return toast.error('Your cart is empty');
-    if (serviceable === false) return toast.error('Sorry, we do not deliver to this pincode yet');
-
-    setSubmitting(true);
-
-    // Save the address the moment "Pay Now" is pressed, not after payment succeeds —
-    // the customer typed/changed a real address either way, and if the payment itself
-    // fails or gets abandoned they still want it remembered for the retry, not lost.
-    // Fire-and-forget: never block checkout on this. Three cases: editing an existing
-    // saved address (PATCH it), a freshly-typed one (create it), or an unchanged saved
-    // address already picked from the list (nothing to save).
-    if (editingAddressId) {
-      updateAddress.mutate({
-        id: editingAddressId,
-        name: form.customerName,
-        receiverPhone: form.customerPhone,
-        line1: form.line1,
-        line2: form.line2 || undefined,
-        city: form.city,
-        state: form.state,
-        pincode: form.pincode,
-        setDefault: true,
-      });
-    } else if (!selectedAddressId) {
-      saveAddress.mutate({
-        name: form.customerName,
-        receiverPhone: form.customerPhone,
-        line1: form.line1,
-        line2: form.line2 || undefined,
-        city: form.city,
-        state: form.state,
-        pincode: form.pincode,
-        setDefault: true,
-      });
-    }
-
-    try {
-      const input: CheckoutInput = {
-        customerName: form.customerName,
-        customerPhone: form.customerPhone,
-        customerEmail: form.customerEmail || undefined,
-        shippingAddress: {
-          line1: form.line1,
-          line2: form.line2 || undefined,
-          city: form.city,
-          state: form.state,
-          pincode: form.pincode,
-        },
-        items: checkoutItems,
-        ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
-        paymentMethod,
-      };
-
-      const result = await api.post<CheckoutResponse>('/api/checkout', input, {
-        'x-session-id': sessionIdForScope(scope),
-        Authorization: `Bearer ${getToken()}`,
-      });
-
-      trackAddPaymentInfo(total);
-
-      // COD: Backend has already confirmed the order — no payment step, straight to success.
-      if (!result.rzpOrderId) {
-        queryClient.invalidateQueries({ queryKey: ['cart', sessionIdForScope(scope), scope] });
-        router.push(`/checkout/success?t=${result.publicToken}`);
-        return;
-      }
-
-      await openCheckout({
-        amount: result.amount,
-        currency: result.currency,
-        name: 'Doshmukti',
-        order_id: result.rzpOrderId,
-        prefill: { name: form.customerName, email: form.customerEmail, contact: form.customerPhone },
-        theme: { color: '#9C5A26' },
-        handler: async (response: RazorpayResponse) => {
-          // Purchase conversion (GA4 + Meta Pixel) is NOT fired here — Razorpay reporting
-          // client-side success doesn't mean the order stays PAID (verify can still fail,
-          // or an admin/webhook can cancel/refund it after). It fires from
-          // /checkout/success instead, gated on the order's real payment status. See
-          // PurchaseTracker's comment for why this moved.
-          // Address is already saved (see handleSubmit, fires the moment Pay Now was
-          // pressed) — nothing address-related left to do here.
-          // Payment has already succeeded by the time this fires — this call is only
-          // about getting OUR order status flipped to PAID promptly, since the Razorpay
-          // webhook (the usual trigger) never reaches localhost and is fragile even in
-          // prod. Best-effort: never block/fail checkout completion on this, and never
-          // let a rejection reach the handleSubmit catch below (that's for /api/checkout
-          // only) — the webhook remains a backstop that reconciles the order regardless.
-          try {
-            await api.post('/api/checkout/verify', {
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-            }, {
-              Authorization: `Bearer ${getToken()}`,
-            });
-          } catch (err) {
-            // Non-fatal — no toast, no rethrow. Webhook backstop will reconcile, and
-            // /checkout/success itself retries a few times before giving up (see its
-            // getOrderWithRetry). Logged (not swallowed silently) purely so a spike in
-            // this failing is visible somewhere instead of only ever showing up as an
-            // unexplained gap in Purchase conversions days later.
-            console.error('[checkout] /api/checkout/verify failed — webhook backstop will reconcile', err);
-          }
-          // Buy Now: Backend already cleared this pseudo-cart server-side on order
-          // creation (safe since it's disposable) — this refetch just syncs the cache.
-          // Cart scope: Backend deliberately does NOT clear the real cart pre-payment
-          // (see checkout/controller.ts), so this refetch is a no-op today, but it's
-          // still correct to invalidate here in case that changes post-payment-confirm.
-          queryClient.invalidateQueries({ queryKey: ['cart', sessionIdForScope(scope), scope] });
-          router.push(
-            `/checkout/success?t=${result.publicToken}&paymentId=${response.razorpay_payment_id}`
-          );
-        },
-        modal: { ondismiss: () => setSubmitting(false) },
-      });
-    } catch (err) {
-      if (err instanceof ApiError) {
-        toast.error(err.body.error);
-        if (err.body.code && COUPON_ERROR_CODES.has(err.body.code)) {
-          setAppliedCoupon(null);
-          setCouponInput('');
-        }
-      } else {
-        toast.error('Something went wrong. Please try again.');
-      }
-      setSubmitting(false);
-    }
-  }
+  const {
+    items, subtotal, savings, gstAmount, taxableValue, authLoading, isAuthenticated, cart,
+    form, update, isChecking, serviceable, addressPrefilled,
+    savedAddresses, selectedAddress, addressFormOpen, setAddressFormOpen,
+    pickingAddressToEdit, setPickingAddressToEdit, startEditAddress, startNewAddress, handleEditClick,
+    updateQuantity, isUpdating,
+    shippingFee, shippingFeeOriginal, hasResolvedPincodeRate, optionResolved, deliveryEstimate,
+    autoAppliedDiscount, couponDiscount, codFee, total, prepaidShipping, codShipping,
+    prepaidOptionTotal, codOptionFee, codOptionTotal, codUnavailable, prepaidSavings,
+    paymentMethod, setPaymentMethod, isCod,
+    couponInput, setCouponInput, couponLoading, couponError, setCouponError, appliedCoupon,
+    suggestedCoupons, couponPanelOpen, setCouponPanelOpen, copiedCode,
+    handleApplyCoupon, handleRemoveCoupon, handleCopyCode,
+    submitting, rzpLoading, handleSubmit, submit, codWarningOpen, setCodWarningOpen,
+  } = useCheckout(scope);
 
   if (authLoading) {
     return <div className="max-w-5xl mx-auto px-4 sm:px-6 py-24 text-center font-body text-sm text-[#8A7A63]">Loading...</div>;
@@ -809,7 +257,7 @@ function CheckoutPageContent() {
           {
             id: 'PREPAID',
             title: 'Pay online',
-            sub: codOptionFee > 0 ? `UPI · Cards · Netbanking · Save ${formatCurrency(codOptionFee)}` : 'UPI · Cards · Netbanking',
+            sub: `UPI · Cards · Netbanking · Save ${formatCurrency(prepaidSavings)}`,
             badge: optionResolved(prepaidShipping) ? formatCurrency(prepaidOptionTotal) : null,
           },
           {
@@ -817,9 +265,7 @@ function CheckoutPageContent() {
             title: 'Cash on Delivery',
             sub: codUnavailable
               ? `Available on orders up to ${formatCurrency(MAX_COD_ORDER_TOTAL)}`
-              : codOptionFee > 0
-                ? `Pay when your order arrives · includes ${formatCurrency(codOptionFee)} COD charges`
-                : 'Pay in cash or UPI when your order arrives',
+              : `Pay when your order arrives · includes ${formatCurrency(codOptionFee)} COD charges`,
             badge: !codUnavailable && optionResolved(codShipping) ? formatCurrency(codOptionTotal) : null,
           },
         ] as const).map((opt) => {
@@ -865,8 +311,6 @@ function CheckoutPageContent() {
         </p>
       )}
 
-      {isAuthenticated ? (
-        <>
           <button
             type="submit"
             disabled={submitting || rzpLoading || items.length === 0}
@@ -893,10 +337,6 @@ function CheckoutPageContent() {
             </a>
             . Please read them carefully before paying.
           </p>
-        </>
-      ) : (
-        <p className="font-body text-xs text-[#8A7A63] text-center mt-4">Log in to continue to payment</p>
-      )}
     </div>
   );
 
@@ -909,18 +349,11 @@ function CheckoutPageContent() {
         <h1 className="font-heading font-black tracking-tight leading-[1.1] text-2xl sm:text-3xl text-[#2B1B0C]">Checkout</h1>
       </div>
 
-      {!isAuthenticated ? (
-        <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
-          <div className="flex flex-col gap-8">
-            <InlineLogin sendOtp={sendOtp} verifyOtp={verifyOtp} />
-          </div>
-          {summaryCard}
-        </div>
-      ) : (
+      {(
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
           <div className="flex flex-col gap-8">
             <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
-              <StepLabel n={2} title="Delivery Details" />
+              <StepLabel n={1} title="Your Details" />
 
               {!addressFormOpen && selectedAddress ? (
                 // Returning customer — their saved default address, shown as a summary
@@ -984,18 +417,24 @@ function CheckoutPageContent() {
                 <div className="flex flex-col gap-3">
                       <input
                         required
-                        placeholder="Full Name"
-                        value={form.customerName}
-                        onChange={(e) => update('customerName', e.target.value)}
-                        className={inputClass}
-                      />
-                      <input
-                        required
+                        autoComplete="tel-national"
                         type="tel"
                         inputMode="numeric"
-                        placeholder="Receiver's Phone Number"
+                        placeholder="10-digit mobile number *"
                         value={form.customerPhone}
                         onChange={(e) => update('customerPhone', normalizePhone(e.target.value))}
+                        className={inputClass}
+                      />
+                      {addressPrefilled && (
+                        <p className="-mt-1 font-body text-xs font-semibold text-brand-success">
+                          ✓ Welcome back — we filled your last used address. Edit anything below if needed.
+                        </p>
+                      )}
+                      <input
+                        required
+                        placeholder="Your name *"
+                        value={form.customerName}
+                        onChange={(e) => update('customerName', e.target.value)}
                         className={inputClass}
                       />
                       <input
@@ -1071,6 +510,19 @@ function CheckoutPageContent() {
 
           {summaryCard}
         </form>
+      )}
+      {codWarningOpen && (
+        <CodWarningModal
+          savings={prepaidSavings}
+          onlineTotal={prepaidOptionTotal}
+          codTotal={codOptionTotal}
+          onPayOnline={() => {
+            setPaymentMethod('PREPAID');
+            setCodWarningOpen(false);
+          }}
+          onContinueCod={() => void submit(true)}
+          onClose={() => setCodWarningOpen(false)}
+        />
       )}
     </div>
   );

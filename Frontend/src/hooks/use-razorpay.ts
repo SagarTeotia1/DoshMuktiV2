@@ -19,7 +19,33 @@ interface RazorpayOptions {
   theme?: { color?: string };
   handler: (response: RazorpayResponse) => void;
   modal?: { ondismiss?: () => void };
+  config?: RazorpayDisplayConfig;
 }
+
+// Razorpay's default UPI block can lead with one specific app (Google Pay) — on phones
+// without it the customer hits an error. Declaring our own blocks makes UPI a generic
+// entry: Razorpay lists only the UPI apps actually installed on the device (intent), plus
+// "enter UPI ID" and QR, never a preselected app.
+interface RazorpayDisplayConfig {
+  display: {
+    blocks: Record<string, { name: string; instruments: Array<Record<string, unknown>> }>;
+    sequence: string[];
+    preferences: { show_default_blocks: boolean };
+  };
+}
+
+const CHECKOUT_DISPLAY_CONFIG: RazorpayDisplayConfig = {
+  display: {
+    blocks: {
+      upi: { name: 'Pay via UPI', instruments: [{ method: 'upi', flows: ['intent', 'collect', 'qr'] }] },
+      card: { name: 'Cards', instruments: [{ method: 'card' }] },
+      netbanking: { name: 'Netbanking', instruments: [{ method: 'netbanking' }] },
+      wallet: { name: 'Wallets', instruments: [{ method: 'wallet' }] },
+    },
+    sequence: ['block.upi', 'block.card', 'block.netbanking', 'block.wallet'],
+    preferences: { show_default_blocks: false },
+  },
+};
 
 interface RazorpayInstance {
   open: () => void;
@@ -53,7 +79,7 @@ export function useRazorpay() {
     setLoading(true);
     try {
       await loadScript();
-      const rzp = new window.Razorpay({ key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!, ...options });
+      const rzp = new window.Razorpay({ key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!, config: CHECKOUT_DISPLAY_CONFIG, ...options });
       rzp.open();
     } finally {
       setLoading(false);
