@@ -15,7 +15,7 @@ interface RazorpayOptions {
   name: string;
   description?: string;
   order_id: string;
-  prefill?: { name?: string; email?: string; contact?: string };
+  prefill?: { name?: string; email?: string; contact?: string; method?: 'upi' | 'card' | 'netbanking' | 'wallet' };
   theme?: { color?: string };
   handler: (response: RazorpayResponse) => void;
   modal?: { ondismiss?: () => void };
@@ -79,7 +79,14 @@ export function useRazorpay() {
     setLoading(true);
     try {
       await loadScript();
-      const rzp = new window.Razorpay({ key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!, config: CHECKOUT_DISPLAY_CONFIG, ...options });
+      const rzp = new window.Razorpay({
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+        config: CHECKOUT_DISPLAY_CONFIG,
+        ...options,
+        // Land straight on the UPI screen (installed apps / UPI ID / QR); the customer can
+        // still switch to cards, netbanking or wallets from there.
+        prefill: { method: 'upi', ...options.prefill },
+      });
       rzp.open();
     } finally {
       setLoading(false);
