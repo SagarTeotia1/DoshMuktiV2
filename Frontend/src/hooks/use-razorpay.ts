@@ -15,38 +15,11 @@ interface RazorpayOptions {
   name: string;
   description?: string;
   order_id: string;
-  prefill?: { name?: string; email?: string; contact?: string; method?: 'upi' | 'card' | 'netbanking' | 'wallet' };
+  prefill?: { name?: string; email?: string; contact?: string };
   theme?: { color?: string };
   handler: (response: RazorpayResponse) => void;
   modal?: { ondismiss?: () => void };
-  config?: RazorpayDisplayConfig;
-  remember_customer?: boolean;
 }
-
-// Razorpay's default UPI block can lead with one specific app (Google Pay) — on phones
-// without it the customer hits an error. Declaring our own blocks makes UPI a generic
-// entry: Razorpay lists only the UPI apps actually installed on the device (intent), plus
-// "enter UPI ID" and QR, never a preselected app.
-interface RazorpayDisplayConfig {
-  display: {
-    blocks: Record<string, { name: string; instruments: Array<Record<string, unknown>> }>;
-    sequence: string[];
-    preferences: { show_default_blocks: boolean };
-  };
-}
-
-const CHECKOUT_DISPLAY_CONFIG: RazorpayDisplayConfig = {
-  display: {
-    blocks: {
-      upi: { name: 'Pay via UPI', instruments: [{ method: 'upi', flows: ['intent', 'collect', 'qr'] }] },
-      card: { name: 'Cards', instruments: [{ method: 'card' }] },
-      netbanking: { name: 'Netbanking', instruments: [{ method: 'netbanking' }] },
-      wallet: { name: 'Wallets', instruments: [{ method: 'wallet' }] },
-    },
-    sequence: ['block.upi', 'block.card', 'block.netbanking', 'block.wallet'],
-    preferences: { show_default_blocks: false },
-  },
-};
 
 interface RazorpayInstance {
   open: () => void;
@@ -80,17 +53,7 @@ export function useRazorpay() {
     setLoading(true);
     try {
       await loadScript();
-      const rzp = new window.Razorpay({
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
-        config: CHECKOUT_DISPLAY_CONFIG,
-        // Skip Razorpay's saved-customer ("Using as +91…") layout — it ignores the method
-        // prefill and shows an empty list where Continue does nothing until a row is tapped.
-        remember_customer: false,
-        ...options,
-        // Land straight on the UPI screen (installed apps / UPI ID / QR); the customer can
-        // still switch to cards, netbanking or wallets from there.
-        prefill: { method: 'upi', ...options.prefill },
-      });
+      const rzp = new window.Razorpay({ key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!, ...options });
       rzp.open();
     } finally {
       setLoading(false);
