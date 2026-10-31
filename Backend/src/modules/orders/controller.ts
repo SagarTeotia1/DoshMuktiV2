@@ -13,6 +13,7 @@ import {
   ewaybillUpdateSchema,
   riskFlagSchema,
   packageWeightSchema,
+  orderAddressSchema,
   labelSizeQuerySchema,
   bookShipmentBodySchema,
   rebookShipmentBodySchema,
@@ -32,6 +33,8 @@ import {
   updateOrderEwaybill,
   setShipmentRiskFlag,
   updateOrderPackageWeight,
+  updateOrderAddress,
+  OrderAddressLockedError,
   bookOrderShipment,
   rebookOrderShipment,
   switchDelhiveryBookingsToEkart,
@@ -303,6 +306,21 @@ export async function packageWeightHandler(req: FastifyRequest, reply: FastifyRe
 
   await updateOrderPackageWeight(idParsed.data.id, bodyParsed.data.weight);
   return reply.code(204).send();
+}
+
+export async function orderAddressHandler(req: FastifyRequest, reply: FastifyReply) {
+  const idParsed = idParamSchema.safeParse(req.params);
+  if (!idParsed.success) return reply.code(400).send({ error: 'Invalid id' });
+  const bodyParsed = orderAddressSchema.safeParse(req.body);
+  if (!bodyParsed.success) return reply.code(400).send({ error: 'Invalid input', details: bodyParsed.error.flatten().fieldErrors });
+
+  try {
+    await updateOrderAddress(idParsed.data.id, bodyParsed.data);
+    return reply.code(204).send();
+  } catch (err) {
+    if (err instanceof OrderAddressLockedError) return reply.code(409).send({ error: err.message });
+    throw err;
+  }
 }
 
 export async function ewaybillUpdateHandler(req: FastifyRequest, reply: FastifyReply) {

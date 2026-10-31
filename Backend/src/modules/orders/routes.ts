@@ -21,6 +21,7 @@ import {
   ewaybillUpdateHandler,
   riskFlagHandler,
   packageWeightHandler,
+  orderAddressHandler,
 } from './controller';
 
 const publicOrderRateLimit = { rateLimit: { max: 20, timeWindow: '1 minute' } };
@@ -48,4 +49,5 @@ export async function orderRoutes(app: FastifyInstance) {
   app.post('/admin/orders/:id/shipment/ewaybill', { preHandler: verifyAdmin }, ewaybillUpdateHandler);
   app.patch('/admin/orders/:id/shipment/risk-flag', { preHandler: verifyAdmin }, riskFlagHandler);
   app.patch('/admin/orders/:id/package-weight', { preHandler: verifyAdmin }, packageWeightHandler);
+  app.patch('/admin/orders/:id/address', { preHandler: verifyAdmin }, orderAddressHandler); // fix name/address before a shipment is booked
 }

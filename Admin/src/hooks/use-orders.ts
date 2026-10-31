@@ -172,6 +172,25 @@ export function useUpdatePackageWeight(id: string) {
   });
 }
 
+export interface OrderAddressInput {
+  customerName: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  pincode: string;
+}
+
+// Fix the delivery name + address. Backend rejects non-English text and refuses (409) once a
+// shipment is booked.
+export function useUpdateOrderAddress(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: OrderAddressInput) => api.patch<void>(`/api/admin/orders/${id}/address`, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-order', id] }),
+  });
+}
+
 // Flag/unflag a shipment as bad-address or high-risk. Flagging pulls it out of the
 // pickup batch queue (see Backend pickup-requests/service.ts); passing riskFlag: null
 // clears it, same as resolving via an NDR action.

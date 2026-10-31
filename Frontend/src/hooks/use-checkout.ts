@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useCart, type CartScope } from '@/hooks/use-cart';
 import { usePincodeCheck } from '@/hooks/use-pincode-check';
+import { isEnglishText } from '@/lib/english-text';
 import { useRazorpay, type RazorpayResponse } from '@/hooks/use-razorpay';
 import { useAuth } from '@/providers/auth-provider';
 import { useAddresses, useSaveAddress, useUpdateAddress } from '@/hooks/use-addresses';
@@ -363,6 +364,10 @@ export function useCheckout(scope: CartScope, opts?: { onNavigate?: () => void }
     if (form.line1.trim().length < 5) return toast.error('Enter your house no., street and area');
     if (form.city.trim().length < 2 || form.state.trim().length < 2) return toast.error('Enter your city and state');
     if (!/^\d{6}$/.test(form.pincode)) return toast.error('Enter a valid 6-digit pincode');
+    // Courier labels can't print Hindi/other scripts — name and address must be in English.
+    if (![form.customerName, form.line1, form.line2, form.city, form.state].every(isEnglishText)) {
+      return toast.error('Please type your name and address in English (A-Z) — e.g. "Narendra", "Rohad Gaon"');
+    }
     if (!hasResolvedPincodeRate) return toast.error('Enter your pincode to see the delivery charge');
     if (serviceable === false) return toast.error('Sorry, we do not deliver to this pincode yet');
     if (codSelected && !confirmCod) {

@@ -8,7 +8,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { StatusBadge, PaymentBadge } from '@/components/ui/StatusBadge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ShippingActions } from '@/components/orders/ShippingActions';
-import { useOrder, useResendWhatsApp, useUpdateOrderStatus, useUpdatePackageWeight } from '@/hooks/use-orders';
+import { useOrder, useResendWhatsApp, useUpdateOrderStatus, useUpdatePackageWeight, useUpdateOrderAddress, type OrderAddressInput } from '@/hooks/use-orders';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ApiError } from '@/lib/api-client';
 import { providerName } from '@/lib/constants';
@@ -36,6 +36,8 @@ export default function OrderDetailPage() {
   const updateStatus = useUpdateOrderStatus(id);
   const updatePackageWeight = useUpdatePackageWeight(id);
   const resendWhatsApp = useResendWhatsApp(id);
+  const updateAddress = useUpdateOrderAddress(id);
+  const [addrForm, setAddrForm] = useState<OrderAddressInput | null>(null); // null = not editing
   const router = useRouter();
   const [snap, setSnap] = useState<OrdersSnapshot | null>(null);
   const [navBusy, setNavBusy] = useState(false);
@@ -79,6 +81,34 @@ export default function OrderDetailPage() {
   useEffect(() => {
     if (!weightEdited && order) setWeightInput(order.packageWeightOverride != null ? String(order.packageWeightOverride) : '');
   }, [order, weightEdited]);
+
+  function startAddressEdit() {
+    if (!order) return;
+    setAddrForm({
+      customerName: order.customerName,
+      line1: order.shippingAddress.line1,
+      line2: order.shippingAddress.line2 ?? '',
+      city: order.shippingAddress.city,
+      state: order.shippingAddress.state,
+      pincode: order.shippingAddress.pincode,
+    });
+  }
+
+  function saveAddress() {
+    if (!addrForm) return;
+    const payload: OrderAddressInput = { ...addrForm, line2: addrForm.line2?.trim() || undefined };
+    updateAddress.mutate(payload, {
+      onSuccess: () => {
+        toast.success('Address updated');
+        setAddrForm(null);
+      },
+      onError: (err) => {
+        const fieldErrors = err instanceof ApiError ? (err.body as { details?: Record<string, string[]> }).details : undefined;
+        const first = fieldErrors ? Object.values(fieldErrors).flat()[0] : undefined;
+        toast.error(first ?? (err instanceof ApiError ? err.body.error : 'Failed to update address'));
+      },
+    });
+  }
 
   function saveWeight() {
     const trimmed = weightInput.trim();
@@ -341,12 +371,65 @@ export default function OrderDetailPage() {
                 {resendWhatsApp.isPending ? 'Sending…' : order.whatsappConfirmSentAt ? 'Resend' : 'Send now'}
               </button>
             </div>
-            <p className="text-sm text-slate-500 mt-2">
-              {order.shippingAddress.line1}
-              {order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ''}
-              <br />
-              {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.pincode}
-            </p>
+            {addrForm ? (
+              <div className="mt-3 flex flex-col gap-2">
+                {(
+                  [
+                    ['customerName', 'Name'],
+                    ['line1', 'House no., street, area'],
+                    ['line2', 'Landmark (optional)'],
+                    ['city', 'City'],
+                    ['state', 'State'],
+                    ['pincode', 'Pincode'],
+                  ] as const
+                ).map(([key, label]) => (
+                  <label key={key} className="flex flex-col gap-0.5 text-[11px] font-semibold text-slate-500">
+                    {label}
+                    <input
+                      value={addrForm[key] ?? ''}
+                      onChange={(e) => setAddrForm({ ...addrForm, [key]: e.target.value })}
+                      inputMode={key === 'pincode' ? 'numeric' : undefined}
+                      maxLength={key === 'pincode' ? 6 : 300}
+                      className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm font-normal text-slate-900 focus:border-slate-500 focus:outline-none"
+                    />
+                  </label>
+                ))}
+                <p className="text-[11px] text-slate-400">English letters only. Delivery fee is not recalculated.</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={saveAddress}
+                    disabled={updateAddress.isPending}
+                    className="px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-40 transition-colors"
+                  >
+                    {updateAddress.isPending ? 'Saving…' : 'Save'}
+                  </button>
+                  <button
+                    onClick={() => setAddrForm(null)}
+                    disabled={updateAddress.isPending}
+                    className="px-3 py-1.5 rounded-md text-xs font-semibold text-slate-700 border border-slate-300 hover:border-slate-400 disabled:opacity-40 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-2 flex items-start justify-between gap-2">
+                <p className="text-sm text-slate-500">
+                  {order.shippingAddress.line1}
+                  {order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ''}
+                  <br />
+                  {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.pincode}
+                </p>
+                {!order.shipment && (
+                  <button
+                    onClick={startAddressEdit}
+                    className="shrink-0 px-2.5 py-1 rounded-md text-[11px] font-semibold text-slate-700 border border-slate-300 hover:border-slate-400 transition-colors"
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {order.payment && (

@@ -1,15 +1,16 @@
 import { z } from 'zod';
+import { ENGLISH_TEXT_RE, ENGLISH_TEXT_MESSAGE } from '../../shared/validation/english-text';
 
 export const checkoutSchema = z.object({
   // trim() before min(): whitespace-only values must not count as filled in.
-  customerName: z.string().trim().min(2, 'Enter your full name').max(200),
+  customerName: z.string().trim().min(2, 'Enter your full name').max(200).regex(ENGLISH_TEXT_RE, ENGLISH_TEXT_MESSAGE),
   customerPhone: z.string().regex(/^[6-9]\d{9}$/, 'Invalid Indian mobile number'),
   customerEmail: z.string().email().toLowerCase().optional(),
   shippingAddress: z.object({
-    line1: z.string().trim().min(5, 'Enter house no., street and area').max(300),
-    line2: z.string().trim().max(300).optional(),
-    city: z.string().trim().min(2, 'Enter your city').max(100),
-    state: z.string().trim().min(2, 'Enter your state').max(100),
+    line1: z.string().trim().min(5, 'Enter house no., street and area').max(300).regex(ENGLISH_TEXT_RE, ENGLISH_TEXT_MESSAGE),
+    line2: z.string().trim().max(300).regex(ENGLISH_TEXT_RE, ENGLISH_TEXT_MESSAGE).optional(),
+    city: z.string().trim().min(2, 'Enter your city').max(100).regex(ENGLISH_TEXT_RE, ENGLISH_TEXT_MESSAGE),
+    state: z.string().trim().min(2, 'Enter your state').max(100).regex(ENGLISH_TEXT_RE, ENGLISH_TEXT_MESSAGE),
     pincode: z.string().regex(/^\d{6}$/, 'Pincode must be 6 digits'),
     country: z.string().default('IN'),
   }),

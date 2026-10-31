@@ -27,6 +27,7 @@ import {
   cancelEkartShipment,
 } from '../../shared/integrations/ekart/client';
 import { env } from '../../config/env';
+import type { OrderAddressInput } from './schema';
 
 export class OrderNotResumableError extends Error {
   constructor() {
@@ -433,6 +434,32 @@ async function recordBookingCost(
 // the moment they call Delhivery, so setting it after a shipment is already booked has no
 // effect on that waybill (Delhivery doesn't support editing a shipment's declared weight
 // post-booking; cancel and rebook if it was wrong).
+export class OrderAddressLockedError extends Error {
+  constructor() {
+    super('A shipment is already booked for this order — cancel/rebook it instead of editing the address.');
+    this.name = 'OrderAddressLockedError';
+  }
+}
+
+// Admin correction of the delivery name + address. Refused once a shipment exists: the
+// waybill already carries the old address, so editing here would silently diverge from it.
+export async function updateOrderAddress(orderId: string, input: OrderAddressInput): Promise<void> {
+  const order = await db.order.findUnique({
+    where: { id: orderId },
+    select: { shippingAddress: true, shipment: { select: { id: true } } },
+  });
+  if (!order) throw new Error('Order not found');
+  if (order.shipment) throw new OrderAddressLockedError();
+  const { customerName, ...addr } = input;
+  await db.order.update({
+    where: { id: orderId },
+    data: {
+      customerName,
+      shippingAddress: { ...(order.shippingAddress as Record<string, unknown>), ...addr, line2: addr.line2 || undefined },
+    },
+  });
+}
+
 export async function updateOrderPackageWeight(orderId: string, weight: number | null): Promise<void> {
   await db.order.update({ where: { id: orderId }, data: { packageWeightOverride: weight } });
 }

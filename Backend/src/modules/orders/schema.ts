@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ENGLISH_TEXT_RE, ENGLISH_TEXT_MESSAGE } from '../../shared/validation/english-text';
 
 export const idParamSchema = z.object({ id: z.string().min(1) });
 
@@ -66,6 +67,18 @@ export const riskFlagSchema = z.object({
 export const packageWeightSchema = z.object({
   weight: z.number().int().min(1).max(50000).nullable(),
 });
+
+// Admin correction of the delivery name + address (e.g. a customer typed Hindi, or a typo).
+// Same English-only rule as checkout so what we store is always carrier-safe.
+export const orderAddressSchema = z.object({
+  customerName: z.string().trim().min(2).max(200).regex(ENGLISH_TEXT_RE, ENGLISH_TEXT_MESSAGE),
+  line1: z.string().trim().min(5).max(300).regex(ENGLISH_TEXT_RE, ENGLISH_TEXT_MESSAGE),
+  line2: z.string().trim().max(300).regex(ENGLISH_TEXT_RE, ENGLISH_TEXT_MESSAGE).optional(),
+  city: z.string().trim().min(2).max(100).regex(ENGLISH_TEXT_RE, ENGLISH_TEXT_MESSAGE),
+  state: z.string().trim().min(2).max(100).regex(ENGLISH_TEXT_RE, ENGLISH_TEXT_MESSAGE),
+  pincode: z.string().regex(/^\d{6}$/, 'Pincode must be 6 digits'),
+});
+export type OrderAddressInput = z.infer<typeof orderAddressSchema>;
 
 export const labelSizeQuerySchema = z.object({
   size: z.enum(['4x6', 'A4']).default('4x6'),
