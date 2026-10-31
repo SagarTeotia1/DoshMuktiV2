@@ -443,7 +443,7 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="font-body text-[13px] font-extrabold leading-tight text-[#6B3D19]">
-                    Pay online &amp; save {formatCurrency(c.prepaidSavings)}
+                    Prepaid order · Save {formatCurrency(c.prepaidSavings)}
                   </p>
                   <p className="mt-0.5 font-body text-[11px] leading-tight text-[#2B1B0C]/70">
                     <span className="line-through opacity-70">{formatCurrency(c.codOptionTotal)}</span>{' '}
@@ -456,7 +456,7 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
                   disabled={busy}
                   className="flex h-9 flex-shrink-0 items-center gap-1 rounded-xl bg-gradient-to-r from-[#6B3D19] via-[#9C5A26] to-[#C9863F] px-3 font-body text-xs font-bold text-[#FFFDF8] shadow-[0_3px_10px_rgba(156,90,38,0.45)] transition-all hover:brightness-110 active:scale-[0.96] disabled:opacity-50"
                 >
-                  Pay Now <ArrowRight className="h-3.5 w-3.5" />
+                  Pay {formatCurrency(payOnlineAmount)} <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>
