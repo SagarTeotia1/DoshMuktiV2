@@ -97,7 +97,7 @@ const envSchema = z.object({
   MSG91_WHATSAPP_AUTH_KEY: z.string().default(''),
   MSG91_WHATSAPP_NUMBER: z.string().regex(/^\d*$/, 'digits only, with country code').default(''),
   MSG91_WHATSAPP_NAMESPACE: z.string().default(''),
-  MSG91_WHATSAPP_ORDER_TEMPLATE: z.string().default('dosh_order_confirm'),
+  MSG91_WHATSAPP_ORDER_TEMPLATE: z.string().default('dosh_confirm2'),
 
   // Nightly encrypted database backup (jobs/db-backup.ts, restore with scripts/restore-backup.ts).
   // BACKUP_R2_BUCKET must be a PRIVATE bucket, never the public images bucket. Empty = the job

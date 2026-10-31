@@ -3,7 +3,7 @@ import { env } from '../../../config/env';
 // MSG91 WhatsApp Cloud API (template messages). Contract matches the other integration clients:
 // never throws, returns { ok: true } or { ok: false, error, retryable }.
 //
-// Template `dosh_order_confirm` (UTILITY, en) - variables in order:
+// Template `dosh_confirm2` (UTILITY, en) - variables in order:
 //   body_1 = customer name, body_2 = order number, body_3 = estimated delivery text,
 //   button_1 = URL suffix; the button opens https://doshmukti.com/{{1}}, so the value is
 //   `track/<publicToken>`.

@@ -7,7 +7,7 @@ export type WhatsAppConfirmOutcome = 'sent' | 'already_sent' | 'disabled' | 'ord
 
 const RETRY_DELAY_MS = 2_000;
 
-// Sends the "order confirmed" WhatsApp (template dosh_order_confirm) at most once per order.
+// Sends the "order confirmed" WhatsApp (template dosh_confirm2) at most once per order.
 // The marker is claimed atomically BEFORE sending (UPDATE ... WHERE whatsappConfirmSentAt IS NULL),
 // so a payment-webhook replay or two racing triggers can never message the customer twice; if the
 // send ultimately fails the claim is released so it can be retried (Admin "Resend"). Never throws -
