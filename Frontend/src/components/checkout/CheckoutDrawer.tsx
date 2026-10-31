@@ -436,29 +436,36 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
 
           {/* COD picked → nudge straight back to paying online, one tap, no extra screen */}
           {isCod && resolved && (
-            <div className="mx-3 mt-3 overflow-hidden rounded-2xl border border-[#9C5A26]/40 bg-gradient-to-r from-[#F6E4C2] to-[#FFFDF8] shadow-sm min-[340px]:mx-4">
-              <div className="flex items-center gap-2.5 px-3 py-2.5">
-                <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#6B3D19] to-[#C9863F] text-[#FFFDF8]">
-                  <Sparkles className="h-4 w-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="font-body text-[13px] font-extrabold leading-tight text-[#6B3D19]">
+            <div className="relative mx-3 mt-4 rounded-2xl border-2 border-[#9C5A26] bg-gradient-to-br from-[#F6E4C2] via-[#FFF3DC] to-[#FFFDF8] px-3.5 pb-3 pt-4 shadow-[0_6px_18px_rgba(156,90,38,0.28)] min-[340px]:mx-4">
+              {/* Floating tag: tells the buyer which option we suggest */}
+              <span className="absolute -top-2.5 left-3.5 flex items-center gap-1 rounded-full bg-gradient-to-r from-[#6B3D19] to-[#C9863F] px-2.5 py-0.5 font-body text-[10px] font-extrabold uppercase tracking-wider text-[#FFFDF8] shadow">
+                <Sparkles className="h-3 w-3" /> Best value
+              </span>
+              <div className="flex items-end justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-heading text-[17px] font-extrabold leading-tight text-[#6B3D19]">
                     Prepaid order · Save {formatCurrency(c.prepaidSavings)}
                   </p>
-                  <p className="mt-0.5 font-body text-[11px] leading-tight text-[#2B1B0C]/70">
-                    <span className="line-through opacity-70">{formatCurrency(c.codOptionTotal)}</span>{' '}
-                    <span className="font-bold text-[#2B1B0C]">{formatCurrency(payOnlineAmount)}</span> · no COD charge
+                  <p className="mt-1 font-body text-xs leading-tight text-[#2B1B0C]/70">
+                    <span className="line-through">{formatCurrency(c.codOptionTotal)}</span>
+                    <span className="mx-1">→</span>
+                    <span className="text-sm font-extrabold text-[#2B1B0C]">{formatCurrency(payOnlineAmount)}</span>
+                    <span className="ml-1.5 font-semibold text-[#1E7B4A]">no COD charge</span>
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={payNow}
-                  disabled={busy}
-                  className="flex h-9 flex-shrink-0 items-center gap-1 rounded-xl bg-gradient-to-r from-[#6B3D19] via-[#9C5A26] to-[#C9863F] px-3 font-body text-xs font-bold text-[#FFFDF8] shadow-[0_3px_10px_rgba(156,90,38,0.45)] transition-all hover:brightness-110 active:scale-[0.96] disabled:opacity-50"
-                >
-                  Pay {formatCurrency(payOnlineAmount)} <ArrowRight className="h-3.5 w-3.5" />
-                </button>
               </div>
+              <button
+                type="button"
+                onClick={payNow}
+                disabled={busy}
+                className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#6B3D19] via-[#9C5A26] to-[#C9863F] px-4 font-body text-[15px] font-extrabold text-[#FFFDF8] shadow-[0_4px_12px_rgba(156,90,38,0.5)] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+              >
+                Pay {formatCurrency(payOnlineAmount)} &amp; save {formatCurrency(c.prepaidSavings)}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <p className="mt-2 text-center font-body text-[10px] font-semibold text-[#2B1B0C]/60">
+                UPI · Cards · Netbanking · Wallets — secured by Razorpay
+              </p>
             </div>
           )}
 
@@ -496,7 +503,7 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
                   type="button"
                   onClick={placeCod}
                   disabled={busy}
-                  className="flex h-12 min-w-0 flex-1 items-center justify-center rounded-xl bg-[#2B1B0C] px-3 font-body text-[15px] font-bold leading-none text-white shadow-[0_4px_14px_rgba(43,27,12,0.35)] transition-colors hover:bg-[#9C5A26] active:scale-[0.98] disabled:opacity-50"
+                  className="flex h-12 min-w-0 flex-1 items-center justify-center rounded-xl border-2 border-[#2B1B0C] bg-white px-3 font-body text-[15px] font-bold leading-none text-[#2B1B0C] transition-colors hover:bg-[#F6E4C2]/60 active:scale-[0.98] disabled:opacity-50"
                 >
                   {c.submitting ? 'Processing...' : <span className="whitespace-nowrap">Place COD Order</span>}
                 </button>
