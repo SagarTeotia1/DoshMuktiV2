@@ -41,7 +41,7 @@ export const revalidate = 3600;
 
 // A serif display face, scoped to this campaign page only — matches the other
 // campaign pages' editorial headline register, not the site-wide Outfit/Satoshi system.
-const fraunces = Fraunces({ subsets: ['latin'], weight: ['400', '600'], style: ['normal', 'italic'], variable: '--font-fraunces' });
+const fraunces = Fraunces({ subsets: ['latin'], weight: 'variable', style: 'normal', variable: '--font-fraunces' });
 
 const HERO_SERVICES = [
   { icon: Sparkles, label: '100% Ritually Energized' },

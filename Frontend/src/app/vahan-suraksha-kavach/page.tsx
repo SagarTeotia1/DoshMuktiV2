@@ -44,7 +44,7 @@ export const revalidate = 3600;
 // any Server Component, not just root layout) — the rest of the site runs on Outfit/Satoshi
 // per docs/DESIGN.md; this page wants a slower, more editorial headline register than that
 // sans-only system gives, without touching the global font setup other pages depend on.
-const fraunces = Fraunces({ subsets: ['latin'], weight: ['400', '600'], style: ['normal', 'italic'], variable: '--font-fraunces' });
+const fraunces = Fraunces({ subsets: ['latin'], weight: 'variable', style: 'normal', variable: '--font-fraunces' });
 
 const HERO_SERVICES = [
   { icon: Sparkles, label: '100% Ritually Energized' },
