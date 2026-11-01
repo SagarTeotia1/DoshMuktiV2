@@ -335,8 +335,38 @@
   to   { height: 0; }
 }
 
+/* Green success tick: ring pops in, circle outline draws, then the check strokes in. */
+@keyframes tickPop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes tickDraw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes tickRing {
+  0%   { transform: scale(0.9); opacity: 0.45; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes otpShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
 /* ─── Animation Utility Classes ─────────────────────────────────────────────── */
 @layer utilities {
+  .animate-tick-pop    { animation: tickPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  .animate-tick-ring   { animation: tickRing 0.9s ease-out 0.15s both; }
+  .animate-tick-circle { stroke-dasharray: 151; stroke-dashoffset: 151; animation: tickDraw 0.5s ease-out 0.05s forwards; }
+  .animate-tick-check  { stroke-dasharray: 36; stroke-dashoffset: 36; animation: tickDraw 0.35s ease-out 0.45s forwards; }
+  .animate-otp-shake   { animation: otpShake 0.4s ease-in-out; }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-tick-pop, .animate-tick-ring, .animate-otp-shake { animation: none; }
+    .animate-tick-ring { opacity: 0; }
+    .animate-tick-circle, .animate-tick-check { animation: none; stroke-dashoffset: 0; }
+  }
+
   .animate-fade-in-up  { animation: fadeInUp  0.7s ease-out both; }
   .animate-fade-in     { animation: fadeIn    0.5s ease-out both; }
   .animate-slide-left  { animation: slideInLeft  0.6s ease-out both; }

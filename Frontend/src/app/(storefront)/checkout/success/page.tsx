@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { CheckCircle2 } from 'lucide-react';
+import { AnimatedTick } from '@/components/ui/AnimatedTick';
 import { api, invoiceUrl } from '@/lib/api-client';
 import { formatDeliveryEstimate } from '@/lib/formatters';
 import { PurchaseTracker } from '@/components/storefront/PurchaseTracker';
@@ -62,7 +62,7 @@ export default async function CheckoutSuccessPage({
           itemCount={order.items.length}
         />
       )}
-      <CheckCircle2 className="w-16 h-16 text-[#9C5A26] mx-auto mb-6" />
+      <AnimatedTick size={88} className="mb-6" />
       <h1 className="font-heading font-black tracking-tight leading-tight text-2xl sm:text-3xl text-[#2B1B0C] mb-3">Order Confirmed</h1>
       {orderNumber && (
         <p className="font-body text-sm text-[#6B5539] mb-1">

@@ -6,6 +6,7 @@ import { X, Minus, Plus, ChevronDown, Ticket, Copy, Check, Sparkles, ArrowRight 
 import { useCheckout, normalizePhone } from '@/hooks/use-checkout';
 import type { CartScope } from '@/hooks/use-cart';
 import { CodWarningModal } from '@/components/checkout/CodWarningModal';
+import { OtpModal } from '@/components/checkout/OtpModal';
 import { formatCurrency } from '@/lib/formatters';
 import { MAX_COD_ORDER_TOTAL } from '@/lib/constants';
 import type { SuggestedCoupon } from '@/types/api.types';
@@ -101,7 +102,7 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
 
   function placeCod() {
     if (!validOrFocus()) return;
-    c.setCodWarningOpen(true);
+    void c.submit(true, 'COD');
   }
 
   return (
@@ -580,6 +581,15 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
           }}
           onContinueCod={() => void c.submit(true, 'COD')}
           onClose={() => c.setCodWarningOpen(false)}
+        />
+      )}
+
+      {c.otpOpen && (
+        <OtpModal
+          phone={c.form.customerPhone}
+          actionLabel={c.otpMethod === 'COD' ? 'Place COD Order' : 'Pay Now'}
+          onVerified={c.onOtpVerified}
+          onClose={c.closeOtp}
         />
       )}
     </div>

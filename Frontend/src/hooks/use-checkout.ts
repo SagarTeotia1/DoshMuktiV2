@@ -79,6 +79,8 @@ export function useCheckout(scope: CartScope, opts?: { onNavigate?: () => void }
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [codWarningOpen, setCodWarningOpen] = useState(false);
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [otpMethod, setOtpMethod] = useState<PaymentMethod>('PREPAID');
 
   useEffect(() => {
     if (!user) return;
@@ -353,7 +355,7 @@ export function useCheckout(scope: CartScope, opts?: { onNavigate?: () => void }
   // ── Submit ──────────────────────────────────────────────────────────────────────────
   // COD is intercepted once with a "pay online & save ₹X" warning; confirmCod=true is the
   // customer's explicit "continue with COD".
-  async function submit(confirmCod = false, methodOverride?: PaymentMethod) {
+  async function submit(confirmCod = false, methodOverride?: PaymentMethod, phoneVerified = false) {
     const method = methodOverride ?? paymentMethod;
     const codSelected = method === 'COD';
     if (items.length === 0) return toast.error('Your cart is empty');
@@ -370,11 +372,20 @@ export function useCheckout(scope: CartScope, opts?: { onNavigate?: () => void }
     }
     if (!hasResolvedPincodeRate) return toast.error('Enter your pincode to see the delivery charge');
     if (serviceable === false) return toast.error('Sorry, we do not deliver to this pincode yet');
-    if (codSelected && !confirmCod) {
-      setCodWarningOpen(true);
+    // COD is confirmed once, by choosing COD and tapping "Place COD Order" — no second
+    // "pay online & save" modal. (`confirmCod` kept so existing callers still compile.)
+    void confirmCod;
+    void codSelected;
+    setCodWarningOpen(false);
+
+    // Logged-out customers log in with a phone OTP first (OtpModal → same login as /login).
+    // Logged-in customers go straight to payment. `phoneVerified` = the modal just finished
+    // and this render's `isAuthenticated` hasn't caught up yet.
+    if (!phoneVerified && !isAuthenticated) {
+      setOtpMethod(method);
+      setOtpOpen(true);
       return;
     }
-    setCodWarningOpen(false);
     setSubmitting(true);
 
     // Logged-in customers keep their address book in sync; guest addresses are saved
@@ -455,6 +466,13 @@ export function useCheckout(scope: CartScope, opts?: { onNavigate?: () => void }
         modal: { ondismiss: () => setSubmitting(false) },
       });
     } catch (err) {
+      if (err instanceof ApiError && err.body.code === 'PHONE_NOT_VERIFIED') {
+        // Token missing/expired — log in again.
+        setOtpMethod(method);
+        setOtpOpen(true);
+        setSubmitting(false);
+        return;
+      }
       if (err instanceof ApiError) {
         toast.error(err.body.error);
         if (err.body.code && COUPON_ERROR_CODES.has(err.body.code)) {
@@ -466,6 +484,12 @@ export function useCheckout(scope: CartScope, opts?: { onNavigate?: () => void }
       }
       setSubmitting(false);
     }
+  }
+
+  // OtpModal finished (tick shown) → remember the number and carry on with the order.
+  function onOtpVerified() {
+    setOtpOpen(false);
+    void submit(true, otpMethod, true);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -495,5 +519,7 @@ export function useCheckout(scope: CartScope, opts?: { onNavigate?: () => void }
     handleApplyCoupon, handleRemoveCoupon, handleCopyCode,
     // submit
     submitting, rzpLoading, handleSubmit, submit, codWarningOpen, setCodWarningOpen,
+    // pre-order phone OTP
+    otpOpen, otpMethod, closeOtp: () => setOtpOpen(false), onOtpVerified,
   };
 }

@@ -28,6 +28,13 @@ export async function checkoutHandler(req: FastifyRequest, reply: FastifyReply) 
   // checkout (created on first order), so a later phone-OTP login shows these orders.
   const tokenSub = (req.user as { sub?: string } | undefined)?.sub;
   const tokenUser = tokenSub && (await userExists(tokenSub)) ? { sub: tokenSub } : undefined;
+
+  // Every order needs a logged-in customer. The Frontend gets there by phone OTP right at
+  // "Place order" (POST /auth/otp/send + /verify issue the token), but it's enforced here so
+  // a direct API call can't skip it. A stale token (user row gone) counts as logged out.
+  if (!tokenUser) {
+    return reply.code(403).send({ error: 'Please verify your mobile number with the OTP to place the order.', code: 'PHONE_NOT_VERIFIED' });
+  }
   const userId = tokenUser?.sub ?? (await findOrCreateGuestUser(parsed.data.customerPhone)).id;
 
   // Double-click / double-submit guard: only one POST /checkout per customer in flight at

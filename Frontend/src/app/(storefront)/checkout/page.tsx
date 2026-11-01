@@ -6,6 +6,7 @@ import { ShieldCheck, ChevronDown, Ticket, Copy, Check, Minus, Plus } from 'luci
 import type { CartScope } from '@/hooks/use-cart';
 import { useCheckout, normalizePhone } from '@/hooks/use-checkout';
 import { CodWarningModal } from '@/components/checkout/CodWarningModal';
+import { OtpModal } from '@/components/checkout/OtpModal';
 import { formatCurrency } from '@/lib/formatters';
 import { FREE_SHIPPING_ABOVE, MAX_COD_ORDER_TOTAL } from '@/lib/constants';
 import type { SuggestedCoupon } from '@/types/api.types';
@@ -51,6 +52,7 @@ function CheckoutPageContent() {
     suggestedCoupons, couponPanelOpen, setCouponPanelOpen, copiedCode,
     handleApplyCoupon, handleRemoveCoupon, handleCopyCode,
     submitting, rzpLoading, handleSubmit, submit, codWarningOpen, setCodWarningOpen,
+    otpOpen, otpMethod, closeOtp, onOtpVerified,
   } = useCheckout(scope);
 
   if (authLoading) {
@@ -520,6 +522,14 @@ function CheckoutPageContent() {
           }}
           onContinueCod={() => void submit(true)}
           onClose={() => setCodWarningOpen(false)}
+        />
+      )}
+      {otpOpen && (
+        <OtpModal
+          phone={form.customerPhone}
+          actionLabel={otpMethod === 'COD' ? 'Place COD Order' : 'Pay Now'}
+          onVerified={onOtpVerified}
+          onClose={closeOtp}
         />
       )}
     </div>
