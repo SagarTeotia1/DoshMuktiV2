@@ -196,6 +196,17 @@ export default function OrderDetailPage() {
           </>
         )}
       </div>
+      {order.cancelRequestedAt && ['PAID', 'PROCESSING', 'PACKED'].includes(order.status) && (
+        <div className="mx-6 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <p className="font-semibold">Customer requested cancellation · {formatDate(order.cancelRequestedAt)}</p>
+          <p className="mt-0.5 text-red-700">
+            {order.cancelRequestReason ? `Reason: ${order.cancelRequestReason}` : 'No reason given.'}
+          </p>
+          <p className="mt-1 text-xs text-red-600">
+            Order is unchanged until you set the status to CANCELLED (handles refund, stock and shipment).
+          </p>
+        </div>
+      )}
       <div className="p-6 grid lg:grid-cols-[1.5fr_1fr] gap-6">
         <div className="flex flex-col gap-6">
           <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">

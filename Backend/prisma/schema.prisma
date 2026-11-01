@@ -296,6 +296,10 @@ model Order {
   // Set (atomically, before sending) when the WhatsApp order confirmation goes out, so a
   // webhook replay or retry can never message the customer twice. Cleared again if the send fails.
   whatsappConfirmSentAt DateTime?
+  // Customer asked to cancel (from the order-confirmation / track page). Only a REQUEST — the order
+  // stays in its current status until an admin reviews it and sets CANCELLED themselves.
+  cancelRequestedAt    DateTime?
+  cancelRequestReason  String?
   items                OrderItem[]
   payment              Payment?
   shipment             Shipment?
@@ -304,6 +308,7 @@ model Order {
   updatedAt            DateTime         @updatedAt
 
   @@index([status, createdAt])
+  @@index([cancelRequestedAt])
   @@index([customerPhone])
   @@index([orderNumber])
   @@index([reservedUntil])

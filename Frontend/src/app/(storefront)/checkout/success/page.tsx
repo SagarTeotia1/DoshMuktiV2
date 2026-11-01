@@ -3,6 +3,7 @@ import { AnimatedTick } from '@/components/ui/AnimatedTick';
 import { api, invoiceUrl } from '@/lib/api-client';
 import { formatDeliveryEstimate } from '@/lib/formatters';
 import { PurchaseTracker } from '@/components/storefront/PurchaseTracker';
+import { CancelOrderRequest } from '@/components/storefront/CancelOrderRequest';
 import type { OrderTrackingResponse } from '@/types/api.types';
 
 function sleep(ms: number) {
@@ -79,9 +80,16 @@ export default async function CheckoutSuccessPage({
           Estimated delivery: <span className="font-bold">{deliveryEstimate}</span>
         </p>
       )}
-      <p className="font-body text-sm text-[#8A7A63] mb-8">
+      <p className="font-body text-sm text-[#8A7A63] mb-4">
         Thank you for your order. We&apos;ve sent a confirmation to your email/WhatsApp.
       </p>
+      {order && (
+        <CancelOrderRequest
+          token={order.publicToken}
+          status={order.status}
+          alreadyRequested={!!order.cancelRequestedAt}
+        />
+      )}
 
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
         {order && (

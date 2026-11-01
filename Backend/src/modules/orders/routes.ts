@@ -3,6 +3,7 @@ import { verifyAdmin, verifyCustomer } from '../../shared/middleware/auth.middle
 import {
   trackOrderHandler,
   resumeOrderHandler,
+  cancelRequestHandler,
   invoiceHandler,
   listOrdersByPhoneHandler,
   lookupOrderHandler,
@@ -35,6 +36,7 @@ export async function orderRoutes(app: FastifyInstance) {
   app.get('/orders/:token', { config: publicOrderRateLimit }, trackOrderHandler); // public — track by token
   app.get('/orders/:token/invoice', { config: publicOrderRateLimit }, invoiceHandler); // public — PDF invoice, gated on payment.status === 'CAPTURED'
   app.post('/orders/:token/resume', { config: publicOrderRateLimit }, resumeOrderHandler); // public — re-adds a PENDING_PAYMENT order's items into the caller's cart so checkout can be retried
+  app.post('/orders/:token/cancel-request', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, cancelRequestHandler); // public — customer asks to cancel; admin reviews (status untouched)
   app.get('/admin/orders/by-phone', { preHandler: verifyAdmin }, listOrdersByPhoneHandler); // support lookup — was public and returned every order for any phone
   app.get('/admin/orders', { preHandler: verifyAdmin }, listOrdersHandler);
   app.get('/admin/orders/gst-report', { preHandler: verifyAdmin }, gstReportHandler);

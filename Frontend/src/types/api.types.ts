@@ -275,6 +275,8 @@ export interface OrderTrackingResponse {
   codAmountDue: number | string;
   // COD handling charge, already inside `total`. 0 for prepaid and older orders.
   codFee: number | string;
+  // Set once the customer has asked to cancel; the order itself is unchanged until an admin acts.
+  cancelRequestedAt?: string | null;
   // Inclusive GST breakup of the items' line totals — same formula as the invoice PDF.
   // gstAmount is 0 when no item on the order carries a gstRate.
   taxableValue: number;

@@ -13,6 +13,10 @@ export const publicTokenParamSchema = z.object({
   token: z.string().regex(/^[a-f0-9]{16}$/),
 });
 
+export const cancelRequestBodySchema = z.object({
+  reason: z.string().trim().max(300).optional(),
+});
+
 // "Find my order" form: orderNumber alone is guessable, so it must be paired with the phone on the order.
 export const orderLookupSchema = z.object({
   orderNumber: z.string().regex(/^DOSH-\d{8}-\d{4}$/),
@@ -30,6 +34,8 @@ export const listOrdersQuerySchema = z.object({
   // Free-text admin search: order #, customer name/phone/email, waybill.
   q: z.string().trim().max(100).optional(),
   paymentMethod: z.enum(['PREPAID', 'COD']).optional(),
+  // 'true' = only orders where the customer asked to cancel and an admin hasn't acted yet.
+  cancelRequested: z.enum(['true']).optional(),
   page: z.coerce.number().int().min(1).max(999).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });

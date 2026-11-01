@@ -333,7 +333,7 @@ export function useCheckout(scope: CartScope, opts?: { onNavigate?: () => void }
   // (the buyer can switch back to prepaid and re-apply) instead of failing at checkout.
   useEffect(() => {
     if (paymentMethod === 'COD' && appliedCoupon?.prepaidOnly) {
-      setCouponError(`${appliedCoupon.code} works on prepaid orders only, so it was removed. Pay online to use it.`);
+      setCouponError(`${appliedCoupon.code} was removed — it is not valid with COD.`);
       setAppliedCoupon(null);
     }
   }, [paymentMethod, appliedCoupon]);

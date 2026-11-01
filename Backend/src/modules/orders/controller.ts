@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { syncOpenShipments, SyncBusyError, MANUAL_SYNC_LIMIT } from '../../jobs/tracking-sync';
 import {
   publicTokenParamSchema,
+  cancelRequestBodySchema,
   orderLookupSchema,
   phoneQuerySchema,
   listOrdersQuerySchema,
@@ -40,6 +41,8 @@ import {
   getShipmentRateQuotes,
   switchDelhiveryBookingsToEkart,
   resumeOrder,
+  requestOrderCancellation,
+  CancelRequestNotAllowedError,
   OrderNotResumableError,
   NoWaybillError,
   type GstReportOrderRow,
@@ -74,6 +77,22 @@ export async function resumeOrderHandler(req: FastifyRequest, reply: FastifyRepl
     return reply.send(result);
   } catch (err) {
     if (err instanceof OrderNotResumableError) return reply.code(409).send({ error: err.message });
+    if (err instanceof Error && err.message === 'Order not found') return reply.code(404).send({ error: err.message });
+    throw err;
+  }
+}
+
+export async function cancelRequestHandler(req: FastifyRequest, reply: FastifyReply) {
+  const params = publicTokenParamSchema.safeParse(req.params);
+  if (!params.success) return reply.code(404).send({ error: 'Order not found' });
+  const body = cancelRequestBodySchema.safeParse(req.body ?? {});
+  if (!body.success) return reply.code(400).send({ error: 'Reason must be 300 characters or fewer' });
+
+  try {
+    const result = await requestOrderCancellation(params.data.token, body.data.reason || undefined);
+    return reply.send({ ok: true, cancelRequestedAt: result.cancelRequestedAt });
+  } catch (err) {
+    if (err instanceof CancelRequestNotAllowedError) return reply.code(409).send({ error: err.message });
     if (err instanceof Error && err.message === 'Order not found') return reply.code(404).send({ error: err.message });
     throw err;
   }

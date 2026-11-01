@@ -77,7 +77,23 @@ const columns: ColumnDef<Order, unknown>[] = [
       return providerName(s.carrier, s.ekartAccount);
     },
   },
-  { id: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
+  {
+    id: 'status',
+    header: 'Status',
+    cell: ({ row }) => (
+      <div className="flex flex-col items-start gap-1">
+        <StatusBadge status={row.original.status} />
+        {row.original.cancelRequestedAt && ['PAID', 'PROCESSING', 'PACKED'].includes(row.original.status) && (
+          <span
+            className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700"
+            title={row.original.cancelRequestReason ?? 'Customer requested cancellation'}
+          >
+            Cancel requested
+          </span>
+        )}
+      </div>
+    ),
+  },
   {
     id: 'risk',
     header: 'Risk',
@@ -153,6 +169,7 @@ function OrdersPageContent() {
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
   const q = searchParams.get('q') ?? '';
   const paymentMethod = (searchParams.get('pm') ?? '') as '' | 'COD' | 'PREPAID';
+  const cancelRequested = searchParams.get('cr') === '1';
 
   const [search, setSearch] = useState(q);
 
@@ -197,6 +214,7 @@ function OrdersPageContent() {
     20,
     q || undefined,
     paymentMethod || undefined,
+    cancelRequested,
   );
 
   // Snapshot of this page's order ids so the detail page can step prev/next.
@@ -238,6 +256,14 @@ function OrdersPageContent() {
                 {label}
               </button>
             ))}
+            <button
+              onClick={() => update({ cr: cancelRequested ? null : '1', page: null })}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                cancelRequested ? 'bg-red-600 text-white' : 'bg-white border border-red-200 text-red-700 hover:bg-red-50'
+              }`}
+            >
+              Cancel requests
+            </button>
           </div>
         </div>
 

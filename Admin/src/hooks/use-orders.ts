@@ -12,9 +12,11 @@ export function useOrders(
   limit = 20,
   q?: string,
   paymentMethod?: 'COD' | 'PREPAID',
+  cancelRequested?: boolean,
 ) {
   const params = new URLSearchParams();
   if (status) params.set('status', status);
+  if (cancelRequested) params.set('cancelRequested', 'true');
   if (q) params.set('q', q);
   if (paymentMethod) params.set('paymentMethod', paymentMethod);
   if (dateRange?.from) params.set('from', dateRange.from);
@@ -24,7 +26,7 @@ export function useOrders(
   const qs = params.toString();
 
   return useQuery({
-    queryKey: ['admin-orders', status, dateRange?.from, dateRange?.to, page, limit, q, paymentMethod],
+    queryKey: ['admin-orders', status, dateRange?.from, dateRange?.to, page, limit, q, paymentMethod, cancelRequested],
     queryFn: () => api.get<PaginatedOrders>(`/api/admin/orders?${qs}`),
     placeholderData: (prev) => prev,
   });

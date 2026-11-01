@@ -599,6 +599,58 @@ export async function getOrderByPublicToken(publicToken: string) {
   });
 }
 
+// A customer can only ask to cancel while nothing has left the warehouse. Once SHIPPED the
+// parcel is with the courier, so cancelling is a return/RTO matter for support instead.
+const CANCEL_REQUESTABLE: OrderStatus[] = ['PAID', 'PROCESSING', 'PACKED'];
+
+export class CancelRequestNotAllowedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CancelRequestNotAllowedError';
+  }
+}
+
+// Records the request only — never cancels, refunds or restocks. An admin reviews it and sets
+// CANCELLED through the normal status override (which owns refund/stock/shipment cleanup).
+// Idempotent: a repeat request keeps the original timestamp and reason.
+export async function requestOrderCancellation(
+  publicToken: string,
+  reason: string | undefined
+): Promise<{ cancelRequestedAt: Date }> {
+  return db.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { publicToken },
+      select: { id: true, status: true, cancelRequestedAt: true },
+    });
+    if (!order) throw new Error('Order not found');
+    if (order.cancelRequestedAt) return { cancelRequestedAt: order.cancelRequestedAt };
+    if (!CANCEL_REQUESTABLE.includes(order.status)) {
+      throw new CancelRequestNotAllowedError(
+        order.status === 'CANCELLED'
+          ? 'This order is already cancelled.'
+          : 'This order can no longer be cancelled online. Please contact support.'
+      );
+    }
+    const now = new Date();
+    // Guarded write: loses cleanly if status moved (e.g. SHIPPED) between the read and here.
+    const { count } = await tx.order.updateMany({
+      where: { id: order.id, status: { in: CANCEL_REQUESTABLE }, cancelRequestedAt: null },
+      data: { cancelRequestedAt: now, cancelRequestReason: reason ?? null },
+    });
+    if (count === 0) throw new CancelRequestNotAllowedError('This order can no longer be cancelled online. Please contact support.');
+    await tx.orderStatusLog.create({
+      data: {
+        orderId: order.id,
+        from: order.status,
+        to: order.status,
+        note: `Customer requested cancellation${reason ? `: ${reason}` : ''}`,
+        createdBy: 'customer',
+      },
+    });
+    return { cancelRequestedAt: now };
+  });
+}
+
 // "Find my order": the orderNumber alone is enumerable, so it only yields the slug when paired with
 // the phone number on the order. Returns null for both "no such order" and "wrong phone" so the
 // caller can't tell which one failed.
@@ -648,11 +700,17 @@ export async function listOrdersForAdmin(query: {
   to?: string;
   q?: string;
   paymentMethod?: 'PREPAID' | 'COD';
+  cancelRequested?: 'true';
   page: number;
   limit: number;
 }) {
   const where: Prisma.OrderWhereInput = {};
   if (query.status) where.status = query.status;
+  if (query.cancelRequested) {
+    where.cancelRequestedAt = { not: null };
+    // Once cancelled/refunded the request is resolved — don't keep nagging the admin.
+    if (!query.status) where.status = { in: CANCEL_REQUESTABLE };
+  }
   if (query.paymentMethod) where.paymentMethod = query.paymentMethod;
   const q = query.q?.trim();
   if (q) {

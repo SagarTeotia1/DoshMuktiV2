@@ -318,6 +318,9 @@ export interface Order {
   codFee: number;
   /** When the WhatsApp order-confirmation went out (null = not sent / failed). */
   whatsappConfirmSentAt: string | null;
+  /** Customer asked to cancel (status unchanged until an admin acts). */
+  cancelRequestedAt: string | null;
+  cancelRequestReason: string | null;
   couponId: string | null;
   coupon: { id: string; code: string; type: CouponType; value: number } | null;
   // Grams — admin override for this order's real packed parcel weight. Null means "use

@@ -354,6 +354,23 @@
   40%, 80% { transform: translateX(6px); }
 }
 
+/* Coupon-applied party popper: emoji pops, confetti flies out, all gone by ~1.8s. */
+@keyframes popperPop {
+  0%   { transform: scale(0.3) rotate(-20deg); opacity: 0; }
+  35%  { transform: scale(1.25) rotate(8deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 0; }
+}
+/* Full-screen burst: shoot out to (cx, cy), then drift down to (cx*1.15, fy) while fading. */
+@keyframes confettiBurst {
+  0%   { transform: translate(0, 0) rotate(0); opacity: 1; }
+  45%  { transform: translate(var(--cx), var(--cy)) rotate(calc(var(--cr) * 0.5)); opacity: 1; }
+  100% { transform: translate(calc(var(--cx) * 1.15), var(--fy)) rotate(var(--cr)); opacity: 0; }
+}
+@keyframes confettiFly {
+  0%   { transform: translate(0, 0) rotate(0); opacity: 1; }
+  100% { transform: translate(var(--cx), var(--cy)) rotate(var(--cr)); opacity: 0; }
+}
+
 /* ─── Animation Utility Classes ─────────────────────────────────────────────── */
 @layer utilities {
   .animate-tick-pop    { animation: tickPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }

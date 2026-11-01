@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import { createPortal } from 'react-dom';
 import { X, Minus, Plus, ChevronDown, Ticket, Copy, Check, Sparkles, ArrowRight } from 'lucide-react';
 import { useCheckout, normalizePhone } from '@/hooks/use-checkout';
 import type { CartScope } from '@/hooks/use-cart';
@@ -21,17 +22,74 @@ function couponDescription(c: SuggestedCoupon): string {
   return `${value} off${cap}${minOrder}`;
 }
 
-// Which payment types a coupon works with — shown on every coupon so buyers aren't surprised
-// when a prepaid-only code is refused on COD (and so it nudges them toward paying online).
-function PaymentScopeTag({ prepaidOnly }: { prepaidOnly: boolean }) {
-  return prepaidOnly ? (
-    <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#9C5A26]/12 px-2 py-0.5 font-body text-[10px] font-bold uppercase tracking-wide text-[#6B3D19]">
-      <Sparkles className="h-3 w-3" /> Prepaid orders only
-    </span>
-  ) : (
-    <span className="mt-2 inline-flex items-center rounded-full bg-[#2B1B0C]/8 px-2 py-0.5 font-body text-[10px] font-bold uppercase tracking-wide text-[#6B5539]">
-      Works on COD &amp; Prepaid
-    </span>
+const CONFETTI_COLORS = ['#9C5A26', '#1E7B4A', '#E6B84C', '#B23A2E', '#2B6CB0', '#D6498B', '#FFFFFF'];
+
+interface ConfettiPiece {
+  fromLeft: boolean;
+  cx: number; // vw travelled sideways
+  cy: number; // vh travelled up at the peak (negative)
+  fall: number; // vh it has sunk back by the end
+  rot: number;
+  delay: number;
+  size: number;
+  color: string;
+  round: boolean;
+}
+
+function makeConfetti(count: number): ConfettiPiece[] {
+  return Array.from({ length: count }, (_, i) => {
+    const fromLeft = i % 2 === 0;
+    const dir = fromLeft ? 1 : -1;
+    return {
+      fromLeft,
+      cx: dir * (15 + Math.random() * 85),
+      cy: -(35 + Math.random() * 60),
+      fall: 40 + Math.random() * 60,
+      rot: (Math.random() - 0.5) * 1080,
+      delay: Math.random() * 0.25,
+      size: 6 + Math.random() * 8,
+      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length]!,
+      round: Math.random() > 0.65,
+    };
+  });
+}
+
+// Full-screen party-popper burst when a coupon applies: two cannons (bottom corners) blast
+// confetti across the whole screen. Portaled to <body> so the drawer's transform can't trap
+// it; pointer-events none so it never blocks taps; the parent unmounts it after ~2.8s.
+function CouponPopper() {
+  const [pieces] = useState(() => makeConfetti(90));
+  if (typeof document === 'undefined') return null;
+  return createPortal(
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-[300] overflow-hidden">
+      <span className="absolute bottom-3 left-3 text-5xl" style={{ animation: 'popperPop 1.4s ease-out both' }}>
+        🎉
+      </span>
+      <span className="absolute bottom-3 right-3 text-5xl" style={{ animation: 'popperPop 1.4s ease-out both' }}>
+        🎉
+      </span>
+      {pieces.map((p, i) => (
+        <span
+          key={i}
+          className="absolute bottom-6"
+          style={
+            {
+              [p.fromLeft ? 'left' : 'right']: '1.25rem',
+              width: p.size,
+              height: p.round ? p.size : p.size * 0.5,
+              borderRadius: p.round ? '9999px' : '1px',
+              background: p.color,
+              '--cx': `${p.cx}vw`,
+              '--cy': `${p.cy}vh`,
+              '--fy': `${p.cy + p.fall}vh`,
+              '--cr': `${p.rot}deg`,
+              animation: `confettiBurst 2.3s cubic-bezier(0.1, 0.7, 0.3, 1) ${p.delay}s both`,
+            } as React.CSSProperties
+          }
+        />
+      ))}
+    </div>,
+    document.body,
   );
 }
 
@@ -53,6 +111,19 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
   const formRef = useRef<HTMLFormElement>(null);
   const [billOpen, setBillOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
+  const [popperKey, setPopperKey] = useState<string | null>(null);
+  const appliedCode = c.appliedCoupon?.code ?? null;
+
+  // Celebrate each successful coupon apply for ~1.8s, then hide the popper.
+  useEffect(() => {
+    if (!appliedCode) {
+      setPopperKey(null);
+      return;
+    }
+    setPopperKey(`${appliedCode}-${Date.now()}`);
+    const t = setTimeout(() => setPopperKey(null), 2800);
+    return () => clearTimeout(t);
+  }, [appliedCode]);
 
   useEffect(() => {
     if (!open) return;
@@ -97,7 +168,15 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
   // Tapping the small COD chip only switches the footer into COD mode (bigger COD action,
   // online-savings strip). The "pay online & save" warning modal appears when they confirm.
   function chooseCod() {
+    // Details incomplete → don't switch to COD at all; focus the missing field instead.
+    if (!validOrFocus()) return;
     c.setPaymentMethod('COD');
+    // Logged-out buyer: tapping COD starts the OTP login straight away (no second tap on
+    // "Place COD Order"); the order is placed as soon as the OTP is verified. Skipped when
+    // a prepaid-only coupon is applied — it gets dropped on COD, so let them see that first.
+    if (!c.isAuthenticated && !c.appliedCoupon?.prepaidOnly) {
+      void c.submit(true, 'COD');
+    }
   }
 
   function placeCod() {
@@ -231,13 +310,11 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
                 Apply coupon
               </SectionLabel>
               {c.appliedCoupon ? (
-                <div className="flex items-center justify-between rounded-xl border border-[#1E7B4A]/40 bg-[#1E7B4A]/10 px-3 py-2.5">
+                <div className="relative flex items-center justify-between rounded-xl border border-[#1E7B4A]/40 bg-[#1E7B4A]/10 px-3 py-2.5">
+                  {popperKey && <CouponPopper key={popperKey} />}
                   <span className="font-body text-sm text-[#2B1B0C]">
                     <span className="font-bold">{c.appliedCoupon.code}</span> applied · you save{' '}
                     {formatCurrency(c.couponDiscount)}
-                    {c.appliedCoupon.prepaidOnly && (
-                      <span className="mt-0.5 block text-[11px] font-semibold text-[#6B3D19]">Prepaid orders only</span>
-                    )}
                   </span>
                   <button
                     type="button"
@@ -301,7 +378,7 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
                             </button>
                           </div>
                           <p className="mt-1.5 font-body text-xs text-[#6B5539] leading-snug">{couponDescription(s)}</p>
-                          <PaymentScopeTag prepaidOnly={s.paymentScope === 'PREPAID_ONLY'} />
+                          <p className="mt-1 font-body text-[10px] text-[#8A7A63]">*Terms &amp; conditions apply</p>
                         </div>
                       ))}
                     </div>
