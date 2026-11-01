@@ -522,7 +522,7 @@ export function CheckoutDrawer({ open, onClose, scope }: { open: boolean; onClos
                   type="button"
                   onClick={placeCod}
                   disabled={busy}
-                  className="flex h-12 min-w-0 flex-1 items-center justify-center rounded-xl border-2 border-[#2B1B0C] bg-white px-3 font-body text-[15px] font-bold leading-none text-[#2B1B0C] transition-colors hover:bg-[#F6E4C2]/60 active:scale-[0.98] disabled:opacity-50"
+                  className="flex h-12 min-w-0 flex-1 items-center justify-center rounded-xl bg-[#2B1B0C] px-3 font-body text-[15px] font-bold leading-none text-white shadow-[0_4px_14px_rgba(43,27,12,0.35)] transition-colors hover:bg-[#9C5A26] active:scale-[0.98] disabled:opacity-50"
                 >
                   {c.submitting ? 'Processing...' : <span className="whitespace-nowrap">Place COD Order</span>}
                 </button>

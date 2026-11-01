@@ -70,6 +70,21 @@ export function OtpModal({ phone, actionLabel, onVerified, onClose }: Props) {
     if (stage === 'entry') inputRef.current?.focus();
   }, [stage]);
 
+  // Lift the sheet above the on-screen keyboard (fixed elements don't resize with it).
+  const [kbOffset, setKbOffset] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setKbOffset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, []);
+
   useEffect(() => {
     if (stage !== 'entry' || secondsLeft <= 0) return;
     const t = window.setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
@@ -109,6 +124,7 @@ export function OtpModal({ phone, actionLabel, onVerified, onClose }: Props) {
       role="dialog"
       aria-modal="true"
       aria-label="Verify your mobile number"
+      style={{ paddingBottom: kbOffset + 12 }}
       onClick={stage === 'verified' ? undefined : onClose}
     >
       <div
