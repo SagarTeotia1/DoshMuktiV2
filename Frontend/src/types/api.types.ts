@@ -189,7 +189,7 @@ export interface CartResponse {
   // Sum of (compareAtPrice - price) × quantity across every line with an MRP above its
   // actual price — server-computed so cart and checkout never show different numbers.
   savings: number;
-  // COD handling charge if the customer picks COD (flat COD_FEE).
+  // COD handling charge if the customer picks COD (admin-configurable, tiered by subtotal).
   codFee: number;
   codAmountDue: number;
   updatedAt: string;

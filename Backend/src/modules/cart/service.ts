@@ -6,6 +6,7 @@ import { resolveAutoAppliedRewardsForCheckout, isActiveFreeGiftTarget } from "..
 import type { CheckoutLineItem } from "../offers/service";
 import { calculateShippingFee } from "../checkout/service";
 import { PACKAGING_WEIGHT_GRAMS } from "../../shared/constants/purposes";
+import { getCodFeeConfig } from "../settings/service";
 import { computeCodFee, computePaymentBreakdown } from "../../shared/shipping/carrier";
 import type { Cart, CartItem } from "./schema";
 
@@ -240,8 +241,8 @@ export interface CartPricing {
   codAmountDue: number;
 }
 
-function codSplit(total: number, subtotal: number): { codFee: number; codAmountDue: number } {
-  const codFee = computeCodFee('COD', subtotal);
+async function codSplit(total: number, subtotal: number): Promise<{ codFee: number; codAmountDue: number }> {
+  const codFee = computeCodFee('COD', subtotal, await getCodFeeConfig());
   return { codFee, codAmountDue: computePaymentBreakdown('COD', total + codFee).codAmountDue };
 }
 
@@ -304,7 +305,7 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
       taxableValue: 0,
       gstAmount: 0,
       savings: 0,
-      ...codSplit(subtotal + shippingFee, subtotal),
+      ...(await codSplit(subtotal + shippingFee, subtotal)),
     };
   }
 
@@ -385,6 +386,6 @@ export async function computeCartPricing(cart: Cart): Promise<CartPricing> {
     taxableValue,
     gstAmount,
     savings: computeCartSavings(cart),
-    ...codSplit(Math.max(subtotal + shippingFee - totalDiscount, 0), subtotal),
+    ...(await codSplit(Math.max(subtotal + shippingFee - totalDiscount, 0), subtotal)),
   };
 }

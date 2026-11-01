@@ -688,3 +688,13 @@ enum ChatLeadStatus {
   CONVERTED
   CLOSED
 }
+
+// ─── Store Settings ─────────────────────────────────────────────────────────
+// Admin-editable key/value config (e.g. COD handling charge tiers). One row per key;
+// `value` is validated by Zod in modules/settings/service.ts, never trusted raw.
+
+model StoreSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}

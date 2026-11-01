@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
 
 export interface WarehouseInfo {
@@ -33,5 +33,26 @@ export function useCalculateRate() {
       api.get<{ amount: number }>(
         `/api/admin/shipping/rate-calc?destPincode=${input.destPincode}&weightGrams=${input.weightGrams}&paymentMode=${encodeURIComponent(input.paymentMode)}`
       ),
+  });
+}
+
+export interface CodFeeConfig {
+  threshold: number;
+  feeBelow: number;
+  feeAbove: number;
+}
+
+export function useCodFeeConfig() {
+  return useQuery({
+    queryKey: ['admin-cod-fee'],
+    queryFn: () => api.get<CodFeeConfig>('/api/admin/settings/cod-fee'),
+  });
+}
+
+export function useUpdateCodFeeConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CodFeeConfig) => api.put<CodFeeConfig>('/api/admin/settings/cod-fee', input),
+    onSuccess: (data) => qc.setQueryData(['admin-cod-fee'], data),
   });
 }

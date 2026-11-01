@@ -277,19 +277,20 @@ export function useCheckout(scope: CartScope, opts?: { onNavigate?: () => void }
   const preDiscountTotal = subtotal + shippingFee - autoAppliedDiscount;
   const couponDiscount = appliedCoupon?.discountAmount ?? 0;
   const isCod = paymentMethod === 'COD';
-  // Flat COD charge on every COD order — Backend's computeCodFee is authoritative.
-  const codFee = isCod ? COD_FEE : 0;
+  // Tiered COD charge (admin-set, arrives on the cart) — Backend's computeCodFee is authoritative.
+  const cartCodFee = cart?.codFee ?? COD_FEE;
+  const codFee = isCod ? cartCodFee : 0;
   const total = Math.max(preDiscountTotal + codFee - couponDiscount, 0);
   const totalWithFee = (fee: number) => Math.max(subtotal + fee - autoAppliedDiscount - couponDiscount, 0);
   const prepaidOptionTotal = totalWithFee(prepaidShipping.data?.fee ?? shippingFee);
-  const codOptionFee = COD_FEE;
+  const codOptionFee = cartCodFee;
   const codOptionTotal = totalWithFee(codShipping.data?.fee ?? shippingFee) + codOptionFee;
   const codUnavailable = codOptionTotal > MAX_COD_ORDER_TOTAL;
   // What the customer keeps by paying online instead of COD (COD charge + any shipping gap).
   const prepaidSavings =
     optionResolved(prepaidShipping) && optionResolved(codShipping)
       ? Math.max(codOptionTotal - prepaidOptionTotal, 0)
-      : COD_FEE;
+      : cartCodFee;
   useEffect(() => {
     if (codUnavailable && paymentMethod === 'COD') setPaymentMethod('PREPAID');
   }, [codUnavailable, paymentMethod]);

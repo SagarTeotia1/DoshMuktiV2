@@ -1,4 +1,4 @@
-import { COD_FEE } from '../constants/purposes';
+import { COD_FEE, FREE_SHIPPING_ABOVE } from '../constants/purposes';
 import type { EkartAccount } from '../integrations/ekart/accounts';
 
 export type PaymentMethodId = 'PREPAID' | 'COD';
@@ -11,10 +11,20 @@ export function chooseEkartAccount(paymentMethod: PaymentMethodId): EkartAccount
   return paymentMethod === 'COD' ? 2 : 1;
 }
 
-// COD handling charge: flat COD_FEE on every COD order regardless of subtotal; 0 for prepaid.
-// `_subtotal` is kept so call sites need no change should a threshold ever return.
-export function computeCodFee(paymentMethod: PaymentMethodId, _subtotal: number): number {
-  return paymentMethod === 'COD' ? COD_FEE : 0;
+export interface CodFeeConfig {
+  /** Subtotal strictly above this pays `feeAbove`; at or below pays `feeBelow` (same rule as free shipping). */
+  threshold: number;
+  feeBelow: number;
+  feeAbove: number;
+}
+
+export const DEFAULT_COD_FEE_CONFIG: CodFeeConfig = { threshold: FREE_SHIPPING_ABOVE, feeBelow: COD_FEE, feeAbove: COD_FEE };
+
+// COD handling charge, tiered by subtotal (admin-configurable); 0 for prepaid. Pure — callers
+// load the config via modules/settings getCodFeeConfig().
+export function computeCodFee(paymentMethod: PaymentMethodId, subtotal: number, config: CodFeeConfig = DEFAULT_COD_FEE_CONFIG): number {
+  if (paymentMethod !== 'COD') return 0;
+  return subtotal > config.threshold ? config.feeAbove : config.feeBelow;
 }
 
 export interface PaymentBreakdown {

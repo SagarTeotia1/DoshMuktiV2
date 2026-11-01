@@ -154,8 +154,11 @@ describe('pure routing helpers', () => {
   });
   test('COD fee + payment breakdown unchanged', () => {
     assert.equal(carrier.computeCodFee('COD', 500), 50);
-    assert.equal(carrier.computeCodFee('COD', 299), 0);
-    assert.equal(carrier.computeCodFee('COD', 100), 0);
+    const tiered = { threshold: 299, feeBelow: 30, feeAbove: 70 };
+    assert.equal(carrier.computeCodFee('COD', 299, tiered), 30);
+    assert.equal(carrier.computeCodFee('COD', 300, tiered), 70);
+    assert.equal(carrier.computeCodFee('COD', 100, tiered), 30);
+    assert.equal(carrier.computeCodFee('COD', 100), 50);
     assert.equal(carrier.computeCodFee('PREPAID', 500), 0);
     assert.deepEqual(carrier.computePaymentBreakdown('COD', 700), { payNow: 0, codAmountDue: 700 });
     assert.deepEqual(carrier.computePaymentBreakdown('PREPAID', 700), { payNow: 700, codAmountDue: 0 });

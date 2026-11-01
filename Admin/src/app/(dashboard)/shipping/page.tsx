@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Topbar } from '@/components/layout/Topbar';
-import { useWarehouseInfo, useCalculateRate } from '@/hooks/use-shipping';
+import { useWarehouseInfo, useCalculateRate, useCodFeeConfig, useUpdateCodFeeConfig } from '@/hooks/use-shipping';
 import { ApiError } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/utils';
 
@@ -112,6 +112,59 @@ function RateCalculatorCard() {
   );
 }
 
+function CodChargesCard() {
+  const { data, isLoading } = useCodFeeConfig();
+  const update = useUpdateCodFeeConfig();
+  const [form, setForm] = useState<{ threshold: string; feeBelow: string; feeAbove: string } | null>(null);
+  const values = form ?? (data ? { threshold: String(data.threshold), feeBelow: String(data.feeBelow), feeAbove: String(data.feeAbove) } : null);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!values) return;
+    update.mutate(
+      { threshold: Number(values.threshold), feeBelow: Number(values.feeBelow), feeAbove: Number(values.feeAbove) },
+      { onSuccess: () => { setForm(null); toast.success('COD charges updated'); }, onError: (err) => toast.error(errMsg(err, 'Could not update COD charges')) }
+    );
+  }
+
+  const set = (key: 'threshold' | 'feeBelow' | 'feeAbove') => (e: React.ChangeEvent<HTMLInputElement>) =>
+    values && setForm({ ...values, [key]: e.target.value.replace(/\D/g, '') });
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg shadow-card p-5">
+      <h2 className="font-heading font-bold text-sm text-slate-900 mb-1">COD Charges</h2>
+      <p className="text-xs text-slate-400 mb-4">
+        Handling charge added to Cash on Delivery orders, based on cart subtotal. Applies to new orders immediately (within ~30s). Prepaid orders never pay it.
+      </p>
+      {isLoading || !values ? (
+        <p className="text-sm text-slate-400">Loading...</p>
+      ) : (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <label className="text-xs font-semibold text-slate-600 flex flex-col gap-1">
+            Threshold (₹)
+            <input required inputMode="numeric" value={values.threshold} onChange={set('threshold')} className={inputClass} />
+          </label>
+          <label className="text-xs font-semibold text-slate-600 flex flex-col gap-1">
+            COD charge for subtotal up to ₹{values.threshold || 0} (₹)
+            <input required inputMode="numeric" value={values.feeBelow} onChange={set('feeBelow')} className={inputClass} />
+          </label>
+          <label className="text-xs font-semibold text-slate-600 flex flex-col gap-1">
+            COD charge for subtotal above ₹{values.threshold || 0} (₹)
+            <input required inputMode="numeric" value={values.feeAbove} onChange={set('feeAbove')} className={inputClass} />
+          </label>
+          <button
+            type="submit"
+            disabled={update.isPending || !form}
+            className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-slate-800 hover:bg-slate-900 disabled:opacity-40 transition-colors"
+          >
+            {update.isPending ? 'Saving...' : 'Save'}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 export default function ShippingPage() {
   return (
     <>
@@ -119,6 +172,7 @@ export default function ShippingPage() {
       <div className="p-6 grid md:grid-cols-2 gap-6 items-start">
         <WarehouseCard />
         <RateCalculatorCard />
+        <CodChargesCard />
       </div>
     </>
   );

@@ -27,6 +27,7 @@ import { bannersRoutes } from './modules/banners/routes';
 import { categoriesRoutes } from './modules/categories/routes';
 import { homepageSectionsRoutes } from './modules/homepage-sections/routes';
 import { shippingRoutes } from './modules/shipping/routes';
+import { settingsRoutes } from './modules/settings/routes';
 import { pickupRequestsRoutes } from './modules/pickup-requests/routes';
 import { addressRoutes } from './modules/addresses/routes';
 import { catalogRoutes } from './modules/catalog/routes';
@@ -88,6 +89,7 @@ export async function buildApp() {
   await app.register(categoriesRoutes, { prefix: '/api' });
   await app.register(homepageSectionsRoutes, { prefix: '/api' });
   await app.register(shippingRoutes, { prefix: '/api' });
+  await app.register(settingsRoutes, { prefix: '/api' });
   await app.register(pickupRequestsRoutes, { prefix: '/api' });
   await app.register(addressRoutes, { prefix: '/api' });
   await app.register(catalogRoutes, { prefix: '/api' });

@@ -22,6 +22,7 @@ import {
   reserveCouponUsageTx,
   CouponExhaustedError,
 } from "../coupons/service";
+import { getCodFeeConfig } from "../settings/service";
 import { computeCodFee, computePaymentBreakdown, type PaymentMethodId } from "../../shared/shipping/carrier";
 import { onOrderConfirmed } from "../webhooks/service";
 import type { CheckoutInput } from "./schema";
@@ -277,7 +278,7 @@ export async function initiateCheckout(input: CheckoutInput, userId: string) {
   // confirmed (and its stock deducted for good) the moment it's placed.
   const reservedUntil = isCod ? null : new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
-  const codFee = computeCodFee(paymentMethod, subtotal);
+  const codFee = computeCodFee(paymentMethod, subtotal, await getCodFeeConfig());
   const orderTotal = subtotal + shippingFee + codFee - totalDiscount;
   if (orderTotal < MIN_ONLINE_ORDER_TOTAL) throw new InvalidOrderTotalError(orderTotal);
 
