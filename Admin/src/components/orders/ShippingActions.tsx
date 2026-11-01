@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { FileText, Truck, AlertTriangle, Receipt } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { useGenerateLabel, useBookShipment, useRebookShipment, useNdrAction, useUpdateEwaybill, useSetRiskFlag } from '@/hooks/use-orders';
+import { useGenerateLabel, useBookShipment, useRebookShipment, useNdrAction, useUpdateEwaybill, useSetRiskFlag, useShipmentRates, type ProviderRateQuote } from '@/hooks/use-orders';
 import { PROVIDER_OPTIONS, providerName, providerValue, type PickableProvider, type ShipmentProvider } from '@/lib/constants';
 import { ApiError } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
@@ -13,6 +13,26 @@ import type { Order } from '@/types/api.types';
 
 const inputClass =
   'bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#9C5A26] focus:outline-none w-full';
+
+function providerLabel(value: PickableProvider, label: string, quotes: ProviderRateQuote[] | undefined): string {
+  const q = quotes?.find((x) => x.provider === value);
+  if (!q) return label;
+  if (q.fee === null) return `${label} - rate unavailable`;
+  return `${label} - ₹${q.fee}${q.cheapest && quotes && quotes.filter((x) => x.fee !== null).length > 1 ? ' (cheapest)' : ''}`;
+}
+
+// "Cheapest: Delhivery ₹66 (Ekart 1 - Prepaid ₹77) - saves ₹11" or null when there is nothing to compare.
+function suggestion(quotes: ProviderRateQuote[] | undefined, excludeCurrent?: PickableProvider) {
+  const priced = (quotes ?? []).filter((q): q is ProviderRateQuote & { fee: number } => q.fee !== null);
+  if (priced.length < 2) return null;
+  const best = priced.reduce((a, b) => (b.fee < a.fee ? b : a));
+  const others = priced.filter((q) => q.provider !== best.provider);
+  if (!others.length || others.every((o) => o.fee === best.fee)) return null;
+  if (excludeCurrent && best.provider === excludeCurrent) return { best, saving: 0, text: null as string | null };
+  const other = others.reduce((a, b) => (b.fee < a.fee ? b : a));
+  const name = (v: PickableProvider) => PROVIDER_OPTIONS.find((p) => p.value === v)?.label ?? v;
+  return { best, saving: other.fee - best.fee, text: `Cheapest: ${name(best.provider)} ₹${best.fee} (${name(other.provider)} ₹${other.fee}) - saves ₹${other.fee - best.fee}` };
+}
 
 function errMsg(err: unknown, fallback: string) {
   return err instanceof ApiError ? err.body.error : fallback;
@@ -31,6 +51,7 @@ export function ShippingActions({ order }: { order: Order }) {
   const updateEwaybill = useUpdateEwaybill(order.id);
   const setRiskFlag = useSetRiskFlag(order.id);
   const rebook = useRebookShipment(order.id);
+  const { data: quotes } = useShipmentRates(order.id);
   const riskFlag = order.shipment?.riskFlag ?? null;
 
   function handleToggleRiskFlag(flag: 'BAD_ADDRESS' | 'HIGH_RISK') {
@@ -68,6 +89,8 @@ export function ShippingActions({ order }: { order: Order }) {
     });
   }
 
+  const bookSuggestion = suggestion(quotes);
+
   if (!waybill) {
     return (
       <div className="flex flex-col gap-2">
@@ -80,13 +103,22 @@ export function ShippingActions({ order }: { order: Order }) {
           className={inputClass}
           aria-label="Shipping provider"
         >
-          <option value="AUTO">Auto (prepaid → Ekart 1, COD → Ekart 2)</option>
-          {PROVIDER_OPTIONS.map((p) => (
+          <option value="AUTO">Auto (prepaid → cheaper of Ekart 1 / Delhivery, COD → Ekart 2)</option>
+          {PROVIDER_OPTIONS.filter((p) => !quotes || quotes.some((q) => q.provider === p.value)).map((p) => (
             <option key={p.value} value={p.value}>
-              {p.label}
+              {providerLabel(p.value, p.label, quotes)}
             </option>
           ))}
         </select>
+        {bookSuggestion?.text && (
+          <button
+            type="button"
+            onClick={() => setBookProvider(bookSuggestion.best.provider)}
+            className="text-left text-[11px] font-semibold text-[#1E7B4A] hover:underline"
+          >
+            {bookSuggestion.text} - tap to select
+          </button>
+        )}
         {bookProvider !== 'AUTO' && (
           <p className="text-[11px] text-slate-400">Books exactly on {PROVIDER_OPTIONS.find((p) => p.value === bookProvider)?.label} - no fallback to another carrier.</p>
         )}
@@ -195,15 +227,25 @@ export function ShippingActions({ order }: { order: Order }) {
           <Truck className="w-3.5 h-3.5" /> Shipping provider
         </p>
         <p className="text-xs text-slate-500 mb-2">
-          Booked on <strong>{providerName(order.shipment!.carrier, order.shipment!.ekartAccount)}</strong>.
+          Booked on <strong>{providerName(order.shipment!.carrier, order.shipment!.ekartAccount)}</strong>
+          {quotes?.find((q) => q.provider === currentProvider)?.fee != null && <> (₹{quotes.find((q) => q.provider === currentProvider)?.fee} now)</>}.
         </p>
+        {canSwitch && (() => {
+          const s2 = suggestion(quotes, currentProvider);
+          if (!s2) return null;
+          return s2.text ? (
+            <p className="text-[11px] font-semibold text-[#1E7B4A] mb-2">{s2.text}</p>
+          ) : (
+            <p className="text-[11px] text-slate-400 mb-2">Already on the cheapest provider.</p>
+          );
+        })()}
         {canSwitch ? (
           <div className="flex gap-2">
             <select value={switchTo} onChange={(e) => setSwitchTo(e.target.value as PickableProvider | '')} className={inputClass} aria-label="Switch to provider">
               <option value="">Switch to…</option>
               {PROVIDER_OPTIONS.filter((p) => p.value !== currentProvider).map((p) => (
                 <option key={p.value} value={p.value}>
-                  {p.label}
+                  {providerLabel(p.value, p.label, quotes)}
                 </option>
               ))}
             </select>

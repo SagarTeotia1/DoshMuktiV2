@@ -41,6 +41,9 @@ export const cacheKeys = {
   // Ekart's live prepaid quote for the same route+weight — kept apart from the Delhivery key above.
   ekartRate: (originPincode: string, destPincode: string, weightGrams: number) =>
     `shipping:ekart-rate:${originPincode}:${destPincode}:${weightGrams}` as const,
+  // Cheaper of Ekart-prepaid vs Delhivery-prepaid for a route+weight: { fee, carrier }.
+  prepaidRate: (originPincode: string, destPincode: string, weightGrams: number) =>
+    `shipping:prepaid-rate:${originPincode}:${destPincode}:${weightGrams}` as const,
 } as const;
 
 export const CACHE_TTL = {

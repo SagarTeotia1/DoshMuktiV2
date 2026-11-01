@@ -16,6 +16,7 @@ import { addItemToCart } from '../cart/service';
 import { releaseCouponUsageTx } from '../coupons/service';
 import { invalidateProductCaches } from '../products/service';
 import { PACKAGING_WEIGHT_GRAMS } from '../../shared/constants/purposes';
+import { cheapestPrepaidRate } from '../../shared/shipping/prepaidRate';
 import { chooseEkartAccount, providerName, type CarrierId, type ShipmentProvider } from '../../shared/shipping/carrier';
 import { toEkartAccount, ekartConfig, type EkartAccount } from '../../shared/integrations/ekart/accounts';
 import { checkEkartServiceability, estimateEkartCost } from '../../shared/integrations/ekart/client';
@@ -142,6 +143,46 @@ export interface BookedShipment {
   ekartAccount: EkartAccount | null;
 }
 
+// Declared parcel weight in grams: an admin-set override wins, else item weights + packaging.
+function orderParcelWeight(order: { packageWeightOverride: number | null; items: Array<{ quantity: number; variant: { weight: number } }> }): number {
+  return (
+    order.packageWeightOverride ??
+    order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS
+  );
+}
+
+export interface ProviderRateQuote {
+  provider: Exclude<ShipmentProvider, 'AUTO'>;
+  /** GST-inclusive quote in rupees, rounded up; null when the carrier gave no quote. */
+  fee: number | null;
+  cheapest: boolean;
+}
+
+// Live quotes for the providers that can take this order (prepaid: Ekart 1 + Delhivery; COD: Ekart 2 +
+// Delhivery), same weight/route the booking will use, so Admin can pick the cheaper one. Never throws -
+// a carrier with no quote just shows fee null.
+export async function getShipmentRateQuotes(orderId: string): Promise<ProviderRateQuote[]> {
+  const order = await db.order.findUnique({ where: { id: orderId }, include: { items: { include: { variant: true } } } });
+  if (!order) throw new Error('Order not found');
+  const weight = orderParcelWeight(order);
+  const destPincode = (order.shippingAddress as unknown as BookableAddress).pincode;
+  const originPincode = env.DELHIVERY_WAREHOUSE_PINCODE;
+  const codAmount = Number(order.codAmountDue);
+  const ekartAccount = chooseEkartAccount(order.paymentMethod);
+
+  const [ekart, delhivery] = await Promise.all([
+    estimateEkartCost(ekartAccount, { originPincode, destPincode, weight, codAmount, invoiceAmount: Number(order.total) }).catch(() => null),
+    fetchDelhiveryShippingCost({ originPincode, destPincode, weightGrams: weight, paymentMode: codAmount > 0 ? 'COD' : 'Pre-paid' }).catch(() => null),
+  ]);
+  const quotes: Array<Omit<ProviderRateQuote, 'cheapest'>> = [
+    { provider: ekartAccount === 1 ? 'EKART_1' : 'EKART_2', fee: ekart ? Math.ceil(ekart.total) : null },
+    { provider: 'DELHIVERY', fee: delhivery ? Math.ceil(delhivery.amount) : null },
+  ];
+  const priced = quotes.flatMap((q) => (q.fee === null ? [] : [q.fee]));
+  const min = priced.length ? Math.min(...priced) : null;
+  return quotes.map((q) => ({ ...q, cheapest: min !== null && q.fee === min }));
+}
+
 // Books the parcel. `target` AUTO (default, used by the automatic booking on payment and by the
 // Admin "Book" button): prepaid -> Ekart 1, COD -> Ekart 2, and Delhivery ONLY when Ekart says
 // the pincode (or COD) isn't serviceable; wallet/auth/network failures throw and wait for a retry.
@@ -160,9 +201,7 @@ export async function bookOrderShipment(orderId: string, target: ShipmentProvide
   // the difference. See PACKAGING_WEIGHT_GRAMS's comment. An admin-set
   // packageWeightOverride (see updateOrderPackageWeight) always wins - it means someone
   // actually weighed this specific box and knows better than the item-sum estimate.
-  const weight =
-    order.packageWeightOverride ??
-    order.items.reduce((sum, i) => sum + i.variant.weight * i.quantity, 0) + PACKAGING_WEIGHT_GRAMS;
+  const weight = orderParcelWeight(order);
   const address = order.shippingAddress as unknown as BookableAddress;
   const forced = target !== 'AUTO';
   const ekartAccount: EkartAccount = target === 'EKART_1' ? 1 : target === 'EKART_2' ? 2 : chooseEkartAccount(order.paymentMethod);
@@ -219,7 +258,23 @@ export async function bookOrderShipment(orderId: string, target: ShipmentProvide
   let result: { waybill: string };
   let fallbackReason: string | null = null;
 
-  if (target === 'DELHIVERY') {
+  // Prepaid AUTO bookings go to whichever carrier quoted cheaper at the same route+weight the customer
+  // was shown. If Delhivery is the cheaper one but its booking fails, fall through to the Ekart path.
+  let cheaperFirst: { waybill: string } | null = null;
+  if (target === 'AUTO' && order.paymentMethod === 'PREPAID') {
+    const rate = await cheapestPrepaidRate(Number(order.subtotal), weight, address.pincode);
+    if (rate.carrier === 'DELHIVERY') {
+      const d = await delhiveryAttempt();
+      if (d && !('error' in d)) cheaperFirst = d;
+      else logger.warn({ orderId, reason: d ? d.error : 'not configured' }, 'Delhivery cheaper for prepaid but booking failed - trying Ekart');
+    }
+  }
+
+  if (cheaperFirst) {
+    carrier = 'DELHIVERY';
+    result = cheaperFirst;
+    fallbackReason = 'Cheaper than Ekart for this route';
+  } else if (target === 'DELHIVERY') {
     const d = await delhiveryAttempt();
     if (!d || 'error' in d) throw new Error(`Delhivery: ${!d ? 'not configured' : d.error}`);
     carrier = 'DELHIVERY';

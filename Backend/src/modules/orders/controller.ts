@@ -37,6 +37,7 @@ import {
   OrderAddressLockedError,
   bookOrderShipment,
   rebookOrderShipment,
+  getShipmentRateQuotes,
   switchDelhiveryBookingsToEkart,
   resumeOrder,
   OrderNotResumableError,
@@ -232,6 +233,16 @@ export async function bookShipmentHandler(req: FastifyRequest, reply: FastifyRep
     return reply.send(shipment);
   } catch (err) {
     return reply.code(502).send({ error: err instanceof Error ? err.message : 'Booking failed' });
+  }
+}
+
+export async function shipmentRatesHandler(req: FastifyRequest, reply: FastifyReply) {
+  const parsed = idParamSchema.safeParse(req.params);
+  if (!parsed.success) return reply.code(400).send({ error: 'Invalid id' });
+  try {
+    return reply.send({ quotes: await getShipmentRateQuotes(parsed.data.id) });
+  } catch (err) {
+    return reply.code(404).send({ error: err instanceof Error ? err.message : 'Order not found' });
   }
 }
 

@@ -14,6 +14,7 @@ import {
   shipmentLabelHandler,
   bookShipmentHandler,
   rebookShipmentHandler,
+  shipmentRatesHandler,
   switchToEkartHandler,
   resendWhatsAppConfirmationHandler,
   syncTrackingHandler,
@@ -41,6 +42,7 @@ export async function orderRoutes(app: FastifyInstance) {
   app.get('/admin/orders/:id', { preHandler: verifyAdmin }, getOrderByIdHandler);
   app.patch('/admin/orders/:id/status', { preHandler: verifyAdmin }, updateOrderStatusHandler);
   app.get('/admin/orders/:id/shipment/label', { preHandler: verifyAdmin }, shipmentLabelHandler);
+  app.get('/admin/orders/:id/shipment/rates', { preHandler: verifyAdmin }, shipmentRatesHandler);
   app.post('/admin/orders/:id/shipment/book', { preHandler: verifyAdmin }, bookShipmentHandler);
   app.post('/admin/orders/shipments/switch-to-ekart', { preHandler: verifyAdmin, config: { rateLimit: { max: 6, timeWindow: '1 minute' } } }, switchToEkartHandler);
   app.post('/admin/orders/:id/shipment/rebook', { preHandler: verifyAdmin, config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, rebookShipmentHandler);

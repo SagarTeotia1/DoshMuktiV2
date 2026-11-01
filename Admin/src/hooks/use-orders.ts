@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
 import type { PaginatedOrders, Order, GstReport, BulkSwitchResult } from '@/types/api.types';
-import type { ShipmentProvider } from '@/lib/constants';
+import type { PickableProvider, ShipmentProvider } from '@/lib/constants';
 
 export function useOrders(
   status?: string,
@@ -204,5 +204,22 @@ export function useSetRiskFlag(id: string) {
       qc.invalidateQueries({ queryKey: ['admin-orders'] });
       qc.invalidateQueries({ queryKey: ['admin-pickup-pending-count'] });
     },
+  });
+}
+
+export interface ProviderRateQuote {
+  provider: PickableProvider;
+  fee: number | null;
+  cheapest: boolean;
+}
+
+// Live carrier quotes for this order's route + weight, so Admin can book/switch to the cheaper one.
+export function useShipmentRates(id: string, enabled = true) {
+  return useQuery({
+    queryKey: ['admin-order-rates', id],
+    queryFn: () => api.get<{ quotes: ProviderRateQuote[] }>(`/api/admin/orders/${id}/shipment/rates`),
+    enabled: !!id && enabled,
+    staleTime: 5 * 60 * 1000,
+    select: (d) => d.quotes,
   });
 }
