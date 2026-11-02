@@ -739,14 +739,12 @@ function CheckoutPageContent() {
           return (
           <label
             key={opt.id}
-            className={`relative flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
+            className={`relative flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors ${promo ? 'mt-1.5' : ''} ${
               optDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
             } ${
-              promo
-                ? `border-2 border-[#9C5A26] bg-[#9C5A26]/10 mt-1.5 ${selected ? 'shadow-[0_0_0_3px_rgba(156,90,38,0.18)]' : ''}`
-                : selected
-                  ? 'border-[#9C5A26] bg-[#9C5A26]/5'
-                  : 'border-[#2B1B0C]/15'
+              selected
+                ? 'border-2 border-[#9C5A26] bg-[#9C5A26]/10 shadow-[0_0_0_3px_rgba(156,90,38,0.18)]'
+                : 'border-[#2B1B0C]/15 bg-white'
             }`}
           >
             {promo && (
