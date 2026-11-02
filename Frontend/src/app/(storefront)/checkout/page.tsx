@@ -734,14 +734,26 @@ function CheckoutPageContent() {
           const optDisabled = opt.id === 'COD' && codUnavailable;
           const isPrepaidOpt = opt.id === 'PREPAID';
           const selected = paymentMethod === opt.id;
-          const promo = isPrepaidOpt && prepaidSavings > 0;
+          // Online is the recommended option: always highlighted + tagged, saving amount in the tag when known.
+          const promo = isPrepaidOpt && !optDisabled;
           return (
           <label
             key={opt.id}
-            className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
+            className={`relative flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
               optDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-            } ${selected ? 'border-[#9C5A26] bg-[#9C5A26]/5' : 'border-[#2B1B0C]/15'}`}
+            } ${
+              promo
+                ? `border-2 border-[#9C5A26] bg-[#9C5A26]/10 mt-1.5 ${selected ? 'shadow-[0_0_0_3px_rgba(156,90,38,0.18)]' : ''}`
+                : selected
+                  ? 'border-[#9C5A26] bg-[#9C5A26]/5'
+                  : 'border-[#2B1B0C]/15'
+            }`}
           >
+            {promo && (
+              <span className="absolute -top-2.5 right-3 rounded-full bg-[#9C5A26] px-2.5 py-0.5 font-body text-[10px] font-bold uppercase tracking-wide text-white">
+                Best value{prepaidSavings > 0 ? ` · Save ${formatCurrency(prepaidSavings)}` : ''}
+              </span>
+            )}
             <input
               type="radio"
               name="paymentMethod"
@@ -754,11 +766,6 @@ function CheckoutPageContent() {
             <span className="flex flex-col flex-1 min-w-0">
               <span className="flex items-center gap-2">
                 <span className="font-body text-sm font-semibold text-[#2B1B0C]">{opt.title}</span>
-                {promo && (
-                  <span className="rounded-full bg-[#9C5A26] px-2 py-0.5 font-body text-[10px] font-bold text-white">
-                    Save {formatCurrency(prepaidSavings)}
-                  </span>
-                )}
               </span>
               <span className="font-body text-[11px] text-[#8A7A63]">{opt.sub}</span>
             </span>
