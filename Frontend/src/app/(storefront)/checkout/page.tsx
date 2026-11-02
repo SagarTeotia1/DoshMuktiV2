@@ -767,18 +767,6 @@ function CheckoutPageContent() {
           );
         })}
       </div>
-      {isCod && prepaidSavings > 0 && (
-        <button
-          type="button"
-          onClick={() => setPaymentMethod('PREPAID')}
-          className="flex items-center justify-between gap-3 rounded-xl border border-[#9C5A26]/40 bg-[#9C5A26]/10 px-3 py-2 text-left transition-colors hover:bg-[#9C5A26]/15"
-        >
-          <span className="font-body text-xs font-semibold text-[#2B1B0C]">
-            Pay online and save {formatCurrency(prepaidSavings)}
-          </span>
-          <span className="shrink-0 font-body text-[11px] font-bold uppercase tracking-wide text-[#9C5A26]">Switch →</span>
-        </button>
-      )}
       {isCod && (
         <p className="font-body text-[11px] text-[#8A7A63] -mt-1">
           Nothing to pay now — keep {hasResolvedPincodeRate ? formatCurrency(total) : 'the order total'} ready for the delivery partner.
