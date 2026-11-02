@@ -573,7 +573,7 @@ function CheckoutPageContent() {
         <span>{formatCurrency(subtotal)}</span>
       </div>
       {savings > 0 && (
-        <div className="flex justify-between font-body text-sm text-[#2f7d4f] font-semibold">
+        <div className="flex justify-between font-body text-sm text-[#9C5A26] font-semibold">
           <span>You Saved</span>
           <span>{formatCurrency(savings)}</span>
         </div>
@@ -586,7 +586,7 @@ function CheckoutPageContent() {
           shippingFeeOriginal > 0 ? (
             <span className="flex items-center gap-1.5">
               <span className="line-through text-[#8A7A63]">{formatCurrency(shippingFeeOriginal)}</span>
-              <span className="font-semibold text-[#2f7d4f]">FREE</span>
+              <span className="font-semibold text-[#9C5A26]">FREE</span>
             </span>
           ) : (
             <span>Free</span>
@@ -745,14 +745,14 @@ function CheckoutPageContent() {
               optDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
             } ${
               promo
-                ? `border-[#2f7d4f] bg-[#2f7d4f]/5 ${nudge ? 'ring-2 ring-[#2f7d4f]/40 animate-pulse-soft' : ''} ${promo ? 'mt-2' : ''}`
+                ? `border-[#9C5A26] bg-[#9C5A26]/10 ${nudge ? 'ring-2 ring-[#9C5A26]/40 animate-pulse-soft' : ''} ${promo ? 'mt-2' : ''}`
                 : selected
                   ? 'border-[#9C5A26] bg-[#9C5A26]/5'
                   : 'border-[#2B1B0C]/15'
             }`}
           >
             {promo && (
-              <span className="absolute -top-2.5 left-3 rounded-full bg-[#2f7d4f] px-2.5 py-0.5 font-body text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+              <span className="absolute -top-2.5 left-3 rounded-full bg-[#9C5A26] px-2.5 py-0.5 font-body text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
                 {isCod ? 'Best value' : 'You save'} {formatCurrency(prepaidSavings)}
               </span>
             )}
@@ -763,7 +763,7 @@ function CheckoutPageContent() {
               checked={selected}
               disabled={optDisabled}
               onChange={() => setPaymentMethod(opt.id)}
-              className={promo ? 'accent-[#2f7d4f]' : 'accent-[#9C5A26]'}
+              className="accent-[#9C5A26]"
             />
             <span className="flex flex-col flex-1 min-w-0">
               <span className="font-body text-sm font-semibold text-[#2B1B0C]">{opt.title}</span>
@@ -774,7 +774,7 @@ function CheckoutPageContent() {
                 {nudge && (
                   <span className="font-body text-[11px] text-[#8A7A63] line-through">{formatCurrency(codOptionTotal)}</span>
                 )}
-                <span className={`font-body text-sm font-bold ${promo ? 'text-[#2f7d4f]' : 'text-[#2B1B0C]'}`}>{opt.badge}</span>
+                <span className={`font-body text-sm font-bold ${promo ? 'text-[#9C5A26]' : 'text-[#2B1B0C]'}`}>{opt.badge}</span>
               </span>
             )}
           </label>
@@ -785,19 +785,19 @@ function CheckoutPageContent() {
         <button
           type="button"
           onClick={() => setPaymentMethod('PREPAID')}
-          className="flex items-center justify-between gap-3 rounded-xl bg-[#2f7d4f]/10 border border-[#2f7d4f]/40 px-3 py-2.5 text-left transition-colors hover:bg-[#2f7d4f]/15"
+          className="flex items-center justify-between gap-3 rounded-xl bg-[#9C5A26]/10 border border-[#9C5A26]/40 px-3 py-2.5 text-left transition-colors hover:bg-[#9C5A26]/15"
         >
           <span className="font-body text-xs leading-snug text-[#2B1B0C]">
-            <span className="font-bold text-[#2f7d4f]">Pay online &amp; save {formatCurrency(prepaidSavings)}.</span>{' '}
+            <span className="font-bold text-[#9C5A26]">Pay online &amp; save {formatCurrency(prepaidSavings)}.</span>{' '}
             No COD charge, cheaper delivery, order confirmed instantly.
           </span>
-          <span className="shrink-0 rounded-full bg-[#2f7d4f] px-3 py-1.5 font-body text-[11px] font-bold uppercase tracking-wide text-white">
+          <span className="shrink-0 rounded-full bg-[#9C5A26] px-3 py-1.5 font-body text-[11px] font-bold uppercase tracking-wide text-white">
             Switch
           </span>
         </button>
       )}
       {!isCod && prepaidSavings > 0 && (
-        <p className="rounded-lg bg-[#2f7d4f]/10 px-3 py-2 font-body text-xs font-semibold text-[#2f7d4f] text-center">
+        <p className="rounded-lg bg-[#9C5A26]/10 px-3 py-2 font-body text-xs font-semibold text-[#6B3D19] text-center">
           ✓ You&apos;re saving {formatCurrency(prepaidSavings)} by paying online
         </p>
       )}
@@ -941,7 +941,7 @@ function CheckoutPageContent() {
                         className={inputClass}
                       />
                       {!isAuthenticated && addressPrefilled && (
-                        <p className="-mt-1 font-body text-xs font-semibold text-[#2f7d4f]">
+                        <p className="-mt-1 font-body text-xs font-semibold text-[#9C5A26]">
                           ✓ Welcome back — we filled your last delivery address. Edit anything below.
                         </p>
                       )}
@@ -966,7 +966,7 @@ function CheckoutPageContent() {
                           <p className="text-xs text-brand-alert mt-1.5 font-body font-semibold">Not serviceable at this pincode</p>
                         )}
                         {serviceable === true && (
-                          <p className="text-xs text-[#2f7d4f] mt-1.5 font-body font-semibold">
+                          <p className="text-xs text-[#9C5A26] mt-1.5 font-body font-semibold">
                             ✓ Deliverable to this address{deliveryEstimate ? ` · Estimated delivery ${deliveryEstimate}` : ''}
                           </p>
                         )}

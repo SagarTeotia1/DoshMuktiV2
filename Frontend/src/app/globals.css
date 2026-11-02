@@ -349,8 +349,8 @@
   100% { transform: scale(1.6); opacity: 0; }
 }
 @keyframes ringPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(47 125 79 / 0.35); }
-  50%      { box-shadow: 0 0 0 6px rgb(47 125 79 / 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgb(156 90 38 / 0.35); }
+  50%      { box-shadow: 0 0 0 6px rgb(156 90 38 / 0); }
 }
 @keyframes otpShake {
   0%, 100% { transform: translateX(0); }
