@@ -9,6 +9,7 @@ import { useCart, type CartScope } from '@/hooks/use-cart';
 import { usePincodeCheck } from '@/hooks/use-pincode-check';
 import { useRazorpay } from '@/hooks/use-razorpay';
 import { useAuth } from '@/providers/auth-provider';
+import { OtpModal } from '@/components/checkout/OtpModal';
 import { useAddresses, useSaveAddress, useUpdateAddress } from '@/hooks/use-addresses';
 import { useShippingEstimate } from '@/hooks/use-shipping-estimate';
 import { api, ApiError } from '@/lib/api-client';
@@ -64,157 +65,6 @@ function sessionIdForScope(scope: CartScope): string {
   return scope === 'buyNow' ? getBuyNowSessionId() : getSessionId();
 }
 
-type OtpStep = 'phone' | 'otp';
-const RESEND_COOLDOWN_SECONDS = 120;
-
-// Inline phone+OTP login — sits inside the checkout page itself (next to the order
-// summary, which stays visible throughout) instead of bouncing the customer to a
-// separate /login page and back. Mirrors the GoKwik-style "Login to continue" pattern:
-// the product/price context never disappears while the customer authenticates.
-// sendOtp/verifyOtp are passed down from the parent's own single useAuth() call rather
-// than calling useAuth() again here — useAuth is a plain hook (its own useState), not a
-// shared context, so a second call here would get its own independent isAuthenticated
-// state. verifyOtp would succeed, but the parent's copy of isAuthenticated would never
-// flip, and the page would silently never advance past the login card.
-function InlineLogin({
-  sendOtp,
-  verifyOtp,
-}: {
-  sendOtp: (phone: string) => Promise<void>;
-  verifyOtp: (phone: string, otp: string) => Promise<unknown>;
-}) {
-  const [step, setStep] = useState<OtpStep>('phone');
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
-  const cooldownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  function startResendCooldown() {
-    if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
-    setResendCooldown(RESEND_COOLDOWN_SECONDS);
-    cooldownIntervalRef.current = setInterval(() => {
-      setResendCooldown((prev) => {
-        if (prev <= 1) {
-          if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }
-
-  useEffect(() => () => {
-    if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
-  }, []);
-
-  async function handlePhoneSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!/^\d{10}$/.test(phone)) return toast.error('Enter a valid 10-digit mobile number');
-    if (step === 'otp' && resendCooldown > 0) return;
-
-    setSubmitting(true);
-    try {
-      await sendOtp(phone);
-      setStep('otp');
-      startResendCooldown();
-      toast.success('OTP sent');
-    } catch {
-      toast.error('Could not send OTP — try again');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleOtpSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!/^\d{4,6}$/.test(otp)) return toast.error('Enter the OTP');
-
-    setSubmitting(true);
-    try {
-      await verifyOtp(phone, otp);
-      // No router.push — useAuth's isAuthenticated flips true and CheckoutPageContent
-      // re-renders the real form in place, same page, same scroll position.
-    } catch {
-      toast.error('Invalid or expired OTP');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
-      <StepLabel n={1} title="Login to Continue" />
-      <form onSubmit={step === 'phone' ? handlePhoneSubmit : handleOtpSubmit} className="flex flex-col gap-3">
-        <input
-          type="tel"
-          inputMode="numeric"
-          autoFocus={step === 'phone'}
-          disabled={step === 'otp'}
-          value={phone}
-          onChange={(e) => setPhone(normalizePhone(e.target.value))}
-          placeholder="10-digit mobile number"
-          className={`${inputClass} disabled:opacity-60 disabled:bg-[#2B1B0C]/5`}
-        />
-
-        {step === 'otp' && (
-          <>
-            <button
-              type="button"
-              onClick={() => {
-                setStep('phone');
-                setOtp('');
-              }}
-              className="font-body text-xs text-[#8A7A63] hover:text-[#2B1B0C] transition-colors self-start -mt-1"
-            >
-              Change phone number
-            </button>
-            <p className="font-body text-xs text-[#8A7A63] mb-1">OTP sent to +91 {phone}</p>
-            <input
-              type="text"
-              inputMode="numeric"
-              autoFocus
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="Enter OTP"
-              className={inputClass}
-            />
-            <button
-              type="button"
-              onClick={handlePhoneSubmit}
-              disabled={resendCooldown > 0 || submitting}
-              className="font-body text-xs text-[#8A7A63] hover:text-[#2B1B0C] transition-colors self-start disabled:opacity-50 disabled:hover:text-[#8A7A63]"
-            >
-              {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP'}
-            </button>
-          </>
-        )}
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="brutal-border bg-[#2B1B0C] text-white rounded-lg px-6 py-3.5 font-body font-bold uppercase tracking-widest text-xs hover:bg-[#9C5A26] hover:text-[#2B1B0C] transition-all duration-200 disabled:opacity-50 mt-1"
-        >
-          {step === 'phone'
-            ? submitting
-              ? 'Sending...'
-              : 'Send OTP'
-            : submitting
-              ? 'Verifying...'
-              : 'Verify & Continue'}
-        </button>
-        <p className="font-body text-[11px] text-[#8A7A63] text-center leading-relaxed">
-          By continuing, you agree to our{' '}
-          <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#9C5A26] underline">Terms &amp; Conditions</a>{' '}
-          and{' '}
-          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#9C5A26] underline">Privacy Policy</a>
-          , and consent to us processing your mobile number to verify your login. Please read them carefully.
-        </p>
-      </form>
-    </div>
-  );
-}
-
 function CheckoutPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -222,7 +72,8 @@ function CheckoutPageContent() {
   const queryClient = useQueryClient();
   const { cart, updateQuantity, isUpdating } = useCart(scope);
   const { openCheckout, loading: rzpLoading } = useRazorpay();
-  const { user, loading: authLoading, isAuthenticated, sendOtp, verifyOtp } = useAuth();
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
+  const [otpOpen, setOtpOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const [form, setForm] = useState({
@@ -246,6 +97,49 @@ function CheckoutPageContent() {
   }, [user]);
 
   const { isChecking, serviceable } = usePincodeCheck(form.pincode);
+
+  // Logged-out buyer: once a full 10-digit number is typed, look it up. Known number ->
+  // prefill its last used address; unknown -> they just fill the form. Never overwrites
+  // fields the buyer has typed themselves, and only runs once per distinct number.
+  const touchedRef = useRef<Set<string>>(new Set());
+  const lookedUpRef = useRef<string | null>(null);
+  const [addressPrefilled, setAddressPrefilled] = useState(false);
+  useEffect(() => {
+    const phone = form.customerPhone;
+    if (isAuthenticated || !/^[6-9]\d{9}$/.test(phone) || lookedUpRef.current === phone) return;
+    lookedUpRef.current = phone;
+    let cancelled = false;
+    api
+      .get<{ address: { name: string; line1: string; line2: string | null; city: string; state: string; pincode: string } | null }>(
+        `/api/addresses/lookup?phone=${phone}`,
+        undefined,
+        0,
+      )
+      .then(({ address }) => {
+        if (cancelled || !address) return;
+        const fields: Record<string, string> = {
+          customerName: address.name,
+          line1: address.line1,
+          line2: address.line2 ?? '',
+          city: address.city,
+          state: address.state,
+          pincode: address.pincode,
+        };
+        setForm((f) => {
+          if (f.customerPhone !== phone) return f;
+          const next = { ...f } as Record<string, string>;
+          for (const [k, v] of Object.entries(fields)) if (!touchedRef.current.has(k)) next[k] = v;
+          return next as typeof f;
+        });
+        setAddressPrefilled(true);
+      })
+      .catch(() => {
+        if (lookedUpRef.current === phone) lookedUpRef.current = null;
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [form.customerPhone, isAuthenticated]);
 
   // Saved-address book — a returning customer sees their last delivery address by
   // default instead of retyping name/phone/address every single order. Receiver phone
@@ -470,13 +364,21 @@ function CheckoutPageContent() {
   }, [items.length, total]);
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
+    if (key !== 'customerPhone') touchedRef.current.add(key);
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  // afterOtp: OtpModal just verified the number -> skip the login gate and place the order.
+  async function handleSubmit(e?: React.FormEvent, afterOtp = false) {
+    e?.preventDefault();
     if (items.length === 0) return toast.error('Your cart is empty');
     if (serviceable === false) return toast.error('Sorry, we do not deliver to this pincode yet');
+    if (!/^[6-9]\d{9}$/.test(form.customerPhone)) return toast.error('Enter a valid 10-digit mobile number');
+    // Logged out: verify the typed number by OTP first, then the order goes through.
+    if (!isAuthenticated && !afterOtp) {
+      setOtpOpen(true);
+      return;
+    }
 
     setSubmitting(true);
 
@@ -865,7 +767,7 @@ function CheckoutPageContent() {
         </p>
       )}
 
-      {isAuthenticated ? (
+      {(
         <>
           <button
             type="submit"
@@ -894,8 +796,6 @@ function CheckoutPageContent() {
             . Please read them carefully before paying.
           </p>
         </>
-      ) : (
-        <p className="font-body text-xs text-[#8A7A63] text-center mt-4">Log in to continue to payment</p>
       )}
     </div>
   );
@@ -909,15 +809,7 @@ function CheckoutPageContent() {
         <h1 className="font-heading font-black tracking-tight leading-[1.1] text-2xl sm:text-3xl text-[#2B1B0C]">Checkout</h1>
       </div>
 
-      {!isAuthenticated ? (
-        <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
-          <div className="flex flex-col gap-8">
-            <InlineLogin sendOtp={sendOtp} verifyOtp={verifyOtp} />
-          </div>
-          {summaryCard}
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-6 md:gap-8 items-start">
           <div className="flex flex-col gap-8">
             <div className="bg-brand-paper border border-[#2B1B0C] rounded-2xl p-5 sm:p-6">
               <StepLabel n={2} title="Delivery Details" />
@@ -998,6 +890,11 @@ function CheckoutPageContent() {
                         onChange={(e) => update('customerPhone', normalizePhone(e.target.value))}
                         className={inputClass}
                       />
+                      {!isAuthenticated && addressPrefilled && (
+                        <p className="-mt-1 font-body text-xs font-semibold text-brand-success">
+                          ✓ Welcome back — we filled your last delivery address. Edit anything below.
+                        </p>
+                      )}
                       <input
                         type="email"
                         placeholder="Email (optional)"
@@ -1071,6 +968,16 @@ function CheckoutPageContent() {
 
           {summaryCard}
         </form>
+      {otpOpen && (
+        <OtpModal
+          phone={form.customerPhone}
+          actionLabel={isCod ? 'Place COD Order' : 'Pay Securely'}
+          onVerified={() => {
+            setOtpOpen(false);
+            void handleSubmit(undefined, true);
+          }}
+          onClose={() => setOtpOpen(false)}
+        />
       )}
     </div>
   );
