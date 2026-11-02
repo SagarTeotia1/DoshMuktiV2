@@ -734,28 +734,14 @@ function CheckoutPageContent() {
           const optDisabled = opt.id === 'COD' && codUnavailable;
           const isPrepaidOpt = opt.id === 'PREPAID';
           const selected = paymentMethod === opt.id;
-          // Prepaid is the option we want chosen: whenever it saves money it wears a green
-          // "SAVE" ribbon, and once COD is selected it pulses and shows the COD price struck out.
           const promo = isPrepaidOpt && prepaidSavings > 0;
-          const nudge = promo && isCod;
           return (
           <label
             key={opt.id}
-            className={`relative flex items-center gap-3 rounded-xl border px-3 py-3 transition-all ${
+            className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
               optDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-            } ${
-              promo
-                ? `border-[#9C5A26] bg-[#9C5A26]/10 ${nudge ? 'ring-2 ring-[#9C5A26]/40 animate-pulse-soft' : ''} ${promo ? 'mt-2' : ''}`
-                : selected
-                  ? 'border-[#9C5A26] bg-[#9C5A26]/5'
-                  : 'border-[#2B1B0C]/15'
-            }`}
+            } ${selected ? 'border-[#9C5A26] bg-[#9C5A26]/5' : 'border-[#2B1B0C]/15'}`}
           >
-            {promo && (
-              <span className="absolute -top-2.5 left-3 rounded-full bg-[#9C5A26] px-2.5 py-0.5 font-body text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
-                {isCod ? 'Best value' : 'You save'} {formatCurrency(prepaidSavings)}
-              </span>
-            )}
             <input
               type="radio"
               name="paymentMethod"
@@ -766,17 +752,17 @@ function CheckoutPageContent() {
               className="accent-[#9C5A26]"
             />
             <span className="flex flex-col flex-1 min-w-0">
-              <span className="font-body text-sm font-semibold text-[#2B1B0C]">{opt.title}</span>
+              <span className="flex items-center gap-2">
+                <span className="font-body text-sm font-semibold text-[#2B1B0C]">{opt.title}</span>
+                {promo && (
+                  <span className="rounded-full bg-[#9C5A26] px-2 py-0.5 font-body text-[10px] font-bold text-white">
+                    Save {formatCurrency(prepaidSavings)}
+                  </span>
+                )}
+              </span>
               <span className="font-body text-[11px] text-[#8A7A63]">{opt.sub}</span>
             </span>
-            {opt.badge && (
-              <span className="flex flex-col items-end leading-tight">
-                {nudge && (
-                  <span className="font-body text-[11px] text-[#8A7A63] line-through">{formatCurrency(codOptionTotal)}</span>
-                )}
-                <span className={`font-body text-sm font-bold ${promo ? 'text-[#9C5A26]' : 'text-[#2B1B0C]'}`}>{opt.badge}</span>
-              </span>
-            )}
+            {opt.badge && <span className="font-body text-sm font-semibold text-[#2B1B0C]">{opt.badge}</span>}
           </label>
           );
         })}
@@ -785,21 +771,13 @@ function CheckoutPageContent() {
         <button
           type="button"
           onClick={() => setPaymentMethod('PREPAID')}
-          className="flex items-center justify-between gap-3 rounded-xl bg-[#9C5A26]/10 border border-[#9C5A26]/40 px-3 py-2.5 text-left transition-colors hover:bg-[#9C5A26]/15"
+          className="flex items-center justify-between gap-3 rounded-xl border border-[#9C5A26]/40 bg-[#9C5A26]/10 px-3 py-2 text-left transition-colors hover:bg-[#9C5A26]/15"
         >
-          <span className="font-body text-xs leading-snug text-[#2B1B0C]">
-            <span className="font-bold text-[#9C5A26]">Pay online &amp; save {formatCurrency(prepaidSavings)}.</span>{' '}
-            No COD charge, cheaper delivery, order confirmed instantly.
+          <span className="font-body text-xs font-semibold text-[#2B1B0C]">
+            Pay online and save {formatCurrency(prepaidSavings)}
           </span>
-          <span className="shrink-0 rounded-full bg-[#9C5A26] px-3 py-1.5 font-body text-[11px] font-bold uppercase tracking-wide text-white">
-            Switch
-          </span>
+          <span className="shrink-0 font-body text-[11px] font-bold uppercase tracking-wide text-[#9C5A26]">Switch →</span>
         </button>
-      )}
-      {!isCod && prepaidSavings > 0 && (
-        <p className="rounded-lg bg-[#9C5A26]/10 px-3 py-2 font-body text-xs font-semibold text-[#6B3D19] text-center">
-          ✓ You&apos;re saving {formatCurrency(prepaidSavings)} by paying online
-        </p>
       )}
       {isCod && (
         <p className="font-body text-[11px] text-[#8A7A63] -mt-1">
