@@ -2,20 +2,22 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Minus, Plus, ShoppingBag, Truck } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { useActiveCartScope } from '@/hooks/use-active-cart-scope';
-import { useBuyNowDrawer } from '@/providers/buy-now-drawer-provider';
+import { useAuth } from '@/providers/auth-provider';
 import { useShippingEstimate } from '@/hooks/use-shipping-estimate';
 import { trackAddToCart } from '@/lib/analytics';
 import { formatCurrency } from '@/lib/formatters';
 import type { Product } from '@/types/api.types';
 
 export function AddToCart({ product }: { product: Product }) {
-  const { openBuyNow } = useBuyNowDrawer();
+  const router = useRouter();
   const { addItemAsync, isAdding } = useCart(useActiveCartScope());
   const { addItemAsync: buyNowAddItemAsync } = useCart('buyNow');
+  const { loading: authLoading } = useAuth();
   const activeVariants = product.variants.filter((v) => v.isActive && v.attributes.type !== 'service');
   const [variantId, setVariantId] = useState(activeVariants[0]?.id ?? '');
   const selected = activeVariants.find((v) => v.id === variantId);
@@ -74,6 +76,7 @@ export function AddToCart({ product }: { product: Product }) {
 
   async function handleOrderNow() {
     if (!selected) return;
+    if (authLoading) return;
     setIsOrdering(true);
     try {
       // Buy Now uses an isolated pseudo-cart, never the real one — but it accumulates
@@ -82,11 +85,12 @@ export function AddToCart({ product }: { product: Product }) {
       // doesn't lose what they already had queued up. It's still cleared server-side
       // once an order from it actually completes (see checkout/controller.ts) and
       // naturally expires via the cart's TTL otherwise, so nothing lingers forever.
-      // Opens the Buy Now drawer (no login, no page change) — see CheckoutDrawer.
+      // No separate auth check/redirect here — /checkout itself handles phone+OTP
+      // login inline now (next to the order summary), so an unauthenticated
+      // customer just lands there and logs in without ever leaving the page.
       await buyNowAddItemAsync({ variantId: selected.id, quantity });
       track();
-      setIsOrdering(false);
-      openBuyNow();
+      router.push('/checkout?mode=buyNow');
     } catch {
       toast.error('Could not start checkout — try again');
       setIsOrdering(false);
