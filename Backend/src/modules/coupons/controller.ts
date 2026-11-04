@@ -1,4 +1,5 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
+import { setPublicCache } from "../../shared/http/cacheControl";
 import {
   createCouponSchema,
   updateCouponSchema,
@@ -193,6 +194,8 @@ export async function suggestedCouponsHandler(
   _req: FastifyRequest,
   reply: FastifyReply,
 ) {
+  // Admin-curated, changes rarely: let browsers/CDN hold it briefly instead of hitting the DB per visitor.
+  setPublicCache(reply, 60);
   return reply.send(await getSuggestedCoupons());
 }
 

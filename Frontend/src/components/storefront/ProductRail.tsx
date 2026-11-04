@@ -57,7 +57,7 @@ export function ProductRail({
 
   return (
     <section
-      className={`relative overflow-hidden ${tightTop ? 'pt-6 sm:pt-8' : 'pt-10 sm:pt-14 md:pt-20'} ${tightBottom ? 'pb-6 sm:pb-8' : 'pb-10 sm:pb-14 md:pb-20'} ${tinted ? 'bg-[#F6E4C2]/50' : ''}`}
+      className={`relative overflow-hidden ${tightTop ? 'pt-6 sm:pt-8' : 'pt-10 sm:pt-14 md:pt-20'} ${tightBottom ? 'pb-6 sm:pb-8' : 'pb-10 sm:pb-14 md:pb-20'} ${tinted ? 'bg-gradient-to-b from-transparent via-[#F6E4C2]/60 to-transparent' : ''}`}
     >
       <ImpressionTracker listName={title} products={products} />
       {tinted && (

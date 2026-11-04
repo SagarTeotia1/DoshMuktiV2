@@ -39,8 +39,14 @@ const CAMPAIGN_SLUGS = [
 // and silently produced an empty product sitemap for months. Paginate at the real cap.
 const BACKEND_PAGE_LIMIT = 100;
 
-async function getAllProductSlugs(): Promise<Array<{ slug: string; updatedAt?: string }>> {
-  const slugs: Array<{ slug: string; updatedAt?: string }> = [];
+interface SitemapProduct {
+  slug: string;
+  updatedAt?: string;
+  image?: string;
+}
+
+async function getAllProductSlugs(): Promise<SitemapProduct[]> {
+  const slugs: SitemapProduct[] = [];
   let page = 1;
 
   while (true) {
@@ -51,7 +57,13 @@ async function getAllProductSlugs(): Promise<Array<{ slug: string; updatedAt?: s
       console.error(`sitemap: failed to fetch products page ${page}`, err);
       break;
     }
-    slugs.push(...data.products.map((p) => ({ slug: p.slug, updatedAt: (p as { updatedAt?: string }).updatedAt })));
+    slugs.push(
+      ...data.products.map((p) => ({
+        slug: p.slug,
+        updatedAt: (p as { updatedAt?: string }).updatedAt,
+        image: p.images?.[0]?.full,
+      })),
+    );
     if (page >= data.pages) break;
     page += 1;
   }
@@ -82,6 +94,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const productEntries: MetadataRoute.Sitemap = products.map((p) => ({
     url: `${SITE_URL}/products/${p.slug}`,
     ...(p.updatedAt ? { lastModified: new Date(p.updatedAt) } : {}),
+    // Image entries help Google Images and merchant listings discover product photos.
+    ...(p.image ? { images: [p.image] } : {}),
     changeFrequency: 'weekly',
     priority: 0.9,
   }));

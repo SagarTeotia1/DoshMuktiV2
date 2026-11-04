@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Topbar } from '@/components/layout/Topbar';
 import { DataTable } from '@/components/ui/DataTable';
@@ -59,6 +59,36 @@ export default function CategoriesPage() {
     });
   }
 
+  // Latest list for the memoized column cells (columns are built once, so they can't close over `data`).
+  const listRef = useRef<Category[]>([]);
+  listRef.current = data ?? [];
+  const [moving, setMoving] = useState(false);
+
+  // Moves one category a step up/down, then renumbers the whole list 0..n-1 and saves only the
+  // rows whose `order` changed — so duplicate/gappy order values never make a move a no-op.
+  async function moveCategory(id: string, dir: -1 | 1) {
+    const list = [...listRef.current];
+    const from = list.findIndex((c) => c.id === id);
+    const to = from + dir;
+    if (from < 0 || to < 0 || to >= list.length) return;
+    [list[from], list[to]] = [list[to]!, list[from]!];
+
+    setMoving(true);
+    try {
+      await Promise.all(
+        list
+          .map((c, i) => ({ c, i }))
+          .filter(({ c, i }) => c.order !== i)
+          .map(({ c, i }) => updateCategory.mutateAsync({ id: c.id, input: { order: i } })),
+      );
+      toast.success('Order updated');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Failed to reorder categories'));
+    } finally {
+      setMoving(false);
+    }
+  }
+
   function toggleActive(category: Category) {
     updateCategory.mutate(
       { id: category.id, input: { isActive: !category.isActive } },
@@ -98,9 +128,35 @@ export default function CategoriesPage() {
         cell: ({ row }) => <span className="text-slate-500">{row.original.productCount}</span>,
       },
       {
-        accessorKey: 'order',
+        id: 'move',
         header: 'Order',
-        cell: ({ row }) => <span className="text-slate-500">{row.original.order}</span>,
+        cell: ({ row }) => {
+          const index = listRef.current.findIndex((c) => c.id === row.original.id);
+          const last = listRef.current.length - 1;
+          return (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => moveCategory(row.original.id, -1)}
+                disabled={moving || index <= 0}
+                title="Move up"
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                <ArrowUp className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveCategory(row.original.id, 1)}
+                disabled={moving || index === -1 || index >= last}
+                title="Move down"
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                <ArrowDown className="w-4 h-4" />
+              </button>
+              <span className="text-xs text-slate-400 w-5 text-right">{index + 1}</span>
+            </div>
+          );
+        },
       },
       {
         id: 'status',
@@ -142,7 +198,7 @@ export default function CategoriesPage() {
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [moving]
   );
 
   return (

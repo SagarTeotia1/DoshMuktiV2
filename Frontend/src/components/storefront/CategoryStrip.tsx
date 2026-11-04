@@ -22,10 +22,13 @@ export function CategoryStrip({ items }: { items: CategoryThumb[] }) {
           <div key={item.category} className="flex-shrink-0 snap-start [scroll-margin-left:0.5rem]">
             <Link
               href={`/shop?category=${encodeURIComponent(item.category)}`}
-              className="group flex items-center gap-2"
+              className="group flex flex-col sm:flex-row items-center gap-1.5 sm:gap-2 w-16 sm:w-auto"
             >
               <span className="relative w-14 h-14 sm:w-10 sm:h-10 rounded-full overflow-hidden border-2 border-[#2B1B0C] sm:border sm:border-[#2B1B0C]/40 shadow-neo-md sm:shadow-none group-hover:sm:border-[#9C5A26] transition-all duration-200 flex-shrink-0">
                 <Image src={item.image!} alt={item.label} fill className="object-cover" sizes="56px" />
+              </span>
+              <span className="sm:hidden font-heading font-bold text-[10px] uppercase tracking-tight text-[#2B1B0C] text-center leading-tight w-full truncate">
+                {firstWord(item.label)}
               </span>
               <span className="hidden sm:inline font-heading font-bold text-xs uppercase tracking-wide text-[#2B1B0C]/75 group-hover:text-[#9C5A26] transition-colors duration-300 whitespace-nowrap">
                 {item.label}

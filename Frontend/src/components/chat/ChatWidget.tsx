@@ -298,9 +298,9 @@ export function ChatWidget() {
             </button>
             <button
               onClick={handleOpen}
-              className="bg-white border border-[#2B1B0C]/10 shadow-xl rounded-2xl rounded-br-sm px-4 py-3 font-body text-xs font-semibold text-[#2B1B0C] max-w-[210px] text-left hover:-translate-y-0.5 transition-transform duration-200"
+              className="bg-white border border-[#2B1B0C]/10 shadow-xl rounded-2xl rounded-br-sm px-4 py-3 font-body text-xs font-semibold text-[#2B1B0C] max-w-[230px] text-left hover:-translate-y-0.5 transition-transform duration-200"
             >
-              Kundli & Astrological Advice <span className="text-[#9C5A26]">Free</span> ✨
+              Let me tell you your Rashi or Mulank — <span className="text-[#9C5A26]">Free</span> ✨
             </button>
           </div>
         )}

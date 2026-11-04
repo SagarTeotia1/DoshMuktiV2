@@ -1,29 +1,9 @@
 import Link from 'next/link';
-import { Heart, TrendingUp, Leaf, Trophy, Shield, Sparkles, Gift, MoonStar } from 'lucide-react';
+import { MoonStar } from 'lucide-react';
 import { PURPOSES } from '@/lib/constants';
+import { PURPOSE_ICONS, PURPOSE_GRADIENTS } from '@/lib/purpose-style';
 import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { StaggerGroup, StaggerItem } from '@/components/motion/Stagger';
-
-const ICONS = {
-  love: Heart,
-  wealth: TrendingUp,
-  health: Leaf,
-  success: Trophy,
-  protection: Shield,
-  clarity: Sparkles,
-  gifting: Gift,
-} as const;
-
-/** Muted, bronze-adjacent duotones — desaturated so each purpose reads distinct without breaking the warm palette. */
-const GRADIENTS: Record<string, [string, string]> = {
-  love: ['#D98BA0', '#B8546B'],
-  wealth: ['#C9863F', '#9C5A26'],
-  health: ['#9CBF8C', '#6B8F5C'],
-  success: ['#8CAAC9', '#5B7A9C'],
-  protection: ['#B69BD1', '#8B6BAE'],
-  clarity: ['#A6A6D1', '#7A7AAE'],
-  gifting: ['#E0A9C4', '#B8698F'],
-};
 
 export function PurposeGrid() {
   return (
@@ -43,8 +23,8 @@ export function PurposeGrid() {
 
         <StaggerGroup className="grid grid-cols-3 justify-center sm:flex sm:justify-center sm:flex-wrap gap-y-2 gap-x-1 sm:gap-9 md:gap-11 sm:overflow-x-auto hide-scrollbar sm:snap-x sm:snap-mandatory px-1 py-1 place-items-center">
           {PURPOSES.map((purpose) => {
-            const Icon = ICONS[purpose.id as keyof typeof ICONS];
-            const [light, base] = GRADIENTS[purpose.id] ?? ['#C9863F', '#9C5A26'];
+            const Icon = PURPOSE_ICONS[purpose.id as keyof typeof PURPOSE_ICONS];
+            const [light, base] = PURPOSE_GRADIENTS[purpose.id] ?? ['#C9863F', '#9C5A26'];
             const isGifting = purpose.id === 'gifting';
 
             return (
@@ -61,7 +41,7 @@ export function PurposeGrid() {
                       <Icon className="w-5 h-5 sm:w-8 sm:h-8 text-white/95" strokeWidth={1.5} />
                     </span>
                   </span>
-                  <span className="font-heading font-black text-[9px] sm:text-sm uppercase tracking-tight text-[#2B1B0C]/85 group-hover:text-[#9C5A26] transition-colors duration-300 text-center leading-tight">
+                  <span className="font-heading font-black text-[10px] sm:text-sm uppercase tracking-tight text-[#2B1B0C]/85 group-hover:text-[#9C5A26] transition-colors duration-300 text-center leading-tight">
                     {purpose.label.split(' & ')[0]}
                   </span>
                 </Link>

@@ -12,6 +12,54 @@ export interface GenerateProductJsonLdOptions {
 }
 
 /**
+ * Shipping + return policy blocks, shared by every Offer and the Organization schema so Google's
+ * Merchant listings report never sees an Offer without them. Mirrors the real storefront policy:
+ * flat SHIPPING_FEE below FREE_SHIPPING_ABOVE, 7-day returns on orders at/above RETURN_ELIGIBLE_ABOVE.
+ */
+export function buildShippingDetails(price: number) {
+  return {
+    '@type': 'OfferShippingDetails',
+    shippingRate: {
+      '@type': 'MonetaryAmount',
+      value: price >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE,
+      currency: 'INR',
+    },
+    shippingDestination: { '@type': 'DefinedRegion', addressCountry: 'IN' },
+    deliveryTime: {
+      '@type': 'ShippingDeliveryTime',
+      handlingTime: { '@type': 'QuantitativeValue', minValue: 1, maxValue: 2, unitCode: 'DAY' },
+      transitTime: { '@type': 'QuantitativeValue', minValue: 5, maxValue: 7, unitCode: 'DAY' },
+    },
+  };
+}
+
+export function buildReturnPolicy(price: number) {
+  if (price >= RETURN_ELIGIBLE_ABOVE) {
+    return {
+      '@type': 'MerchantReturnPolicy',
+      applicableCountry: 'IN',
+      returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+      merchantReturnDays: 7,
+      returnMethod: 'https://schema.org/ReturnByMail',
+      returnFees: 'https://schema.org/ReturnShippingFees',
+      refundType: 'https://schema.org/FullRefund',
+      merchantReturnLink: `${SITE_URL}/terms`,
+    };
+  }
+  return {
+    '@type': 'MerchantReturnPolicy',
+    applicableCountry: 'IN',
+    returnPolicyCategory: 'https://schema.org/MerchantReturnNotPermitted',
+    merchantReturnLink: `${SITE_URL}/terms`,
+  };
+}
+
+/** Store-wide return policy for the Organization schema (applies when an Offer doesn't carry its own). */
+export function buildOrganizationReturnPolicy() {
+  return buildReturnPolicy(RETURN_ELIGIBLE_ABOVE);
+}
+
+/**
  * Builds Schema.org Product structured data compliant with Google Search Console Rich Results requirements.
  * Includes aggregateRating and review arrays whenever reviews or ratings exist.
  */
@@ -69,10 +117,12 @@ export function generateProductJsonLd({
     description: product.excerpt || fullDescription || product.name,
     ...(images.length > 0 ? { image: images } : {}),
     ...(primaryVariant?.sku ? { sku: primaryVariant.sku } : {}),
+    url,
     brand: {
       '@type': 'Brand',
       name: 'Doshmukti',
     },
+    ...(product.categories?.[0] ? { category: product.categories[0] } : {}),
     offers: {
       '@type': 'Offer',
       url,
@@ -81,35 +131,9 @@ export function generateProductJsonLd({
       priceValidUntil: `${new Date().getFullYear() + 1}-12-31`,
       itemCondition: 'https://schema.org/NewCondition',
       availability: isAvailable ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-      shippingDetails: {
-        '@type': 'OfferShippingDetails',
-        shippingRate: {
-          '@type': 'MonetaryAmount',
-          value: Number(price) >= FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE,
-          currency: 'INR',
-        },
-        shippingDestination: { '@type': 'DefinedRegion', addressCountry: 'IN' },
-        deliveryTime: {
-          '@type': 'ShippingDeliveryTime',
-          handlingTime: { '@type': 'QuantitativeValue', minValue: 1, maxValue: 2, unitCode: 'DAY' },
-          transitTime: { '@type': 'QuantitativeValue', minValue: 5, maxValue: 7, unitCode: 'DAY' },
-        },
-      },
-      hasMerchantReturnPolicy:
-        Number(price) >= RETURN_ELIGIBLE_ABOVE
-          ? {
-              '@type': 'MerchantReturnPolicy',
-              applicableCountry: 'IN',
-              returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
-              merchantReturnDays: 7,
-              returnMethod: 'https://schema.org/ReturnByMail',
-              returnFees: 'https://schema.org/ReturnShippingFees',
-            }
-          : {
-              '@type': 'MerchantReturnPolicy',
-              applicableCountry: 'IN',
-              returnPolicyCategory: 'https://schema.org/MerchantReturnNotPermitted',
-            },
+      shippingDetails: buildShippingDetails(Number(price)),
+      hasMerchantReturnPolicy: buildReturnPolicy(Number(price)),
+      seller: { '@type': 'Organization', name: 'Doshmukti', url: SITE_URL },
     },
   };
 

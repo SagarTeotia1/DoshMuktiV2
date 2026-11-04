@@ -211,7 +211,7 @@ export function ReviewsSection({
   }
 
   return (
-    <section id="reviews-section" className="mt-16 sm:mt-24 max-w-5xl scroll-mt-24">
+    <section id="reviews-section" className="mt-10 sm:mt-14 max-w-5xl scroll-mt-24">
       <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-[#9C5A26] mb-2">

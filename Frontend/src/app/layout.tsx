@@ -7,6 +7,7 @@ import { FirebaseProvider } from '@/providers/firebase-provider';
 import { AuthProvider } from '@/providers/auth-provider';
 import { DeferredFontStylesheet } from '@/components/layout/deferred-font-stylesheet';
 import { SITE_URL, SOCIAL_LINKS } from '@/lib/constants';
+import { buildOrganizationReturnPolicy } from '@/lib/seo';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -110,6 +111,8 @@ const organizationJsonLd = {
   telephone: '+91-88823-86868',
   address: businessAddress,
   sameAs: [SOCIAL_LINKS.instagram, SOCIAL_LINKS.youtube],
+  // Store-wide return policy: Google's merchant listings read this when an Offer has none of its own.
+  hasMerchantReturnPolicy: buildOrganizationReturnPolicy(),
 };
 
 // Satisfies the "Local Business Schema" SEO check — separate from Organization

@@ -9,6 +9,7 @@
     "dev": "next dev -p 3080",
     "build": "next build",
     "start": "next start -p 3080",
+    "prewarm": "node scripts/prewarm.mjs",
     "lint": "next lint"
   },
   "dependencies": {

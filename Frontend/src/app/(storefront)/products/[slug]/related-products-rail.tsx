@@ -5,13 +5,11 @@ import type { Product } from '@/types/api.types';
 
 export function RelatedProductsRail({ products }: { products: Product[] }) {
   return (
-    <section className="mt-16 sm:mt-24">
-      <div className="mb-6 sm:mb-8">
-        <p className="font-body text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-[#9C5A26] mb-2">
-          You May Also Like
-        </p>
-        <h2 className="font-heading text-2xl sm:text-3xl font-black tracking-tighter uppercase text-[#2B1B0C]">
-          Complete The Ritual
+    <section className="mt-10 sm:mt-14">
+      <div className="mb-6 text-center sm:mb-8">
+        <h2 className="font-heading text-3xl leading-[1.1] tracking-tight text-[#2B1B0C] sm:text-4xl md:text-5xl">
+          <span className="font-black">You May</span>{' '}
+          <span className="font-light italic text-[#9C5A26]">Also Like</span>
         </h2>
       </div>
 

@@ -16,6 +16,15 @@ const securityHeaders = [
 // a shared cached copy instead of hitting the Node process on every request.
 const campaignPageCacheHeaders = [{ key: 'Cache-Control', value: 'public, max-age=3600, stale-while-revalidate=86400' }];
 
+// Static files in /public keep stable names (not content-hashed), so cache for a day and let
+// stale copies serve for a week while a fresh one is fetched in the background.
+const publicAssetCacheHeaders = [{ key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' }];
+
+// Rendered pages: browsers always revalidate (max-age=0) but a CDN/nginx in front may keep a copy
+// for 5 minutes and serve a stale one for a day while it refreshes in the background — so the
+// hot path is a cache HIT, and a price/stock change still shows up within minutes.
+const pageCdnCacheHeaders = [{ key: 'Cache-Control', value: 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400' }];
+
 const nextConfig: NextConfig = {
   output: 'standalone',
   // Pin explicitly — a package-lock.json one level up (C:\Users\acer) otherwise makes
@@ -45,6 +54,13 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: '/:path*', headers: securityHeaders },
+      { source: '/', headers: pageCdnCacheHeaders },
+      { source: '/products/:slug', headers: pageCdnCacheHeaders },
+      { source: '/all-products', headers: pageCdnCacheHeaders },
+      { source: '/images/:path*', headers: publicAssetCacheHeaders },
+      { source: '/icon.png', headers: publicAssetCacheHeaders },
+      { source: '/apple-icon.png', headers: publicAssetCacheHeaders },
+      { source: '/favicon.ico', headers: publicAssetCacheHeaders },
       { source: '/vahan-suraksha-kavach', headers: campaignPageCacheHeaders },
       { source: '/durghatna-nashak-yantra', headers: campaignPageCacheHeaders },
       { source: '/durbhagya-nashak-nariyal', headers: campaignPageCacheHeaders },

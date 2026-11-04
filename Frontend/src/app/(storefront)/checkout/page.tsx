@@ -40,6 +40,7 @@ const COUPON_ERROR_CODES = new Set([
   'COUPON_EXPIRED',
   'COUPON_USAGE_LIMIT',
   'COUPON_MIN_ORDER',
+  'COUPON_PREPAID_ONLY',
   'COUPON_BIRTHDAY_INELIGIBLE',
   'COUPON_EXHAUSTED',
 ]);
@@ -336,14 +337,18 @@ function CheckoutPageContent() {
   const taxableValue = cart?.taxableValue ?? subtotal;
   const savings = cart?.savings ?? 0;
 
-  async function handleApplyCoupon(codeOverride?: string) {
+  async function handleApplyCoupon(codeOverride?: string, methodOverride?: PaymentMethod) {
     const code = (codeOverride ?? couponInput).trim();
     if (!code || items.length === 0) return;
     if (codeOverride) setCouponInput(codeOverride);
     setCouponLoading(true);
     setCouponError(null);
     try {
-      const result = await api.post<CouponPreviewResponse>('/api/coupon/preview', { code, items: checkoutItems });
+      const result = await api.post<CouponPreviewResponse>('/api/coupon/preview', {
+        code,
+        items: checkoutItems,
+        paymentMethod: methodOverride ?? paymentMethod,
+      });
       if (result.valid) {
         setAppliedCoupon({ code, discountAmount: result.discountAmount });
         setCouponError(null);
@@ -358,6 +363,18 @@ function CheckoutPageContent() {
       setCouponLoading(false);
     }
   }
+
+  // Payment method flipped (e.g. PREPAID → COD) with a coupon applied: re-validate, since a
+  // prepaid-only coupon must drop off for COD and a coupon rejected earlier on COD can apply
+  // once the customer switches back to prepaid.
+  const lastCouponMethod = useRef<PaymentMethod>(paymentMethod);
+  useEffect(() => {
+    if (lastCouponMethod.current === paymentMethod) return;
+    lastCouponMethod.current = paymentMethod;
+    const code = appliedCoupon?.code ?? (couponError ? couponInput.trim() : '');
+    if (code) void handleApplyCoupon(code, paymentMethod);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentMethod]);
 
   function handleRemoveCoupon() {
     setAppliedCoupon(null);

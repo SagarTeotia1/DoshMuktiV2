@@ -1,12 +1,16 @@
+import { Fragment } from 'react';
 import { HeroCarousel } from '@/components/storefront/HeroCarousel';
+import { ShopCta } from '@/components/storefront/ShopCta';
 import { PurposeGrid } from '@/components/storefront/PurposeGrid';
-import { TrustBar } from '@/components/storefront/TrustBar';
+import { BrandStory } from '@/components/storefront/BrandStory';
 import { ProductRail } from '@/components/storefront/ProductRail';
+import { MulankRashiSection } from '@/components/storefront/MulankRashiSection';
 import { AcharyaMadhavSection } from '@/components/storefront/AcharyaMadhavSection';
 import { TestimonialsCarousel } from '@/components/storefront/TestimonialsCarousel';
 import { CategoryStrip, firstWord, type CategoryThumb } from '@/components/storefront/CategoryStrip';
-import { SectionDivider } from '@/components/motion/SectionDivider';
+import { OrnamentDivider } from '@/components/motion/OrnamentDivider';
 import { api } from '@/lib/api-client';
+import { getStoryImages } from '@/lib/story-images';
 import type { Banner, HomepageSection } from '@/types/api.types';
 
 // No searchParams/cookies/headers() here, so this page is fully static — Next prerenders
@@ -46,10 +50,11 @@ async function getHomepageSections(): Promise<HomepageSection[]> {
 }
 
 export default async function LandingPage() {
-  const [sections, categoryThumbs, banners] = await Promise.all([
+  const [sections, categoryThumbs, banners, storyImages] = await Promise.all([
     getHomepageSections(),
     getCategoryThumbs(),
     getBanners(),
+    getStoryImages(),
   ]);
 
   return (
@@ -60,13 +65,23 @@ export default async function LandingPage() {
       <h1 className="sr-only">Doshmukti — Gemstones & Astrology Remedies for Love, Wealth & Protection</h1>
       <CategoryStrip items={categoryThumbs} />
       <HeroCarousel banners={banners} />
-      <PurposeGrid />
-
+      {/* Straddles the hero's bottom edge so the hero and its button read as one block. */}
+      <div className="relative z-10 -mt-6 flex justify-center px-4 pb-2 sm:-mt-7">
+        <ShopCta className="border-2 border-[#E6D3AE]" />
+      </div>
       {sections[0] && (
         <ProductRail title={sections[0].title} products={sections[0].products} tightTop tightBottom centered />
       )}
 
-      <AcharyaMadhavSection />
+      <OrnamentDivider />
+
+      <MulankRashiSection />
+
+      <OrnamentDivider />
+
+      <PurposeGrid />
+
+      <OrnamentDivider />
 
       {sections[1] && (
         <ProductRail
@@ -79,28 +94,32 @@ export default async function LandingPage() {
         />
       )}
 
-      <TrustBar />
+      <BrandStory images={storyImages} />
 
       {sections[2] && (
         <ProductRail title={sections[2].title} products={sections[2].products} tightTop tightBottom centered />
       )}
 
-      <SectionDivider />
+      <OrnamentDivider />
 
       {/* Admin-added rails beyond the original 4 fixed slots above render here,
           alternating tint/blob so consecutive extra rails don't look identical. */}
       {sections.slice(3).map((section, i) => (
-        <ProductRail
-          key={section.id}
-          title={section.title}
-          products={section.products}
-          tinted={i % 2 === 0}
-          tightTop
-          tightBottom
-          centered
-          blobVariant={i % 2 === 0 ? 'b' : 'a'}
-        />
+        <Fragment key={section.id}>
+          {i > 0 && <OrnamentDivider />}
+          <ProductRail
+            title={section.title}
+            products={section.products}
+            tinted={i % 2 === 0}
+            tightTop
+            tightBottom
+            centered
+            blobVariant={i % 2 === 0 ? 'b' : 'a'}
+          />
+        </Fragment>
       ))}
+
+      <AcharyaMadhavSection />
 
       <TestimonialsCarousel />
     </>

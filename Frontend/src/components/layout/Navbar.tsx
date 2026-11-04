@@ -9,6 +9,7 @@ import { useCart } from '@/hooks/use-cart';
 import { useActiveCartScope } from '@/hooks/use-active-cart-scope';
 import { useAuth } from '@/providers/auth-provider';
 import { trackSearch } from '@/lib/analytics';
+import { MobileDrawer } from '@/components/layout/MobileDrawer';
 import logo from '@/assets/Logo.png';
 
 const NAV_LINKS = [
@@ -43,6 +44,9 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', handler);
   }, []);
 
+  // Close the mobile drawer whenever navigation happens.
+  useEffect(() => setMenuOpen(false), [pathname, searchParams]);
+
   const cartCount = cart?.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 
   function isActive(href: string) {
@@ -72,8 +76,20 @@ export function Navbar() {
         scrolled ? 'bg-[#E6D3AE]/96 backdrop-blur-lg shadow-neo-sm' : 'bg-[#E6D3AE]/90 backdrop-blur-md'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-12 flex items-center justify-between h-14 sm:h-16">
-        <Link href="/" className="flex items-center group flex-shrink-0">
+      <div className="relative max-w-7xl mx-auto px-3 sm:px-6 lg:px-12 flex items-center justify-between h-14 sm:h-16">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <button
+            onClick={() => {
+              setMenuOpen(true);
+              setSearchOpen(false);
+            }}
+            className="md:hidden -ml-1 p-1.5 sm:p-2 rounded-full hover:bg-[#F6E4C2] transition-colors"
+            aria-label="Open menu"
+            aria-expanded={menuOpen}
+          >
+            <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
+          </button>
+        <Link href="/" className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 flex items-center group flex-shrink-0">
           <Image
             src={logo}
             alt="Doshmukti"
@@ -82,6 +98,7 @@ export function Navbar() {
             className="h-10 sm:h-12 md:h-14 w-auto group-hover:scale-105 transition-transform duration-300"
           />
         </Link>
+        </div>
 
         <nav className="hidden md:flex items-center gap-0.5 lg:gap-1">
           {NAV_LINKS.map((link) => (
@@ -153,16 +170,6 @@ export function Navbar() {
             )}
           </Link>
 
-          <button
-            onClick={() => {
-              setMenuOpen((v) => !v);
-              setSearchOpen(false);
-            }}
-            className="md:hidden p-1.5 sm:p-2 rounded-full hover:bg-[#F6E4C2] transition-colors"
-            aria-label="Menu"
-          >
-            {menuOpen ? <X className="w-4 h-4 sm:w-5 sm:h-5" /> : <Menu className="w-4 h-4 sm:w-5 sm:h-5" />}
-          </button>
         </div>
       </div>
 
@@ -187,24 +194,13 @@ export function Navbar() {
         </div>
       )}
 
-      {menuOpen && (
-        <div className="md:hidden border-t border-[#2B1B0C] bg-[#E6D3AE] animate-fade-in">
-          <nav className="flex flex-col">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMenuOpen(false)}
-                className={`flex items-center gap-1.5 px-4 py-3 font-body text-xs font-bold uppercase tracking-[0.12em] border-b border-[#2B1B0C]/10 transition-all duration-200 ${
-                  isActive(link.href) ? 'bg-[#9C5A26] text-[#E6D3AE] border-b-[#2B1B0C]' : 'hover:bg-[#F6E4C2]'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      )}
+      <MobileDrawer
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        isAuthenticated={isAuthenticated}
+        userName={user?.name ?? null}
+        onLogout={logout}
+      />
     </header>
   );
 }

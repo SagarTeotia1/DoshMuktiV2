@@ -14,6 +14,8 @@ import { DescriptionCarousel } from './description-carousel';
 import { ReviewsSection } from './reviews-section';
 import { RelatedProductsRail } from './related-products-rail';
 import { ExclusiveOffers } from '@/components/storefront/ExclusiveOffers';
+import { BrandStory } from '@/components/storefront/BrandStory';
+import { getStoryImages } from '@/lib/story-images';
 import { api } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
 import { SITE_URL, RETURN_ELIGIBLE_ABOVE, FREE_SHIPPING_ABOVE, CAMPAIGN_PAGE_SLUGS } from '@/lib/constants';
@@ -203,6 +205,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   if (!data) notFound();
 
   const { product, related } = data;
+  // Same brand story on every product page; this product takes over the story slot that
+  // matches its category (e.g. a DoshMukti Special product replaces Hawan Powder's arch).
+  const storyImages = await getStoryImages({
+    slug: product.slug,
+    name: product.name,
+    categories: product.categories,
+    image: product.images[0]?.card ?? null,
+  });
   const activeVariants = product.variants.filter((v) => v.isActive && v.attributes.type !== 'service');
   const price =
     activeVariants.length > 0
@@ -499,9 +509,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      <ReviewsSection productId={product.id} productSlug={product.slug} initialData={reviewsData ?? undefined} />
+      <BrandStory images={storyImages} embedded />
 
       {related.length > 0 && <RelatedProductsRail products={related} />}
+
+      <ReviewsSection productId={product.id} productSlug={product.slug} initialData={reviewsData ?? undefined} />
     </div>
   );
 }

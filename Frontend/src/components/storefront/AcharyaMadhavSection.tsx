@@ -50,10 +50,11 @@ function KundliChart() {
 
 export function AcharyaMadhavSection() {
   return (
-    <section className="relative py-10 sm:py-14 bg-[#2B1B0C] overflow-hidden">
+    <section className="relative py-14 sm:py-20 bg-[#2B1B0C] overflow-hidden">
       <div className="absolute inset-0 opacity-60 warm-glow-bg" />
-      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#9C5A26]/40 to-transparent" />
-      <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#9C5A26]/40 to-transparent" />
+      {/* Soft fade from the page's sand colour into the dark band, so it blends instead of cutting in. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-[#E6D3AE] via-[#E6D3AE]/40 to-transparent sm:h-14" aria-hidden />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[#E6D3AE] via-[#E6D3AE]/40 to-transparent sm:h-14" aria-hidden />
       <MandalaMotif className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] text-[#C9863F]/[0.04] animate-[spin_60s_linear_infinite]" />
 
       <div className="relative max-w-5xl mx-auto px-6 sm:px-10 lg:px-12">

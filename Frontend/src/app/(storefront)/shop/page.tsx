@@ -3,12 +3,12 @@ import type { Metadata } from 'next';
 import { SearchX } from 'lucide-react';
 import Link from 'next/link';
 import { ProductCard } from '@/components/storefront/ProductCard';
-import { ProductCardHorizontal } from '@/components/storefront/ProductCardHorizontal';
 import { ImpressionTracker } from '@/components/storefront/ImpressionTracker';
 import { ShopFilters } from './shop-filters';
-import { ShopFiltersMobile } from './shop-filters-mobile';
 import { ShopToolbar } from './shop-toolbar';
 import { ShopPagination } from './shop-pagination';
+import { OrnamentDivider } from '@/components/motion/OrnamentDivider';
+import { MandalaMotif } from '@/components/motion/MandalaMotif';
 import { api } from '@/lib/api-client';
 import { PURPOSES, SITE_URL, type PurposeId } from '@/lib/constants';
 import type { PaginatedProducts } from '@/types/api.types';
@@ -20,7 +20,6 @@ type ShopSearchParams = {
   featured?: string;
   sort?: string;
   page?: string;
-  view?: string;
 };
 
 // Purpose-filtered shop URLs are the highest-intent SEO/AEO surface on the site
@@ -31,19 +30,30 @@ export async function generateMetadata({
 }: {
   searchParams: Promise<ShopSearchParams>;
 }): Promise<Metadata> {
-  const { purpose } = await searchParams;
+  const { purpose, category, q, sort, page } = await searchParams;
   const match = PURPOSES.find((p) => p.id === (purpose as PurposeId));
 
-  const title = match ? `${match.label} — Gemstones & Remedies` : 'Shop All Products';
+  const title = match
+    ? `${match.label} — Gemstones & Remedies`
+    : category
+      ? `${category} — Authentic Astrology Products`
+      : 'Shop All Products';
   const description = match
     ? `${match.description}. Authentic, energized gemstones, rudraksha and bracelets chosen with Vedic astrology guidance — shop the full ${match.label.toLowerCase()} collection.`
-    : 'Browse the full Doshmukti collection — gemstones, rudraksha malas, bracelets and pooja accessories for love, wealth, health, success, protection and clarity.';
-  const canonical = match ? `/shop?purpose=${match.id}` : '/shop';
+    : category
+      ? `Shop ${category} at Doshmukti — authentic, verified and energized, chosen with Vedic astrology guidance. Insured delivery across India and 7-day returns on eligible orders.`
+      : 'Browse the full Doshmukti collection — gemstones, rudraksha malas, bracelets and pooja accessories for love, wealth, health, success, protection and clarity.';
+  const canonical = match ? `/shop?purpose=${match.id}` : category ? `/shop?category=${encodeURIComponent(category)}` : '/shop';
+
+  // Internal search results, re-sorted views and deep pages are thin/duplicate content: keep them
+  // crawlable for link discovery but out of the index.
+  const thinView = Boolean(q) || Boolean(sort) || (page !== undefined && page !== '1');
 
   return {
     title,
     description,
     alternates: { canonical },
+    ...(thinView ? { robots: { index: false, follow: true } } : {}),
     openGraph: { title, description, url: `${SITE_URL}${canonical}`, type: 'website' },
   };
 }
@@ -81,8 +91,36 @@ export default async function ShopPage({
   const sp = await searchParams;
   const [data, categoryThumbs] = await Promise.all([getProducts(sp), getCategoryThumbs()]);
 
+  const purposeMatch = PURPOSES.find((p) => p.id === (sp.purpose as PurposeId));
+  const heading = sp.q
+    ? `Results for "${sp.q}"`
+    : sp.category
+      ? sp.category
+      : purposeMatch
+        ? purposeMatch.label
+        : sp.featured
+          ? 'Featured Pieces'
+          : 'Our Collection';
+  const blurb = sp.q
+    ? 'Everything that matches your search.'
+    : purposeMatch
+      ? purposeMatch.description
+      : 'Gemstones, rudraksha and bracelets, verified and energized with Vedic guidance.';
+  const [headFirst, ...headRest] = heading.split(' ');
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-8 flex flex-col lg:flex-row gap-6 lg:gap-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 pb-6 sm:pb-8">
+      <header className="relative px-2 pb-5 pt-10 text-center sm:pb-8 sm:pt-16">
+        <MandalaMotif className="pointer-events-none absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 text-[#9C5A26]/[0.08] sm:h-96 sm:w-96" />
+        <h1 className="relative font-heading text-[2.5rem] leading-[1.05] tracking-tight text-[#2B1B0C] sm:text-6xl md:text-7xl">
+          <span className="font-black">{headFirst}</span>
+          {headRest.length > 0 && <span className="font-light italic text-[#9C5A26]"> {headRest.join(' ')}</span>}
+        </h1>
+        <p className="relative mx-auto mt-3 max-w-md font-body text-sm text-[#5C4A33] sm:mt-4 sm:text-base">{blurb}</p>
+        <OrnamentDivider className="relative mt-3 sm:mt-4" />
+      </header>
+
+      <div className="flex flex-col gap-6 lg:flex-row lg:gap-10">
       <div className="hidden lg:block lg:w-56 flex-shrink-0">
         <Suspense>
           <ShopFilters categories={categoryThumbs} />
@@ -91,10 +129,7 @@ export default async function ShopPage({
 
       <div className="flex-1 min-w-0">
         <Suspense>
-          <ShopFiltersMobile categories={categoryThumbs} />
-        </Suspense>
-        <Suspense>
-          <ShopToolbar />
+          <ShopToolbar total={data.total} categories={categoryThumbs} />
         </Suspense>
 
         {data.products.length === 0 ? (
@@ -119,26 +154,17 @@ export default async function ShopPage({
               listName="Shop"
               products={data.products}
             />
-            <div
-              className={
-                sp.view === 'list'
-                  ? 'grid grid-cols-1 gap-3 sm:gap-4'
-                  : 'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5'
-              }
-            >
-              {data.products.map((product) =>
-                sp.view === 'list' ? (
-                  <ProductCardHorizontal key={product.id} product={product} listName="Shop" />
-                ) : (
-                  <ProductCard key={product.id} product={product} listName="Shop" />
-                )
-              )}
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+              {data.products.map((product) => (
+                <ProductCard key={product.id} product={product} listName="Shop" />
+              ))}
             </div>
             <Suspense>
               <ShopPagination page={data.page} pages={data.pages} />
             </Suspense>
           </>
         )}
+      </div>
       </div>
     </div>
   );

@@ -162,13 +162,44 @@ export async function getProductBySlug(slug: string) {
   return rated;
 }
 
-export async function getRelatedProducts(productId: string, purpose: string[], limit = 4) {
-  const products = await db.product.findMany({
-    where: { status: 'ACTIVE', id: { not: productId }, purpose: { hasSome: purpose } },
+// "You may also like" — ranked by how much a candidate actually overlaps this product, so each
+// product page gets its own list instead of the same arbitrary purpose matches for everyone:
+//   shared category (strongest) > shared purpose > shared tag, featured/newer breaks ties.
+// Candidates are anything sharing at least a category or a purpose; sorting happens in JS
+// because Prisma can't order by "number of overlapping array elements".
+export async function getRelatedProducts(
+  product: { id: string; purpose: string[]; categories: string[]; tags: string[] },
+  limit = 4,
+) {
+  const overlap: Prisma.ProductWhereInput[] = [];
+  if (product.categories.length > 0) overlap.push({ categories: { hasSome: product.categories } });
+  if (product.purpose.length > 0) overlap.push({ purpose: { hasSome: product.purpose } });
+  if (overlap.length === 0) return [];
+
+  const candidates = await db.product.findMany({
+    where: { status: 'ACTIVE', id: { not: product.id }, OR: overlap },
     include: { variants: { where: { isActive: true } } },
-    take: limit,
   });
-  const withOffersApplied = await withOffers(products);
+
+  const shared = (a: string[], b: string[]) => a.filter((x) => b.includes(x)).length;
+  const scored = candidates
+    .map((c) => ({
+      c,
+      score:
+        shared(c.categories, product.categories) * 10 +
+        shared(c.purpose, product.purpose) * 3 +
+        shared(c.tags, product.tags),
+    }))
+    .sort(
+      (x, y) =>
+        y.score - x.score ||
+        Number(y.c.featured) - Number(x.c.featured) ||
+        y.c.createdAt.getTime() - x.c.createdAt.getTime(),
+    )
+    .slice(0, limit)
+    .map((x) => x.c);
+
+  const withOffersApplied = await withOffers(scored);
   return attachRatings(withOffersApplied);
 }
 

@@ -46,7 +46,7 @@ export async function getProductHandler(req: FastifyRequest, reply: FastifyReply
   const product = await getProductBySlug(parsed.data.slug);
   if (!product) return reply.code(404).send({ error: 'Product not found' });
 
-  const related = await getRelatedProducts(product.id, product.purpose, 12);
+  const related = await getRelatedProducts(product, 12);
   setPublicCache(reply, 300);
   return reply.send({ product, related });
 }
