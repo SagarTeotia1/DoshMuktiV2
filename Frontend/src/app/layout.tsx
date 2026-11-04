@@ -23,11 +23,24 @@ const TITLE_DEFAULT = 'Doshmukti — Astrology Products & Remedies';
 const DESCRIPTION =
   'Authentic astrology products — energized gemstones, rudraksha malas and bracelets — chosen with Vedic guidance. Shop remedies for love, wealth, health & protection.';
 
-// Existing brand asset (src/app/icon.png, 512x512). No 1200x630 share image exists yet.
+// Existing brand asset (public/icon.png, 512x512). No 1200x630 share image exists yet.
 const DEFAULT_SOCIAL_IMAGE = `${SITE_URL}/icon.png`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  // Google shows a site's favicon in search results only if it is a stable URL (no per-build hash),
+  // crawlable, and a multiple of 48px square. These live in /public so the URLs never change.
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '48x48' },
+      { url: '/favicon-48x48.png', sizes: '48x48', type: 'image/png' },
+      { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+      { url: '/favicon-144x144.png', sizes: '144x144', type: 'image/png' },
+      { url: '/favicon-192x192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
   title: { default: TITLE_DEFAULT, template: '%s — Doshmukti' },
   description: DESCRIPTION,
   keywords: [
